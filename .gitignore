@@ -1,0 +1,29 @@
+node_modules/
+dist/
+.turbo/
+.wrangler/
+.dev.vars
+*.local
+.DS_Store
+coverage/
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+
+# Build artifacts
+*.tsbuildinfo
+
+# PWA dev
+dev-dist/
+
+# Logs
+*.log

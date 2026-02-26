@@ -1,0 +1,13 @@
+name = "pancakemaker-api"
+main = "src/index.ts"
+compatibility_date = "2025-02-01"
+
+[vars]
+ENVIRONMENT = "development"
+APP_URL = "http://localhost:5173"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pancakemaker"
+database_id = "local"
+migrations_dir = "migrations"
