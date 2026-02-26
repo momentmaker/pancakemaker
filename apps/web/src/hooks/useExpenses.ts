@@ -19,8 +19,7 @@ export interface UseExpensesParams {
 }
 
 export function useExpenses(params: UseExpensesParams | string) {
-  const normalized: UseExpensesParams =
-    typeof params === 'string' ? { panelId: params } : params
+  const normalized: UseExpensesParams = typeof params === 'string' ? { panelId: params } : params
 
   const db = useDatabase()
   const { userId } = useAppState()
@@ -48,7 +47,14 @@ export function useExpenses(params: UseExpensesParams | string) {
     async (input: CreateExpenseInput) => {
       const expense = await createExpense(db, input)
       setExpenses((prev) => [expense, ...prev])
-      await logSyncEntry(db, userId, 'expenses', expense.id, 'create', expense as unknown as Record<string, unknown>)
+      await logSyncEntry(
+        db,
+        userId,
+        'expenses',
+        expense.id,
+        'create',
+        expense as unknown as Record<string, unknown>,
+      )
       return expense
     },
     [db, userId],
@@ -59,7 +65,14 @@ export function useExpenses(params: UseExpensesParams | string) {
       const updated = await updateExpense(db, id, updates)
       if (updated) {
         setExpenses((prev) => prev.map((e) => (e.id === id ? updated : e)))
-        await logSyncEntry(db, userId, 'expenses', id, 'update', updated as unknown as Record<string, unknown>)
+        await logSyncEntry(
+          db,
+          userId,
+          'expenses',
+          id,
+          'update',
+          updated as unknown as Record<string, unknown>,
+        )
       }
       return updated
     },

@@ -27,10 +27,7 @@ export function CategoryCard({
     <Card onClick={() => navigate(`/${routeType}/category/${id}`)}>
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
-          <span
-            className="inline-block h-3 w-3 rounded-full"
-            style={{ backgroundColor: color }}
-          />
+          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
           <h3 className="font-medium text-text-primary">{name}</h3>
         </div>
         <span className="text-xs text-text-muted">

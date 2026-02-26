@@ -64,7 +64,8 @@ export async function generateRecurringExpenses(db: Database): Promise<number> {
       )
 
       for (const original of originals) {
-        const recurrenceDay = original.recurrence_day ?? new Date(original.date + 'T00:00:00Z').getUTCDate()
+        const recurrenceDay =
+          original.recurrence_day ?? new Date(original.date + 'T00:00:00Z').getUTCDate()
 
         const existingDates = await db.query<{ date: string }>(
           'SELECT date FROM expenses WHERE source_expense_id = ? AND deleted_at IS NULL',
@@ -72,9 +73,13 @@ export async function generateRecurringExpenses(db: Database): Promise<number> {
         )
         const existingSet = new Set(existingDates.map((r) => r.date))
 
-        const lastGenerated = existingDates.length > 0
-          ? existingDates.map((r) => r.date).sort().pop()!
-          : null
+        const lastGenerated =
+          existingDates.length > 0
+            ? existingDates
+                .map((r) => r.date)
+                .sort()
+                .pop()!
+            : null
 
         const missing = calculateMissingDates(
           recurrenceType,

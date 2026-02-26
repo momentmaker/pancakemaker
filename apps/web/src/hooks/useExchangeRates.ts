@@ -60,7 +60,9 @@ export function useExchangeRates(baseCurrency: string) {
     }
 
     loadRates()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [db, baseCurrency])
 
   const convert = useCallback(

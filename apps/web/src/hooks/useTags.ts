@@ -21,7 +21,14 @@ export function useTags(userId: string) {
     async (name: string) => {
       const tag = await createTag(db, userId, name)
       setTags((prev) => [...prev, tag].sort((a, b) => a.name.localeCompare(b.name)))
-      await logSyncEntry(db, userId, 'tags', tag.id, 'create', tag as unknown as Record<string, unknown>)
+      await logSyncEntry(
+        db,
+        userId,
+        'tags',
+        tag.id,
+        'create',
+        tag as unknown as Record<string, unknown>,
+      )
       return tag
     },
     [db, userId],

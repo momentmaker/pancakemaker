@@ -150,7 +150,7 @@ export function PanelDetail() {
         panel.id,
       ])
     })
-    setPanel((prev) => prev ? { ...prev, is_default: 1 } : prev)
+    setPanel((prev) => (prev ? { ...prev, is_default: 1 } : prev))
     await logSyncEntry(db, userId, 'panels', panel.id, 'update', { is_default: 1 })
   }, [db, userId, panel, routeId])
 
@@ -170,22 +170,26 @@ export function PanelDetail() {
     setShowDeleteModal(true)
   }, [db, routeId, panelId])
 
-  const handleDelete = useCallback(async (keepExpenses: boolean) => {
-    if (!panel) return
-    if (keepExpenses) {
-      const allPanels = await getPanelsByRoute(db, routeId, true)
-      const target = allPanels.find((p) => p.is_default === 1 && p.id !== panel.id)
-        ?? allPanels.find((p) => p.id !== panel.id)
-      if (target) {
-        await deletePanel(db, panel.id, target.id)
+  const handleDelete = useCallback(
+    async (keepExpenses: boolean) => {
+      if (!panel) return
+      if (keepExpenses) {
+        const allPanels = await getPanelsByRoute(db, routeId, true)
+        const target =
+          allPanels.find((p) => p.is_default === 1 && p.id !== panel.id) ??
+          allPanels.find((p) => p.id !== panel.id)
+        if (target) {
+          await deletePanel(db, panel.id, target.id)
+        }
+      } else {
+        await deletePanel(db, panel.id)
       }
-    } else {
-      await deletePanel(db, panel.id)
-    }
-    await logSyncEntry(db, userId, 'panels', panel.id, 'delete', { id: panel.id })
-    setShowDeleteModal(false)
-    navigate(`/${routeType}`)
-  }, [db, userId, panel, routeId, routeType, navigate])
+      await logSyncEntry(db, userId, 'panels', panel.id, 'delete', { id: panel.id })
+      setShowDeleteModal(false)
+      navigate(`/${routeType}`)
+    },
+    [db, userId, panel, routeId, routeType, navigate],
+  )
 
   if (!panel) {
     return (
@@ -274,12 +278,7 @@ export function PanelDetail() {
 
       {sparkData.length > 0 && (
         <div className="mt-4">
-          <SparkBars
-            data={sparkData}
-            color="#00ffcc"
-            currency={panel.currency}
-            highlightLast
-          />
+          <SparkBars data={sparkData} color="#00ffcc" currency={panel.currency} highlightLast />
         </div>
       )}
 
@@ -328,12 +327,7 @@ export function PanelDetail() {
         aria-label="Add expense"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M12 5v14M5 12h14"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
+          <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
       </button>
 
@@ -346,11 +340,7 @@ export function PanelDetail() {
         onAdd={handleAdd}
       />
 
-      <Modal
-        open={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        title="Delete Panel"
-      >
+      <Modal open={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Delete Panel">
         <p className="text-sm text-text-secondary">
           Delete <span className="font-medium text-text-primary">{panel.name}</span>?
         </p>
@@ -361,10 +351,7 @@ export function PanelDetail() {
         )}
         <div className="mt-5 flex flex-col gap-2">
           {otherPanelsExist && (
-            <Button
-              variant="secondary"
-              onClick={() => handleDelete(true)}
-            >
+            <Button variant="secondary" onClick={() => handleDelete(true)}>
               Delete panel only (move expenses to default)
             </Button>
           )}
@@ -426,20 +413,29 @@ function PanelActions({
         <div className="absolute right-0 top-full z-10 mt-1 min-w-[160px] rounded-md border border-border-dim bg-bg-card py-1 shadow-lg">
           {!isDefault && (
             <button
-              onClick={() => { onSetDefault(); setOpen(false) }}
+              onClick={() => {
+                onSetDefault()
+                setOpen(false)
+              }}
               className="flex w-full px-3 py-2 text-left text-sm text-text-secondary transition-colors hover:bg-bg-elevated hover:text-neon-cyan"
             >
               Set as default
             </button>
           )}
           <button
-            onClick={() => { onArchiveToggle(); setOpen(false) }}
+            onClick={() => {
+              onArchiveToggle()
+              setOpen(false)
+            }}
             className="flex w-full px-3 py-2 text-left text-sm text-text-secondary transition-colors hover:bg-bg-elevated hover:text-text-primary"
           >
             {isArchived ? 'Unarchive' : 'Archive'}
           </button>
           <button
-            onClick={() => { onDelete(); setOpen(false) }}
+            onClick={() => {
+              onDelete()
+              setOpen(false)
+            }}
             className="flex w-full px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-bg-elevated hover:text-red-300"
           >
             Delete panel

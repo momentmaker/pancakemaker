@@ -35,7 +35,7 @@ export function AppProvider({ createDatabase, children }: AppProviderProps) {
     async function init() {
       if (!initPromise) {
         initPromise = (async () => {
-          const database = sharedDb ?? await createDatabase()
+          const database = sharedDb ?? (await createDatabase())
           sharedDb = database
 
           await runMigrations(database)
@@ -69,8 +69,22 @@ export function AppProvider({ createDatabase, children }: AppProviderProps) {
             const panels = await getPanelsByRoute(database, route.id, true)
             const hasRecurring = panels.some((p) => p.recurrence_type !== null)
             if (!hasRecurring && panels.length > 0) {
-              await createPanel(database, route.id, 'Monthly', baseCurrency, panels.length, 'monthly')
-              await createPanel(database, route.id, 'Annual', baseCurrency, panels.length + 1, 'annual')
+              await createPanel(
+                database,
+                route.id,
+                'Monthly',
+                baseCurrency,
+                panels.length,
+                'monthly',
+              )
+              await createPanel(
+                database,
+                route.id,
+                'Annual',
+                baseCurrency,
+                panels.length + 1,
+                'annual',
+              )
             }
             if (panels.length === 0) {
               await createPanel(database, route.id, 'Daily', baseCurrency, 0, null, true)

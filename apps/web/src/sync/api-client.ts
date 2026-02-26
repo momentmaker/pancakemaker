@@ -60,10 +60,7 @@ function getApiUrl(): string {
   return API_URL
 }
 
-async function apiRequest<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<ApiResult<T>> {
+async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
   const token = getStoredToken()
   if (!token) {
     return { success: false, error: 'Not authenticated' }
@@ -94,18 +91,14 @@ async function apiRequest<T>(
   }
 }
 
-export async function pushEntries(
-  entries: SyncPushEntry[],
-): Promise<ApiResult<PushResult>> {
+export async function pushEntries(entries: SyncPushEntry[]): Promise<ApiResult<PushResult>> {
   return apiRequest<PushResult>('/sync/push', {
     method: 'POST',
     body: JSON.stringify({ entries }),
   })
 }
 
-export async function pullEntries(
-  since?: string | null,
-): Promise<ApiResult<PullResult>> {
+export async function pullEntries(since?: string | null): Promise<ApiResult<PullResult>> {
   const params = since ? `?since=${encodeURIComponent(since)}` : ''
   return apiRequest<PullResult>(`/sync/pull${params}`)
 }

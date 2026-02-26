@@ -23,7 +23,9 @@ currencyRoutes.get('/rates', async (c) => {
   const today = new Date().toISOString().slice(0, 10)
 
   const cached = await db
-    .prepare('SELECT target_currency, rate FROM exchange_rates WHERE base_currency = ? AND date = ?')
+    .prepare(
+      'SELECT target_currency, rate FROM exchange_rates WHERE base_currency = ? AND date = ?',
+    )
     .bind(base, today)
     .all<{ target_currency: string; rate: number }>()
 
@@ -74,9 +76,6 @@ currencyRoutes.get('/rates', async (c) => {
       return c.json({ base, date: stale.results[0].date, rates, cached: true, stale: true })
     }
 
-    return c.json(
-      { error: 'Exchange rate service unavailable', detail: String(err) },
-      503,
-    )
+    return c.json({ error: 'Exchange rate service unavailable', detail: String(err) }, 503)
   }
 })

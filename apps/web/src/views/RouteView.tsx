@@ -44,17 +44,26 @@ export function RouteView({ type }: RouteViewProps) {
   const [month, setMonth] = useState(currentMonth)
   const [showArchived, setShowArchived] = useState(false)
 
-  const { panels, loading: panelsLoading, load: loadPanels, add: addPanel } = usePanels(routeId, showArchived)
+  const {
+    panels,
+    loading: panelsLoading,
+    load: loadPanels,
+    add: addPanel,
+  } = usePanels(routeId, showArchived)
   const { categories, loading: categoriesLoading, load: loadCategories } = useCategories(routeId)
   const [categoryTotals, setCategoryTotals] = useState<CategoryCurrencyTotal[]>([])
-  const [panelTotals, setPanelTotals] = useState<Record<string, { count: number; total: number }>>({})
+  const [panelTotals, setPanelTotals] = useState<Record<string, { count: number; total: number }>>(
+    {},
+  )
 
   const [allPanels, setAllPanels] = useState<PanelRow[]>([])
   const [showAdd, setShowAdd] = useState(false)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
   const [newPanelName, setNewPanelName] = useState('')
   const [newPanelCurrency, setNewPanelCurrency] = useState(baseCurrency)
-  const [newPanelRecurrence, setNewPanelRecurrence] = useState<'none' | 'monthly' | 'annual'>('none')
+  const [newPanelRecurrence, setNewPanelRecurrence] = useState<'none' | 'monthly' | 'annual'>(
+    'none',
+  )
 
   useEffect(() => {
     loadPanels()
@@ -100,7 +109,14 @@ export function RouteView({ type }: RouteViewProps) {
   const handleAddExpense = useCallback(
     async (input: CreateExpenseInput) => {
       const expense = await createExpense(db, input)
-      await logSyncEntry(db, userId, 'expenses', expense.id, 'create', expense as unknown as Record<string, unknown>)
+      await logSyncEntry(
+        db,
+        userId,
+        'expenses',
+        expense.id,
+        'create',
+        expense as unknown as Record<string, unknown>,
+      )
       const totals = await getCategoryTotalsByCurrency(db, routeId, month)
       setCategoryTotals(totals)
       setShowQuickAdd(false)
@@ -191,11 +207,7 @@ export function RouteView({ type }: RouteViewProps) {
       ) : (
         <div className="mt-4">
           <div className="flex items-center justify-between">
-            <Toggle
-              checked={showArchived}
-              onChange={setShowArchived}
-              label="Show archived"
-            />
+            <Toggle checked={showArchived} onChange={setShowArchived} label="Show archived" />
             <Button variant="secondary" onClick={() => setShowAdd(true)}>
               + New Panel
             </Button>

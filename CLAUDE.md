@@ -24,11 +24,13 @@ Break complex work into 3-5 stages. Document in `IMPLEMENTATION_PLAN.md`:
 
 ```markdown
 ## Stage N: [Name]
+
 **Goal**: [Specific deliverable]
 **Success Criteria**: [Testable outcomes]
 **Tests**: [Specific test cases]
 **Status**: [Not Started|In Progress|Complete]
 ```
+
 - Update status as you progress
 - Remove file when all stages are done
 
@@ -144,6 +146,7 @@ This project uses wa-sqlite in the browser with IndexedDB persistence. Migration
 **NEVER** modify an existing migration that may have been applied in a user's browser. The migration system records version numbers in `schema_migrations` and skips already-applied versions. Changing the SQL of an applied migration has no effect — the old SQL is what ran.
 
 **ALWAYS**:
+
 - Add a new migration with the next version number for schema changes
 - Use `IF NOT EXISTS` / `IF EXISTS` to make migrations idempotent where possible
 - Consider that users may have run ANY previous version of the code — their DB state may not match what the current migration history implies
@@ -153,6 +156,7 @@ This project uses wa-sqlite in the browser with IndexedDB persistence. Migration
 ## Important Reminders
 
 **NEVER**:
+
 - Use git worktrees — always work directly in the main tree
 - Use `--no-verify` to bypass commit hooks
 - Disable tests instead of fixing them
@@ -160,6 +164,7 @@ This project uses wa-sqlite in the browser with IndexedDB persistence. Migration
 - Make assumptions - verify with existing code
 
 **ALWAYS**:
+
 - Commit working code incrementally
 - Update plan documentation as you go
 - Learn from existing implementations

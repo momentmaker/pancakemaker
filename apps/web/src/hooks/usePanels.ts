@@ -27,23 +27,47 @@ export function usePanels(routeId: string, includeArchived = false) {
   }, [db, routeId, includeArchived])
 
   const add = useCallback(
-    async (name: string, currency: string, sortOrder: number, recurrenceType: 'monthly' | 'annual' | null = null) => {
+    async (
+      name: string,
+      currency: string,
+      sortOrder: number,
+      recurrenceType: 'monthly' | 'annual' | null = null,
+    ) => {
       const panel = await createPanel(db, routeId, name, currency, sortOrder, recurrenceType)
       setPanels((prev) => [...prev, panel].sort((a, b) => a.sort_order - b.sort_order))
-      await logSyncEntry(db, userId, 'panels', panel.id, 'create', panel as unknown as Record<string, unknown>)
+      await logSyncEntry(
+        db,
+        userId,
+        'panels',
+        panel.id,
+        'create',
+        panel as unknown as Record<string, unknown>,
+      )
       return panel
     },
     [db, routeId, userId],
   )
 
   const update = useCallback(
-    async (id: string, updates: Partial<Pick<PanelRow, 'name' | 'currency' | 'sort_order' | 'is_default' | 'is_archived'>>) => {
+    async (
+      id: string,
+      updates: Partial<
+        Pick<PanelRow, 'name' | 'currency' | 'sort_order' | 'is_default' | 'is_archived'>
+      >,
+    ) => {
       const updated = await updatePanel(db, id, updates)
       if (updated) {
         setPanels((prev) =>
           prev.map((p) => (p.id === id ? updated : p)).sort((a, b) => a.sort_order - b.sort_order),
         )
-        await logSyncEntry(db, userId, 'panels', id, 'update', updated as unknown as Record<string, unknown>)
+        await logSyncEntry(
+          db,
+          userId,
+          'panels',
+          id,
+          'update',
+          updated as unknown as Record<string, unknown>,
+        )
       }
       return updated
     },
@@ -62,9 +86,7 @@ export function usePanels(routeId: string, includeArchived = false) {
           id,
         ])
       })
-      setPanels((prev) =>
-        prev.map((p) => ({ ...p, is_default: p.id === id ? 1 : 0 })),
-      )
+      setPanels((prev) => prev.map((p) => ({ ...p, is_default: p.id === id ? 1 : 0 })))
       await logSyncEntry(db, userId, 'panels', id, 'update', { is_default: 1 })
     },
     [db, routeId, userId],
@@ -87,9 +109,7 @@ export function usePanels(routeId: string, includeArchived = false) {
   const unarchive = useCallback(
     async (id: string) => {
       await updatePanel(db, id, { is_archived: 0 })
-      setPanels((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, is_archived: 0 } : p)),
-      )
+      setPanels((prev) => prev.map((p) => (p.id === id ? { ...p, is_archived: 0 } : p)))
       await logSyncEntry(db, userId, 'panels', id, 'update', { is_archived: 0 })
     },
     [db, userId],

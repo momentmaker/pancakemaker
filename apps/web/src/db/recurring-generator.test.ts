@@ -198,7 +198,9 @@ describe('generateRecurringExpenses', () => {
     // #then
     expect(count).toBeGreaterThan(0)
     const expenses = await getExpensesByCategory(db, categoryId)
-    const sources = new Set(expenses.filter((e) => e.source_expense_id).map((e) => e.source_expense_id))
+    const sources = new Set(
+      expenses.filter((e) => e.source_expense_id).map((e) => e.source_expense_id),
+    )
     expect(sources.size).toBe(2)
   })
 })

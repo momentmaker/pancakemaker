@@ -11,9 +11,7 @@ export function Card({ children, className = '', glow = false, onClick }: CardPr
   return (
     <div
       className={`rounded-lg border bg-bg-card p-4 transition-all duration-200 ${
-        glow
-          ? 'border-border-glow shadow-[0_0_15px_rgba(0,255,204,0.1)]'
-          : 'border-border-dim'
+        glow ? 'border-border-glow shadow-[0_0_15px_rgba(0,255,204,0.1)]' : 'border-border-dim'
       } ${onClick ? 'cursor-pointer hover:border-border-glow hover:shadow-[0_0_15px_rgba(0,255,204,0.08)]' : ''} ${className}`}
       onClick={onClick}
       role={onClick ? 'button' : undefined}

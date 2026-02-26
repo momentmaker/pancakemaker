@@ -70,12 +70,14 @@ describe('pushEntries', () => {
   it('sends entries with auth header', async () => {
     // #given
     storeToken('test-jwt')
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({ ok: true, synced: 1, server_timestamp: '2026-02-26T00:00:00.000Z' }),
-        { status: 200 },
-      ),
-    )
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ ok: true, synced: 1, server_timestamp: '2026-02-26T00:00:00.000Z' }),
+          { status: 200 },
+        ),
+      )
 
     // #when
     const result = await pushEntries([
@@ -145,12 +147,18 @@ describe('pullEntries', () => {
   it('fetches entries with since parameter', async () => {
     // #given
     storeToken('test-jwt')
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({ entries: [], server_timestamp: '2026-02-26T00:00:01.000Z', has_more: false }),
-        { status: 200 },
-      ),
-    )
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            entries: [],
+            server_timestamp: '2026-02-26T00:00:01.000Z',
+            has_more: false,
+          }),
+          { status: 200 },
+        ),
+      )
 
     // #when
     const result = await pullEntries('2026-02-26T00:00:00.000Z')
@@ -164,12 +172,18 @@ describe('pullEntries', () => {
   it('fetches without since parameter when null', async () => {
     // #given
     storeToken('test-jwt')
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({ entries: [], server_timestamp: '2026-02-26T00:00:00.000Z', has_more: false }),
-        { status: 200 },
-      ),
-    )
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            entries: [],
+            server_timestamp: '2026-02-26T00:00:00.000Z',
+            has_more: false,
+          }),
+          { status: 200 },
+        ),
+      )
 
     // #when
     await pullEntries(null)

@@ -202,11 +202,10 @@ export async function runMigrations(db: Database): Promise<number> {
 
     await db.transaction(async () => {
       await db.execute(migration.sql)
-      await db.execute('INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)', [
-        migration.version,
-        migration.name,
-        new Date().toISOString(),
-      ])
+      await db.execute(
+        'INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)',
+        [migration.version, migration.name, new Date().toISOString()],
+      )
     })
     count++
   }

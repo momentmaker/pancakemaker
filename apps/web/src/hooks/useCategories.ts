@@ -30,23 +30,34 @@ export function useCategories(routeId: string) {
     async (name: string, color: string, sortOrder: number) => {
       const category = await createCategory(db, routeId, name, color, sortOrder)
       setCategories((prev) => [...prev, category].sort((a, b) => a.sort_order - b.sort_order))
-      await logSyncEntry(db, userId, 'categories', category.id, 'create', category as unknown as Record<string, unknown>)
+      await logSyncEntry(
+        db,
+        userId,
+        'categories',
+        category.id,
+        'create',
+        category as unknown as Record<string, unknown>,
+      )
       return category
     },
     [db, routeId, userId],
   )
 
   const update = useCallback(
-    async (
-      id: string,
-      updates: Partial<Pick<CategoryRow, 'name' | 'color' | 'sort_order'>>,
-    ) => {
+    async (id: string, updates: Partial<Pick<CategoryRow, 'name' | 'color' | 'sort_order'>>) => {
       const updated = await updateCategory(db, id, updates)
       if (updated) {
         setCategories((prev) =>
           prev.map((c) => (c.id === id ? updated : c)).sort((a, b) => a.sort_order - b.sort_order),
         )
-        await logSyncEntry(db, userId, 'categories', id, 'update', updated as unknown as Record<string, unknown>)
+        await logSyncEntry(
+          db,
+          userId,
+          'categories',
+          id,
+          'update',
+          updated as unknown as Record<string, unknown>,
+        )
       }
       return updated
     },

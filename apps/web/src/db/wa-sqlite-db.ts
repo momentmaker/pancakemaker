@@ -9,7 +9,10 @@ function createMutex() {
   let pending = Promise.resolve()
   return function serialize<T>(fn: () => Promise<T>): Promise<T> {
     const result = pending.then(fn, fn)
-    pending = result.then(() => {}, () => {})
+    pending = result.then(
+      () => {},
+      () => {},
+    )
     return result
   }
 }
@@ -98,9 +101,7 @@ export async function createWaSqliteDatabase(name: string): Promise<Database> {
 
   let db: number
   try {
-    const { IDBBatchAtomicVFS } = await import(
-      'wa-sqlite/src/examples/IDBBatchAtomicVFS.js'
-    )
+    const { IDBBatchAtomicVFS } = await import('wa-sqlite/src/examples/IDBBatchAtomicVFS.js')
     const idbName = 'pancakemaker'
     const vfs = new IDBBatchAtomicVFS(idbName)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- VFS types don't extend SQLiteVFS

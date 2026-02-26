@@ -26,7 +26,15 @@ export class ErrorBoundary extends Component<Props, State> {
         <div className="flex min-h-[60vh] items-center justify-center">
           <div className="max-w-md rounded-lg border border-red-500/30 bg-bg-card p-8 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#f87171"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />

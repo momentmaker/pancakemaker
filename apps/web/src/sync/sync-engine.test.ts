@@ -58,7 +58,10 @@ describe('createSyncEngine', () => {
     engine.onStatusChange((s) => statuses.push(s))
 
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ ok: true, synced: 0, server_timestamp: new Date().toISOString() }), { status: 200 }),
+      new Response(
+        JSON.stringify({ ok: true, synced: 0, server_timestamp: new Date().toISOString() }),
+        { status: 200 },
+      ),
     )
 
     // #when
@@ -91,12 +94,17 @@ describe('createSyncEngine', () => {
     await logSyncEntry(db, userId, 'expenses', 'exp-1', 'create', { amount: 1000 })
 
     const serverTs = new Date().toISOString()
-    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ ok: true, synced: 1, server_timestamp: serverTs }), { status: 200 }),
+        new Response(JSON.stringify({ ok: true, synced: 1, server_timestamp: serverTs }), {
+          status: 200,
+        }),
       )
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ entries: [], server_timestamp: serverTs, has_more: false }), { status: 200 }),
+        new Response(JSON.stringify({ entries: [], server_timestamp: serverTs, has_more: false }), {
+          status: 200,
+        }),
       )
 
     const engine = createSyncEngine(db)

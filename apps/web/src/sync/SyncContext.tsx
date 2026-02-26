@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  type ReactNode,
+} from 'react'
 import { useDatabase } from '../db/DatabaseContext.js'
 import { createSyncEngine, type SyncStatus, type SyncEngine } from './sync-engine.js'
 
@@ -12,9 +20,7 @@ const SyncContext = createContext<SyncState | null>(null)
 export function SyncProvider({ children }: { children: ReactNode }) {
   const db = useDatabase()
   const engineRef = useRef<SyncEngine | null>(null)
-  const [status, setStatus] = useState<SyncStatus>(
-    navigator.onLine ? 'synced' : 'offline',
-  )
+  const [status, setStatus] = useState<SyncStatus>(navigator.onLine ? 'synced' : 'offline')
 
   useEffect(() => {
     const engine = createSyncEngine(db)
@@ -34,11 +40,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     engineRef.current?.sync()
   }, [])
 
-  return (
-    <SyncContext.Provider value={{ status, triggerSync }}>
-      {children}
-    </SyncContext.Provider>
-  )
+  return <SyncContext.Provider value={{ status, triggerSync }}>{children}</SyncContext.Provider>
 }
 
 export function useSync(): SyncState {

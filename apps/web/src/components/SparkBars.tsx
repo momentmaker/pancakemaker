@@ -19,7 +19,8 @@ export function SparkBars({ data, color, currency, highlightLast = true }: Spark
     <div className="flex items-end gap-1.5">
       {data.map((d, i) => {
         const isLast = highlightLast && i === data.length - 1
-        const barH = d.value > 0 ? Math.max((d.value / max) * BAR_HEIGHT, MIN_BAR_HEIGHT) : MIN_BAR_HEIGHT
+        const barH =
+          d.value > 0 ? Math.max((d.value / max) * BAR_HEIGHT, MIN_BAR_HEIGHT) : MIN_BAR_HEIGHT
         const opacity = isLast ? 0.8 : 0.4
 
         return (

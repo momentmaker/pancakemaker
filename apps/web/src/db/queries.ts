@@ -96,14 +96,10 @@ export async function createCategory(
   return rows[0]
 }
 
-export async function getCategoriesByRoute(
-  db: Database,
-  routeId: string,
-): Promise<CategoryRow[]> {
-  return db.query<CategoryRow>(
-    'SELECT * FROM categories WHERE route_id = ? ORDER BY sort_order',
-    [routeId],
-  )
+export async function getCategoriesByRoute(db: Database, routeId: string): Promise<CategoryRow[]> {
+  return db.query<CategoryRow>('SELECT * FROM categories WHERE route_id = ? ORDER BY sort_order', [
+    routeId,
+  ])
 }
 
 export async function updateCategory(
@@ -144,10 +140,19 @@ export async function deleteCategory(
   reassignToCategoryId?: string,
 ): Promise<void> {
   if (reassignToCategoryId) {
-    await db.execute('UPDATE expenses SET category_id = ? WHERE category_id = ?', [reassignToCategoryId, id])
-    await db.execute('UPDATE recurring_templates SET category_id = ? WHERE category_id = ?', [reassignToCategoryId, id])
+    await db.execute('UPDATE expenses SET category_id = ? WHERE category_id = ?', [
+      reassignToCategoryId,
+      id,
+    ])
+    await db.execute('UPDATE recurring_templates SET category_id = ? WHERE category_id = ?', [
+      reassignToCategoryId,
+      id,
+    ])
   } else {
-    await db.execute('DELETE FROM expense_tags WHERE expense_id IN (SELECT id FROM expenses WHERE category_id = ?)', [id])
+    await db.execute(
+      'DELETE FROM expense_tags WHERE expense_id IN (SELECT id FROM expenses WHERE category_id = ?)',
+      [id],
+    )
     await db.execute('DELETE FROM expenses WHERE category_id = ?', [id])
     await db.execute('DELETE FROM recurring_templates WHERE category_id = ?', [id])
   }
@@ -182,7 +187,17 @@ export async function createPanel(
   const timestamp = now()
   await db.execute(
     'INSERT INTO panels (id, route_id, name, currency, sort_order, recurrence_type, is_default, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [id, routeId, name, currency, sortOrder, recurrenceType, isDefault ? 1 : 0, timestamp, timestamp],
+    [
+      id,
+      routeId,
+      name,
+      currency,
+      sortOrder,
+      recurrenceType,
+      isDefault ? 1 : 0,
+      timestamp,
+      timestamp,
+    ],
   )
   const rows = await db.query<PanelRow>('SELECT * FROM panels WHERE id = ?', [id])
   return rows[0]
@@ -202,7 +217,9 @@ export async function getPanelsByRoute(
 export async function updatePanel(
   db: Database,
   id: string,
-  updates: Partial<Pick<PanelRow, 'name' | 'currency' | 'sort_order' | 'is_default' | 'is_archived'>>,
+  updates: Partial<
+    Pick<PanelRow, 'name' | 'currency' | 'sort_order' | 'is_default' | 'is_archived'>
+  >,
 ): Promise<PanelRow | null> {
   const fields: string[] = []
   const values: unknown[] = []
@@ -247,7 +264,10 @@ export async function deletePanel(
   if (reassignToPanelId) {
     await db.execute('UPDATE expenses SET panel_id = ? WHERE panel_id = ?', [reassignToPanelId, id])
   } else {
-    await db.execute('DELETE FROM expense_tags WHERE expense_id IN (SELECT id FROM expenses WHERE panel_id = ?)', [id])
+    await db.execute(
+      'DELETE FROM expense_tags WHERE expense_id IN (SELECT id FROM expenses WHERE panel_id = ?)',
+      [id],
+    )
     await db.execute('DELETE FROM expenses WHERE panel_id = ?', [id])
   }
   await db.execute('DELETE FROM panels WHERE id = ?', [id])
@@ -483,10 +503,10 @@ export async function getUnsyncedEntries(db: Database): Promise<SyncLogRow[]> {
 export async function markEntriesSynced(db: Database, ids: string[]): Promise<void> {
   if (ids.length === 0) return
   const placeholders = ids.map(() => '?').join(', ')
-  await db.execute(
-    `UPDATE sync_log SET synced_at = ? WHERE id IN (${placeholders})`,
-    [now(), ...ids],
-  )
+  await db.execute(`UPDATE sync_log SET synced_at = ? WHERE id IN (${placeholders})`, [
+    now(),
+    ...ids,
+  ])
 }
 
 export async function getLastSyncTimestamp(db: Database): Promise<string | null> {

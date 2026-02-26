@@ -121,7 +121,8 @@ export function QuickAdd({
   )
 
   const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }))
-  const panelOptions = panels?.map((p) => ({ value: p.id, label: `${p.name} (${p.currency})` })) ?? []
+  const panelOptions =
+    panels?.map((p) => ({ value: p.id, label: `${p.name} (${p.currency})` })) ?? []
 
   return (
     <Modal open={open} onClose={onClose} title="Add Expense">

@@ -11,6 +11,12 @@
     }
   },
   "include": ["src"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/db/test-db.ts", "src/test-utils.tsx", "src/test-setup.ts"],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/db/test-db.ts",
+    "src/test-utils.tsx",
+    "src/test-setup.ts"
+  ],
   "references": [{ "path": "../../packages/shared" }]
 }

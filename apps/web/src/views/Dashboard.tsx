@@ -22,18 +22,21 @@ interface DashboardStats {
 
 function getGreeting(): { line1: string; line2: string } {
   const hour = new Date().getHours()
-  if (hour >= 5 && hour < 12) return {
-    line1: 'Rise & shine!',
-    line2: 'Fresh pancakes on the griddle.',
-  }
-  if (hour >= 12 && hour < 17) return {
-    line1: 'Afternoon check-in.',
-    line2: "How's the stack looking?",
-  }
-  if (hour >= 17 && hour < 21) return {
-    line1: 'Evening review time.',
-    line2: "Let's see today's stack.",
-  }
+  if (hour >= 5 && hour < 12)
+    return {
+      line1: 'Rise & shine!',
+      line2: 'Fresh pancakes on the griddle.',
+    }
+  if (hour >= 12 && hour < 17)
+    return {
+      line1: 'Afternoon check-in.',
+      line2: "How's the stack looking?",
+    }
+  if (hour >= 17 && hour < 21)
+    return {
+      line1: 'Evening review time.',
+      line2: "Let's see today's stack.",
+    }
   return {
     line1: 'Late night pancaking?',
     line2: "We won't judge.",
@@ -111,37 +114,113 @@ function HeroPancake() {
       <g filter="url(#hero-glow)">
         <ellipse cx="256" cy="340" rx="138" ry="36" fill="#12121a" />
         <ellipse cx="256" cy="340" rx="138" ry="36" fill="url(#hero-amber)" opacity="0.35" />
-        <ellipse cx="256" cy="340" rx="138" ry="36" fill="none" stroke="#fbbf24" strokeWidth="1.5" opacity="0.8" />
+        <ellipse
+          cx="256"
+          cy="340"
+          rx="138"
+          ry="36"
+          fill="none"
+          stroke="#fbbf24"
+          strokeWidth="1.5"
+          opacity="0.8"
+        />
       </g>
       <g filter="url(#hero-glow)">
         <ellipse cx="256" cy="298" rx="132" ry="34" fill="#12121a" />
         <ellipse cx="256" cy="298" rx="132" ry="34" fill="url(#hero-violet)" opacity="0.35" />
-        <ellipse cx="256" cy="298" rx="132" ry="34" fill="none" stroke="#c084fc" strokeWidth="1.5" opacity="0.8" />
+        <ellipse
+          cx="256"
+          cy="298"
+          rx="132"
+          ry="34"
+          fill="none"
+          stroke="#c084fc"
+          strokeWidth="1.5"
+          opacity="0.8"
+        />
       </g>
       <g filter="url(#hero-glow)">
         <ellipse cx="256" cy="256" rx="126" ry="32" fill="#12121a" />
         <ellipse cx="256" cy="256" rx="126" ry="32" fill="url(#hero-magenta)" opacity="0.35" />
-        <ellipse cx="256" cy="256" rx="126" ry="32" fill="none" stroke="#ff6b9d" strokeWidth="1.5" opacity="0.8" />
+        <ellipse
+          cx="256"
+          cy="256"
+          rx="126"
+          ry="32"
+          fill="none"
+          stroke="#ff6b9d"
+          strokeWidth="1.5"
+          opacity="0.8"
+        />
       </g>
       <g filter="url(#hero-glow)">
         <ellipse cx="256" cy="214" rx="120" ry="30" fill="#12121a" />
         <ellipse cx="256" cy="214" rx="120" ry="30" fill="url(#hero-lime)" opacity="0.35" />
-        <ellipse cx="256" cy="214" rx="120" ry="30" fill="none" stroke="#a3e635" strokeWidth="1.5" opacity="0.8" />
+        <ellipse
+          cx="256"
+          cy="214"
+          rx="120"
+          ry="30"
+          fill="none"
+          stroke="#a3e635"
+          strokeWidth="1.5"
+          opacity="0.8"
+        />
       </g>
       <g filter="url(#hero-soft)">
         <ellipse cx="256" cy="172" rx="114" ry="28" fill="#12121a" />
         <ellipse cx="256" cy="172" rx="114" ry="28" fill="url(#hero-cyan)" opacity="0.4" />
-        <ellipse cx="256" cy="172" rx="114" ry="28" fill="none" stroke="#00ffcc" strokeWidth="2" opacity="0.9" />
+        <ellipse
+          cx="256"
+          cy="172"
+          rx="114"
+          ry="28"
+          fill="none"
+          stroke="#00ffcc"
+          strokeWidth="2"
+          opacity="0.9"
+        />
       </g>
 
-      <path d="M168 185 Q162 220 170 260 Q174 280 166 300" stroke="url(#hero-syrup)" strokeWidth="6" strokeLinecap="round" fill="none" filter="url(#hero-glow)" />
-      <path d="M338 190 Q348 230 340 265 Q336 280 342 310 Q346 330 340 345" stroke="url(#hero-syrup)" strokeWidth="5" strokeLinecap="round" fill="none" filter="url(#hero-glow)" />
-      <path d="M306 178 Q312 200 308 220" stroke="url(#hero-syrup)" strokeWidth="4" strokeLinecap="round" fill="none" filter="url(#hero-glow)" />
+      <path
+        d="M168 185 Q162 220 170 260 Q174 280 166 300"
+        stroke="url(#hero-syrup)"
+        strokeWidth="6"
+        strokeLinecap="round"
+        fill="none"
+        filter="url(#hero-glow)"
+      />
+      <path
+        d="M338 190 Q348 230 340 265 Q336 280 342 310 Q346 330 340 345"
+        stroke="url(#hero-syrup)"
+        strokeWidth="5"
+        strokeLinecap="round"
+        fill="none"
+        filter="url(#hero-glow)"
+      />
+      <path
+        d="M306 178 Q312 200 308 220"
+        stroke="url(#hero-syrup)"
+        strokeWidth="4"
+        strokeLinecap="round"
+        fill="none"
+        filter="url(#hero-glow)"
+      />
 
       <g filter="url(#hero-outer)">
         <rect x="236" y="148" width="40" height="12" rx="3" fill="#12121a" />
         <rect x="236" y="148" width="40" height="12" rx="3" fill="#00ffcc" opacity="0.25" />
-        <rect x="236" y="148" width="40" height="12" rx="3" fill="none" stroke="#00ffcc" strokeWidth="1.5" opacity="0.7" />
+        <rect
+          x="236"
+          y="148"
+          width="40"
+          height="12"
+          rx="3"
+          fill="none"
+          stroke="#00ffcc"
+          strokeWidth="1.5"
+          opacity="0.7"
+        />
       </g>
     </svg>
   )
@@ -221,9 +300,7 @@ export function Dashboard() {
       <div className="flex items-center gap-5">
         <HeroPancake />
         <div>
-          <h1 className="font-mono text-2xl font-bold text-neon-cyan">
-            {greeting.line1}
-          </h1>
+          <h1 className="font-mono text-2xl font-bold text-neon-cyan">{greeting.line1}</h1>
           <p className="mt-0.5 text-sm text-text-secondary">{greeting.line2}</p>
           <p className="mt-1 font-mono text-xs text-text-muted">{currentMonthLabel}</p>
         </div>
@@ -306,17 +383,63 @@ export function Dashboard() {
                         <feComposite in="SourceGraphic" in2="blur" operator="over" />
                       </filter>
                     </defs>
-                    <ellipse cx="256" cy="300" rx="130" ry="34" fill="#12121a" filter="url(#empty-glow)" />
-                    <ellipse cx="256" cy="300" rx="130" ry="34" fill="none" stroke="#555570" strokeWidth="1.5" strokeDasharray="8 6" />
-                    <ellipse cx="256" cy="260" rx="120" ry="30" fill="#12121a" filter="url(#empty-glow)" />
-                    <ellipse cx="256" cy="260" rx="120" ry="30" fill="none" stroke="#555570" strokeWidth="1.5" strokeDasharray="8 6" />
-                    <ellipse cx="256" cy="220" rx="110" ry="26" fill="#12121a" filter="url(#empty-glow)" />
-                    <ellipse cx="256" cy="220" rx="110" ry="26" fill="none" stroke="#555570" strokeWidth="1.5" strokeDasharray="8 6" />
+                    <ellipse
+                      cx="256"
+                      cy="300"
+                      rx="130"
+                      ry="34"
+                      fill="#12121a"
+                      filter="url(#empty-glow)"
+                    />
+                    <ellipse
+                      cx="256"
+                      cy="300"
+                      rx="130"
+                      ry="34"
+                      fill="none"
+                      stroke="#555570"
+                      strokeWidth="1.5"
+                      strokeDasharray="8 6"
+                    />
+                    <ellipse
+                      cx="256"
+                      cy="260"
+                      rx="120"
+                      ry="30"
+                      fill="#12121a"
+                      filter="url(#empty-glow)"
+                    />
+                    <ellipse
+                      cx="256"
+                      cy="260"
+                      rx="120"
+                      ry="30"
+                      fill="none"
+                      stroke="#555570"
+                      strokeWidth="1.5"
+                      strokeDasharray="8 6"
+                    />
+                    <ellipse
+                      cx="256"
+                      cy="220"
+                      rx="110"
+                      ry="26"
+                      fill="#12121a"
+                      filter="url(#empty-glow)"
+                    />
+                    <ellipse
+                      cx="256"
+                      cy="220"
+                      rx="110"
+                      ry="26"
+                      fill="none"
+                      stroke="#555570"
+                      strokeWidth="1.5"
+                      strokeDasharray="8 6"
+                    />
                   </svg>
                 </div>
-                <p className="mt-4 font-mono text-sm text-text-secondary">
-                  Your plate is empty!
-                </p>
+                <p className="mt-4 font-mono text-sm text-text-secondary">Your plate is empty!</p>
                 <p className="mt-1 text-xs text-text-muted">
                   Start stacking some expenses to build your pancake.
                 </p>

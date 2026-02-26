@@ -17,14 +17,14 @@ A personal and business expense tracker that works offline-first with optional c
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 19, React Router v7, Tailwind CSS v4, Recharts |
-| Database (browser) | wa-sqlite with IndexedDB persistence |
-| Backend | Cloudflare Workers, Hono.js, Cloudflare D1 |
-| Shared | TypeScript, Zod validation schemas |
-| Build | Turborepo (npm workspaces), Vite, Vitest |
-| Auth | Magic link emails via Resend |
+| Layer              | Technology                                           |
+| ------------------ | ---------------------------------------------------- |
+| Frontend           | React 19, React Router v7, Tailwind CSS v4, Recharts |
+| Database (browser) | wa-sqlite with IndexedDB persistence                 |
+| Backend            | Cloudflare Workers, Hono.js, Cloudflare D1           |
+| Shared             | TypeScript, Zod validation schemas                   |
+| Build              | Turborepo (npm workspaces), Vite, Vitest             |
+| Auth               | Magic link emails via Resend                         |
 
 ## Project Structure
 
@@ -56,6 +56,7 @@ pancakemaker/
 - npm >= 10
 
 For cloud sync and self-hosting the backend:
+
 - A [Cloudflare](https://dash.cloudflare.com/) account (free tier works)
 - A [Resend](https://resend.com/) account for magic link emails
 

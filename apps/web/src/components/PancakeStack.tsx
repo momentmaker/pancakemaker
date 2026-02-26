@@ -30,10 +30,7 @@ function formatAmount(cents: number, currency: string): string {
 export function PancakeStack({ layers, currency }: PancakeStackProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
 
-  const sorted = useMemo(
-    () => [...layers].sort((a, b) => b.amount - a.amount),
-    [layers],
-  )
+  const sorted = useMemo(() => [...layers].sort((a, b) => b.amount - a.amount), [layers])
 
   const maxAmount = sorted[0]?.amount ?? 1
   const totalHeight = PADDING_TOP + sorted.length * LAYER_SPACING + PADDING_BOTTOM
@@ -131,7 +128,14 @@ export function PancakeStack({ layers, currency }: PancakeStackProps) {
           >
             {/* Pancake body */}
             <ellipse cx={CENTER_X} cy={p.y} rx={p.rx} ry={RY} fill="#12121a" />
-            <ellipse cx={CENTER_X} cy={p.y} rx={p.rx} ry={RY} fill={p.color} opacity={fillOpacity} />
+            <ellipse
+              cx={CENTER_X}
+              cy={p.y}
+              rx={p.rx}
+              ry={RY}
+              fill={p.color}
+              opacity={fillOpacity}
+            />
             <ellipse
               cx={CENTER_X}
               cy={p.y}
@@ -196,39 +200,41 @@ export function PancakeStack({ layers, currency }: PancakeStackProps) {
       )}
 
       {/* Hover tooltip */}
-      {hoveredIndex !== null && pancakes[hoveredIndex] && (() => {
-        const p = pancakes.find((pk) => pk.i === hoveredIndex)!
-        const tooltipY = p.y - RY - 22
-        const text = `${p.name}: ${formatAmount(p.amount, currency)}`
-        const textWidth = text.length * 7.5
-        const boxWidth = textWidth + 20
-        return (
-          <g>
-            <rect
-              x={CENTER_X - boxWidth / 2}
-              y={tooltipY - 14}
-              width={boxWidth}
-              height={24}
-              rx={6}
-              fill="#1a1a2e"
-              stroke={p.color}
-              strokeWidth="1"
-              opacity="0.95"
-            />
-            <text
-              x={CENTER_X}
-              y={tooltipY}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill="#e8e8f0"
-              fontSize="11"
-              fontFamily="'JetBrains Mono', monospace"
-            >
-              {text}
-            </text>
-          </g>
-        )
-      })()}
+      {hoveredIndex !== null &&
+        pancakes[hoveredIndex] &&
+        (() => {
+          const p = pancakes.find((pk) => pk.i === hoveredIndex)!
+          const tooltipY = p.y - RY - 22
+          const text = `${p.name}: ${formatAmount(p.amount, currency)}`
+          const textWidth = text.length * 7.5
+          const boxWidth = textWidth + 20
+          return (
+            <g>
+              <rect
+                x={CENTER_X - boxWidth / 2}
+                y={tooltipY - 14}
+                width={boxWidth}
+                height={24}
+                rx={6}
+                fill="#1a1a2e"
+                stroke={p.color}
+                strokeWidth="1"
+                opacity="0.95"
+              />
+              <text
+                x={CENTER_X}
+                y={tooltipY}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="#e8e8f0"
+                fontSize="11"
+                fontFamily="'JetBrains Mono', monospace"
+              >
+                {text}
+              </text>
+            </g>
+          )
+        })()}
     </svg>
   )
 }

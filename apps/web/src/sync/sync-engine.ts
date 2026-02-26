@@ -1,9 +1,5 @@
 import type { Database } from '../db/interface.js'
-import {
-  getUnsyncedEntries,
-  markEntriesSynced,
-  getLastSyncTimestamp,
-} from '../db/queries.js'
+import { getUnsyncedEntries, markEntriesSynced, getLastSyncTimestamp } from '../db/queries.js'
 import {
   pushEntries,
   pullEntries,
@@ -79,17 +75,15 @@ export function createSyncEngine(db: Database): SyncEngine {
         .map((k) => `${k} = ?`)
         .join(', ')
       if (sets && id) {
-        await db.execute(
-          `UPDATE ${table} SET ${sets} WHERE id = ?`,
-          [...Object.values(rest), id],
-        )
+        await db.execute(`UPDATE ${table} SET ${sets} WHERE id = ?`, [...Object.values(rest), id])
       }
     } else if (entry.action === 'delete') {
       if (table === 'expenses') {
-        await db.execute(
-          'UPDATE expenses SET deleted_at = ?, updated_at = ? WHERE id = ?',
-          [new Date().toISOString(), new Date().toISOString(), entry.record_id],
-        )
+        await db.execute('UPDATE expenses SET deleted_at = ?, updated_at = ? WHERE id = ?', [
+          new Date().toISOString(),
+          new Date().toISOString(),
+          entry.record_id,
+        ])
       } else {
         await db.execute(`DELETE FROM ${table} WHERE id = ?`, [entry.record_id])
       }
@@ -97,8 +91,7 @@ export function createSyncEngine(db: Database): SyncEngine {
   }
 
   async function pull(): Promise<boolean> {
-    const cursor =
-      getStoredSyncCursor() ?? (await getLastSyncTimestamp(db))
+    const cursor = getStoredSyncCursor() ?? (await getLastSyncTimestamp(db))
 
     const result = await pullEntries(cursor)
     if (!result.success) return false

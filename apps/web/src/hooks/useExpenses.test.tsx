@@ -159,10 +159,7 @@ describe('useExpenses', () => {
     })
 
     // #when
-    const { result } = renderHook(
-      () => useExpenses({ categoryId, month: '2026-01' }),
-      { wrapper },
-    )
+    const { result } = renderHook(() => useExpenses({ categoryId, month: '2026-01' }), { wrapper })
 
     await act(async () => {
       await result.current.load()

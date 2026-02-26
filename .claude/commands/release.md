@@ -7,6 +7,7 @@ Use AskUserQuestion to ask whether this is a **major**, **minor**, or **patch** 
 ## 2. Determine the new version
 
 Read the current version from the root `package.json`. Apply the semver bump:
+
 - **patch**: 0.0.1 → 0.0.2
 - **minor**: 0.0.1 → 0.1.0
 - **major**: 0.0.1 → 1.0.0
@@ -16,6 +17,7 @@ Read the current version from the root `package.json`. Apply the semver bump:
 Run `git log --oneline <last-tag>..HEAD` to get all commits since the last release tag. If there are no tags yet, use all commits.
 
 Group commits into categories based on prefixes:
+
 - `feat:` → **Added**
 - `fix:` → **Fixed**
 - `chore:`, `ci:`, `docs:`, `refactor:`, `style:`, `test:` → **Changed**
@@ -29,12 +31,15 @@ Insert a new section at the top (after the header), formatted as:
 ## [X.Y.Z] - YYYY-MM-DD
 
 ### Added
+
 - commit message
 
 ### Fixed
+
 - commit message
 
 ### Changed
+
 - commit message
 ```
 

@@ -14,10 +14,22 @@ import { SyncIndicator } from '../components/SyncIndicator'
 import { useSync } from '../sync/SyncContext'
 
 const PALETTE = [
-  '#00ffcc', '#38bdf8', '#c084fc', '#e879f9',
-  '#ff6b9d', '#f97316', '#fbbf24', '#a3e635',
-  '#60a5fa', '#818cf8', '#f472b6', '#fb923c',
-  '#34d399', '#2dd4bf', '#a78bfa', '#fca5a5',
+  '#00ffcc',
+  '#38bdf8',
+  '#c084fc',
+  '#e879f9',
+  '#ff6b9d',
+  '#f97316',
+  '#fbbf24',
+  '#a3e635',
+  '#60a5fa',
+  '#818cf8',
+  '#f472b6',
+  '#fb923c',
+  '#34d399',
+  '#2dd4bf',
+  '#a78bfa',
+  '#fca5a5',
 ]
 
 export function Settings() {
@@ -201,7 +213,12 @@ export function Settings() {
           </h2>
           <Button
             variant="ghost"
-            onClick={() => handleOpenAddCategory(personalRouteId, personalCategories.categories.map((c) => c.color))}
+            onClick={() =>
+              handleOpenAddCategory(
+                personalRouteId,
+                personalCategories.categories.map((c) => c.color),
+              )
+            }
           >
             + Add
           </Button>
@@ -235,7 +252,12 @@ export function Settings() {
           </h2>
           <Button
             variant="ghost"
-            onClick={() => handleOpenAddCategory(businessRouteId, businessCategories.categories.map((c) => c.color))}
+            onClick={() =>
+              handleOpenAddCategory(
+                businessRouteId,
+                businessCategories.categories.map((c) => c.color),
+              )
+            }
           >
             + Add
           </Button>
@@ -264,7 +286,10 @@ export function Settings() {
       {/* Edit Category Modal */}
       <Modal
         open={editingCategory !== null}
-        onClose={() => { setEditingCategory(null); setDeleteConfirm(null) }}
+        onClose={() => {
+          setEditingCategory(null)
+          setDeleteConfirm(null)
+        }}
         title={editingCategory?.isNew ? 'Add Category' : 'Edit Category'}
       >
         {editingCategory && (
@@ -278,9 +303,7 @@ export function Settings() {
             <FormInput
               label="Name"
               value={editingCategory.name}
-              onChange={(e) =>
-                setEditingCategory({ ...editingCategory, name: e.target.value })
-              }
+              onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
             />
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium text-text-secondary">Color</label>
@@ -303,7 +326,13 @@ export function Settings() {
                     >
                       {selected && (
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                          <path d="M3 8l3.5 3.5L13 5" stroke="#0a0a0f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                          <path
+                            d="M3 8l3.5 3.5L13 5"
+                            stroke="#0a0a0f"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
                         </svg>
                       )}
                     </button>
@@ -340,7 +369,14 @@ export function Settings() {
               </div>
             )}
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" type="button" onClick={() => { setEditingCategory(null); setDeleteConfirm(null) }}>
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => {
+                  setEditingCategory(null)
+                  setDeleteConfirm(null)
+                }}
+              >
                 Cancel
               </Button>
               <Button type="submit">Save</Button>
@@ -357,56 +393,55 @@ export function Settings() {
                 </Button>
               </div>
             )}
-            {deleteConfirm && (() => {
-              const hook =
-                editingCategory.routeId === personalRouteId ? personalCategories : businessCategories
-              const others = hook.categories.filter((c) => c.id !== editingCategory.id)
-              return (
-                <div className="mt-2 border-t border-border-dim pt-3">
-                  <p className="text-sm text-text-secondary">
-                    This category has {deleteConfirm.expenseCount} expense(s).
-                  </p>
-                  {others.length > 0 && (
-                    <div className="mt-3 flex flex-col gap-2">
-                      <FormSelect
-                        label="Move expenses to"
-                        value={deleteConfirm.reassignTargetId}
-                        onChange={(value) =>
-                          setDeleteConfirm({ ...deleteConfirm, reassignTargetId: value })
-                        }
-                        options={others.map((c) => ({ value: c.id, label: c.name }))}
-                      />
+            {deleteConfirm &&
+              (() => {
+                const hook =
+                  editingCategory.routeId === personalRouteId
+                    ? personalCategories
+                    : businessCategories
+                const others = hook.categories.filter((c) => c.id !== editingCategory.id)
+                return (
+                  <div className="mt-2 border-t border-border-dim pt-3">
+                    <p className="text-sm text-text-secondary">
+                      This category has {deleteConfirm.expenseCount} expense(s).
+                    </p>
+                    {others.length > 0 && (
+                      <div className="mt-3 flex flex-col gap-2">
+                        <FormSelect
+                          label="Move expenses to"
+                          value={deleteConfirm.reassignTargetId}
+                          onChange={(value) =>
+                            setDeleteConfirm({ ...deleteConfirm, reassignTargetId: value })
+                          }
+                          options={others.map((c) => ({ value: c.id, label: c.name }))}
+                        />
+                        <Button
+                          variant="secondary"
+                          type="button"
+                          onClick={() => handleConfirmDelete(true)}
+                        >
+                          Move &amp; delete
+                        </Button>
+                      </div>
+                    )}
+                    <div className="mt-2">
                       <Button
-                        variant="secondary"
+                        variant="ghost"
                         type="button"
-                        onClick={() => handleConfirmDelete(true)}
+                        onClick={() => handleConfirmDelete(false)}
+                        className="text-red-400 hover:text-red-300"
                       >
-                        Move &amp; delete
+                        Delete all expenses
                       </Button>
                     </div>
-                  )}
-                  <div className="mt-2">
-                    <Button
-                      variant="ghost"
-                      type="button"
-                      onClick={() => handleConfirmDelete(false)}
-                      className="text-red-400 hover:text-red-300"
-                    >
-                      Delete all expenses
-                    </Button>
+                    <div className="mt-1">
+                      <Button variant="ghost" type="button" onClick={() => setDeleteConfirm(null)}>
+                        Cancel
+                      </Button>
+                    </div>
                   </div>
-                  <div className="mt-1">
-                    <Button
-                      variant="ghost"
-                      type="button"
-                      onClick={() => setDeleteConfirm(null)}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              )
-            })()}
+                )
+              })()}
           </form>
         )}
       </Modal>

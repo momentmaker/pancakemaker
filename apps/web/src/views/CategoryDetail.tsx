@@ -112,10 +112,7 @@ export function CategoryDetail() {
     [trend],
   )
 
-  const defaultPanel = useMemo(
-    () => panels.find((p) => p.is_default === 1) ?? panels[0],
-    [panels],
-  )
+  const defaultPanel = useMemo(() => panels.find((p) => p.is_default === 1) ?? panels[0], [panels])
 
   const togglePanel = useCallback((panelId: string) => {
     setCollapsedPanels((prev) => {
@@ -249,9 +246,7 @@ export function CategoryDetail() {
                         {panelExpenses.length} {panelExpenses.length === 1 ? 'expense' : 'expenses'}
                       </span>
                     </div>
-                    <span className="text-xs text-text-muted">
-                      {collapsed ? '▸' : '▾'}
-                    </span>
+                    <span className="text-xs text-text-muted">{collapsed ? '▸' : '▾'}</span>
                   </button>
 
                   {!collapsed && (
@@ -292,12 +287,7 @@ export function CategoryDetail() {
         aria-label="Add expense"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M12 5v14M5 12h14"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
+          <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
       </button>
 
