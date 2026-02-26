@@ -12,9 +12,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       devOptions: { enabled: false },
       manifest: {
-        name: 'Pancakemaker',
-        short_name: 'Pancakemaker',
-        description: 'Personal & business expense tracker',
+        name: 'pancakemaker',
+        short_name: 'pancakemaker',
+        description: 'Track personal and business expenses offline-first with cloud sync.',
         theme_color: '#0a0a0f',
         background_color: '#0a0a0f',
         display: 'standalone',

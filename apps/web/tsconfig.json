@@ -5,6 +5,7 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "noEmit": true,
+    "types": ["vite/client"],
     "paths": {
       "@/*": ["./src/*"]
     }

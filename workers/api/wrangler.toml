@@ -3,11 +3,11 @@ main = "src/index.ts"
 compatibility_date = "2025-02-01"
 
 [vars]
-ENVIRONMENT = "development"
-APP_URL = "http://localhost:5173"
+ENVIRONMENT = "production"
+APP_URL = "https://pancakemaker.com"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "pancakemaker"
-database_id = "local"
+database_id = "a4da6b61-d618-4f6d-8548-07b0cab75186"
 migrations_dir = "migrations"
