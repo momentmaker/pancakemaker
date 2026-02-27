@@ -6,9 +6,8 @@ compatibility_date = "2025-02-01"
 ENVIRONMENT = "production"
 APP_URL = "https://pancakemaker.com"
 
-[[routes]]
-pattern = "api.pancakemaker.com"
-custom_domain = true
+[[custom_domains]]
+hostname = "api.pancakemaker.com"
 override_existing_origin = true
 override_existing_dns_record = true
 
