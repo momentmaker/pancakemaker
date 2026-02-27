@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import type { ReactNode } from 'react'
 import { DatabaseProvider } from '../db/DatabaseContext.js'
 import { AppStateContext, type AppState } from './useAppState.js'
+import { SyncProvider } from '../sync/SyncContext.js'
 import { createTestDatabase } from '../db/test-db.js'
 import { runMigrations } from '../db/migrations.js'
 import { seedDefaultData } from '../db/seed.js'
@@ -18,7 +19,9 @@ let appState: AppState
 function wrapper({ children }: { children: ReactNode }) {
   return (
     <DatabaseProvider database={db}>
-      <AppStateContext.Provider value={appState}>{children}</AppStateContext.Provider>
+      <AppStateContext.Provider value={appState}>
+        <SyncProvider>{children}</SyncProvider>
+      </AppStateContext.Provider>
     </DatabaseProvider>
   )
 }

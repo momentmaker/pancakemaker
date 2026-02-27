@@ -11,6 +11,7 @@ import {
   type CreateExpenseInput,
 } from '../db/queries.js'
 import { useAppState } from './useAppState.js'
+import { useSync } from '../sync/SyncContext.js'
 
 export interface UseExpensesParams {
   panelId?: string
@@ -23,6 +24,7 @@ export function useExpenses(params: UseExpensesParams | string) {
 
   const db = useDatabase()
   const { userId } = useAppState()
+  const { triggerSync } = useSync()
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -55,9 +57,10 @@ export function useExpenses(params: UseExpensesParams | string) {
         'create',
         expense as unknown as Record<string, unknown>,
       )
+      triggerSync()
       return expense
     },
-    [db, userId],
+    [db, userId, triggerSync],
   )
 
   const update = useCallback(
@@ -73,10 +76,11 @@ export function useExpenses(params: UseExpensesParams | string) {
           'update',
           updated as unknown as Record<string, unknown>,
         )
+        triggerSync()
       }
       return updated
     },
-    [db, userId],
+    [db, userId, triggerSync],
   )
 
   const remove = useCallback(
@@ -84,8 +88,9 @@ export function useExpenses(params: UseExpensesParams | string) {
       await softDeleteExpense(db, id)
       setExpenses((prev) => prev.filter((e) => e.id !== id))
       await logSyncEntry(db, userId, 'expenses', id, 'delete', { id })
+      triggerSync()
     },
-    [db, userId],
+    [db, userId, triggerSync],
   )
 
   return { expenses, loading, load, add, update, remove }
