@@ -7,6 +7,7 @@ import { PanelDetail } from './views/PanelDetail'
 import { CategoryDetail } from './views/CategoryDetail'
 import { Settings } from './views/Settings'
 import { Login } from './views/Login'
+import { AuthVerify } from './views/AuthVerify'
 
 function PersonalPanelRedirect() {
   const { panelId } = useParams<{ panelId: string }>()
@@ -35,6 +36,7 @@ export function App() {
           <Route path="/settings" element={<Settings />} />
         </Route>
         <Route path="/auth/login" element={<Login />} />
+        <Route path="/auth/verify" element={<AuthVerify />} />
       </Routes>
     </ErrorBoundary>
   )
