@@ -7,7 +7,24 @@ import { currencyRoutes } from './routes/currency.js'
 
 const app = new Hono<AppEnv>()
 
-app.use('/*', cors())
+app.use(
+  '/*',
+  cors({
+    origin: (origin, c) => {
+      const appUrl = c.env?.APP_URL || 'http://localhost:5173'
+      if (
+        origin === appUrl ||
+        origin === 'http://localhost:5173' ||
+        origin === 'http://localhost:5174'
+      ) {
+        return origin
+      }
+      return appUrl
+    },
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+  }),
+)
 
 app.get('/health', (c) => c.json({ status: 'ok' }))
 
