@@ -193,7 +193,9 @@ export function CategoryDetail() {
             <MonthPicker month={month} onChange={setMonth} />
           </div>
         </div>
-        <Button onClick={() => setShowQuickAdd(true)}>+<span className="hidden sm:inline"> Add Expense</span></Button>
+        <Button onClick={() => setShowQuickAdd(true)}>
+          +<span className="hidden sm:inline"> Add Expense</span>
+        </Button>
       </div>
 
       {sparkData.length > 0 && (

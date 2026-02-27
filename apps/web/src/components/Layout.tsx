@@ -228,7 +228,16 @@ function InstallButton() {
         className="rounded-md p-1.5 text-text-muted transition-colors hover:text-neon-cyan"
         title="Install app"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M12 5v14M5 12l7-7 7 7" />
           <path d="M4 20h16" />
         </svg>
@@ -245,14 +254,40 @@ function InstallButton() {
           className="rounded-md p-1.5 text-text-muted transition-colors hover:text-neon-cyan"
           title="Install app"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M12 5v14M5 12l7-7 7 7" />
             <path d="M4 20h16" />
           </svg>
         </button>
         {showIOSTip && (
           <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-border-dim bg-bg-card p-3 text-xs text-text-muted shadow-lg">
-            Tap the <span className="inline-block translate-y-0.5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg></span> Share button, then <span className="text-text-primary">Add to Home Screen</span>.
+            Tap the{' '}
+            <span className="inline-block translate-y-0.5">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
+                <polyline points="16 6 12 2 8 6" />
+                <line x1="12" y1="2" x2="12" y2="15" />
+              </svg>
+            </span>{' '}
+            Share button, then <span className="text-text-primary">Add to Home Screen</span>.
           </div>
         )}
       </div>

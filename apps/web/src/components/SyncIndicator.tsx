@@ -11,7 +11,13 @@ const statusConfig: Record<SyncStatus, { color: string; label: string; pulse: bo
   local: { color: 'var(--color-text-muted)', label: 'Local', pulse: false },
 }
 
-export function SyncIndicator({ status, interactive = true }: { status: SyncStatus; interactive?: boolean }) {
+export function SyncIndicator({
+  status,
+  interactive = true,
+}: {
+  status: SyncStatus
+  interactive?: boolean
+}) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const { triggerSync } = useSync()
@@ -63,7 +69,11 @@ export function SyncIndicator({ status, interactive = true }: { status: SyncStat
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        title={status === 'local' ? 'Your data is 100% private — stored only in your browser, never sent to any server' : undefined}
+        title={
+          status === 'local'
+            ? 'Your data is 100% private — stored only in your browser, never sent to any server'
+            : undefined
+        }
         className="flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors hover:bg-bg-card"
       >
         {dot}
