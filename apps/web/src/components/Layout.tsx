@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import { SyncIndicator } from './SyncIndicator'
 import { useSync } from '../sync/SyncContext'
+import { useInstallPrompt } from '../hooks/useInstallPrompt'
 
 const navItems = [
   {
@@ -214,6 +216,52 @@ function Logo({ size = 28 }: { size?: number }) {
   )
 }
 
+function InstallButton() {
+  const { canInstall, isIOS, install } = useInstallPrompt()
+  const [showIOSTip, setShowIOSTip] = useState(false)
+
+  if (canInstall) {
+    return (
+      <button
+        type="button"
+        onClick={install}
+        className="rounded-md p-1.5 text-text-muted transition-colors hover:text-neon-cyan"
+        title="Install app"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 5v14M5 12l7-7 7 7" />
+          <path d="M4 20h16" />
+        </svg>
+      </button>
+    )
+  }
+
+  if (isIOS) {
+    return (
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setShowIOSTip(!showIOSTip)}
+          className="rounded-md p-1.5 text-text-muted transition-colors hover:text-neon-cyan"
+          title="Install app"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14M5 12l7-7 7 7" />
+            <path d="M4 20h16" />
+          </svg>
+        </button>
+        {showIOSTip && (
+          <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-border-dim bg-bg-card p-3 text-xs text-text-muted shadow-lg">
+            Tap the <span className="inline-block translate-y-0.5"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg></span> Share button, then <span className="text-text-primary">Add to Home Screen</span>.
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return null
+}
+
 export function Layout() {
   const { status } = useSync()
 
@@ -250,6 +298,7 @@ export function Layout() {
                 </NavLink>
               ))}
             </div>
+            <InstallButton />
             <a
               href="https://github.com/momentmaker/pancakemaker"
               target="_blank"
