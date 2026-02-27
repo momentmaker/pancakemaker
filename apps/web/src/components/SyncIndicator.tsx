@@ -1,13 +1,10 @@
-type SyncStatus = 'synced' | 'pending' | 'offline'
-
-interface SyncIndicatorProps {
-  status: SyncStatus
-}
+import type { SyncStatus } from '../sync/sync-engine'
 
 const statusConfig: Record<SyncStatus, { color: string; label: string; pulse: boolean }> = {
   synced: { color: 'var(--color-sync-synced)', label: 'Synced', pulse: false },
   pending: { color: 'var(--color-sync-pending)', label: 'Syncing', pulse: true },
   offline: { color: 'var(--color-sync-offline)', label: 'Offline', pulse: false },
+  local: { color: 'var(--color-text-muted)', label: 'Local', pulse: false },
 }
 
 export function SyncIndicator({ status }: SyncIndicatorProps) {

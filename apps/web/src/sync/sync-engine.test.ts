@@ -33,7 +33,7 @@ describe('createSyncEngine', () => {
     const engine = createSyncEngine(db)
 
     // #then
-    expect(engine.getStatus()).toBe('synced')
+    expect(engine.getStatus()).toBe('local')
     engine.stop()
   })
 

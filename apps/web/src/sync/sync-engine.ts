@@ -9,7 +9,7 @@ import {
   type SyncPullEntry,
 } from './api-client.js'
 
-export type SyncStatus = 'synced' | 'pending' | 'offline'
+export type SyncStatus = 'synced' | 'pending' | 'offline' | 'local'
 
 export interface SyncEngine {
   getStatus(): SyncStatus
@@ -22,7 +22,7 @@ export interface SyncEngine {
 const SYNC_INTERVAL_MS = 5 * 60 * 1000
 
 export function createSyncEngine(db: Database): SyncEngine {
-  let status: SyncStatus = navigator.onLine ? 'synced' : 'offline'
+  let status: SyncStatus = !navigator.onLine ? 'offline' : getStoredToken() ? 'synced' : 'local'
   let intervalId: ReturnType<typeof setInterval> | null = null
   let syncing = false
   const listeners = new Set<(status: SyncStatus) => void>()
@@ -113,8 +113,12 @@ export function createSyncEngine(db: Database): SyncEngine {
 
   async function sync(): Promise<void> {
     if (syncing) return
-    if (!navigator.onLine || !getStoredToken()) {
-      setStatus(navigator.onLine ? 'synced' : 'offline')
+    if (!navigator.onLine) {
+      setStatus('offline')
+      return
+    }
+    if (!getStoredToken()) {
+      setStatus('local')
       return
     }
 

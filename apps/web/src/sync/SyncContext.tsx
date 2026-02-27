@@ -20,7 +20,7 @@ const SyncContext = createContext<SyncState | null>(null)
 export function SyncProvider({ children }: { children: ReactNode }) {
   const db = useDatabase()
   const engineRef = useRef<SyncEngine | null>(null)
-  const [status, setStatus] = useState<SyncStatus>(navigator.onLine ? 'synced' : 'offline')
+  const [status, setStatus] = useState<SyncStatus>(!navigator.onLine ? 'offline' : 'local')
 
   useEffect(() => {
     const engine = createSyncEngine(db)
