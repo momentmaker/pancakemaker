@@ -15,7 +15,7 @@ export default defineConfig({
       manifest: {
         name: 'pancakemaker',
         short_name: 'pancakemaker',
-        description: 'Track personal and business expenses offline-first with cloud sync.',
+        description: 'Stack your expenses. Keep your data. Open-source, offline-first expense tracking.',
         theme_color: '#0a0a0f',
         background_color: '#0a0a0f',
         display: 'standalone',
