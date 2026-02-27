@@ -185,7 +185,7 @@ export function Settings() {
       <Card className="mt-4">
         <div className="flex items-center justify-between">
           <h2 className="font-mono text-sm font-semibold text-text-secondary">Cloud Sync</h2>
-          <SyncIndicator status={syncStatus} />
+          <SyncIndicator status={syncStatus} interactive={false} />
         </div>
 
         {userEmail ? (

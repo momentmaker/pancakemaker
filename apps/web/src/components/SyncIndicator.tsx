@@ -11,7 +11,7 @@ const statusConfig: Record<SyncStatus, { color: string; label: string; pulse: bo
   local: { color: 'var(--color-text-muted)', label: 'Local', pulse: false },
 }
 
-export function SyncIndicator({ status }: { status: SyncStatus }) {
+export function SyncIndicator({ status, interactive = true }: { status: SyncStatus; interactive?: boolean }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const { triggerSync } = useSync()
@@ -33,6 +33,31 @@ export function SyncIndicator({ status }: { status: SyncStatus }) {
     window.location.reload()
   }
 
+  const dot = (
+    <>
+      <span className="relative flex h-2 w-2">
+        {config.pulse && (
+          <span
+            className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
+            style={{ backgroundColor: config.color }}
+          />
+        )}
+        <span
+          className="relative inline-flex h-2 w-2 rounded-full"
+          style={{
+            backgroundColor: config.color,
+            boxShadow: `0 0 6px ${config.color}`,
+          }}
+        />
+      </span>
+      <span style={{ color: config.color }}>{config.label}</span>
+    </>
+  )
+
+  if (!interactive) {
+    return <div className="flex items-center gap-2 text-xs">{dot}</div>
+  }
+
   return (
     <div className="relative" ref={ref}>
       <button
@@ -41,22 +66,7 @@ export function SyncIndicator({ status }: { status: SyncStatus }) {
         title={status === 'local' ? 'Your data is 100% private — stored only in your browser, never sent to any server' : undefined}
         className="flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors hover:bg-bg-card"
       >
-        <span className="relative flex h-2 w-2">
-          {config.pulse && (
-            <span
-              className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
-              style={{ backgroundColor: config.color }}
-            />
-          )}
-          <span
-            className="relative inline-flex h-2 w-2 rounded-full"
-            style={{
-              backgroundColor: config.color,
-              boxShadow: `0 0 6px ${config.color}`,
-            }}
-          />
-        </span>
-        <span style={{ color: config.color }}>{config.label}</span>
+        {dot}
       </button>
 
       {open && (
