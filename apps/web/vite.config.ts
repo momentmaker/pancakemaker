@@ -30,7 +30,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,woff2}'],
-        navigateFallbackDenylist: [/\.wasm$/],
+        navigateFallbackDenylist: [/\.wasm$/, /^\/auth\/verify/],
       },
     }),
   ],

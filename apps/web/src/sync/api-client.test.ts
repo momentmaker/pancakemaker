@@ -264,8 +264,10 @@ describe('verifyToken', () => {
       expect(result.data.token).toBe('jwt-string')
       expect(result.data.user.email).toBe('test@example.com')
     }
-    const [url] = fetchSpy.mock.calls[0]
-    expect(url).toContain('/auth/verify?token=magic-token')
+    const [url, opts] = fetchSpy.mock.calls[0]
+    expect(url).toContain('/auth/verify')
+    expect(opts).toMatchObject({ method: 'POST' })
+    expect(JSON.parse(opts.body as string)).toEqual({ token: 'magic-token' })
   })
 
   it('returns error for invalid token', async () => {

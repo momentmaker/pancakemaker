@@ -148,7 +148,11 @@ export async function requestMagicLink(email: string): Promise<ApiResult<{ ok: t
 
 export async function verifyToken(token: string): Promise<ApiResult<VerifyResult>> {
   try {
-    const res = await fetch(`${getApiUrl()}/auth/verify?token=${encodeURIComponent(token)}`)
+    const res = await fetch(`${getApiUrl()}/auth/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    })
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))

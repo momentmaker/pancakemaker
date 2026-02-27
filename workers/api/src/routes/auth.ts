@@ -50,8 +50,9 @@ authRoutes.post('/magic-link', async (c) => {
   return c.json({ ok: true })
 })
 
-authRoutes.get('/verify', async (c) => {
-  const token = c.req.query('token')
+authRoutes.post('/verify', async (c) => {
+  const body = await c.req.json<{ token?: string }>()
+  const token = body.token
   if (!token) {
     return c.json({ error: 'Token is required' }, 400)
   }
