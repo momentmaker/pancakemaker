@@ -11,7 +11,7 @@ function formatShareText(personaName: string, topExpense: string, topAmount: num
     style: 'currency',
     currency: 'USD',
   })
-  return `I just discovered I'm a ${personaName}. Top expense: "${topExpense}" — ${dollars}. Find your spending persona: pancakemaker.com/demo`
+  return `I just discovered I'm a ${personaName}. Top expense: "${topExpense}" — ${dollars}. Find your spending persona: demo.pancakemaker.com`
 }
 
 export function DemoShareButton({ topExpense, topAmount }: ShareData) {
@@ -22,7 +22,7 @@ export function DemoShareButton({ topExpense, topAmount }: ShareData) {
     if (!persona) return
 
     const text = formatShareText(persona.name, topExpense, topAmount)
-    const url = `https://pancakemaker.com/demo/${persona.slug}`
+    const url = `https://demo.pancakemaker.com/${persona.slug}`
 
     if (navigator.share) {
       try {

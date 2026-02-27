@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import { useLocation, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 
 export interface DemoPersonaInfo {
   slug: string
@@ -14,11 +14,12 @@ export function useDemoContext(): DemoPersonaInfo | null {
   return useContext(DemoContext)
 }
 
+export function isDemoSubdomain(): boolean {
+  return window.location.hostname.startsWith('demo.')
+}
+
 export function useRoutePrefix(): string {
-  const location = useLocation()
   const { persona } = useParams<{ persona: string }>()
-  if (location.pathname.startsWith('/demo/') && persona) {
-    return `/demo/${persona}`
-  }
-  return ''
+  if (!persona) return ''
+  return isDemoSubdomain() ? `/${persona}` : `/demo/${persona}`
 }

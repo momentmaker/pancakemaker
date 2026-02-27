@@ -9,6 +9,7 @@ import { Settings } from './views/Settings'
 import { Login } from './views/Login'
 import { AuthVerify } from './views/AuthVerify'
 import { DemoLayout } from './demo/demo-layout'
+import { isDemoSubdomain } from './demo/demo-context'
 
 function PersonalPanelRedirect() {
   const { panelId } = useParams<{ panelId: string }>()
@@ -20,7 +21,32 @@ function BusinessPanelRedirect() {
   return <Navigate to={`/business/panel/${panelId}`} replace />
 }
 
+const DEMO_CHILD_ROUTES = (
+  <>
+    <Route index element={<Dashboard />} />
+    <Route path="personal" element={<RouteView type="personal" />} />
+    <Route path="personal/category/:categoryId" element={<CategoryDetail />} />
+    <Route path="personal/panel/:panelId" element={<PanelDetail />} />
+    <Route path="business" element={<RouteView type="business" />} />
+    <Route path="business/category/:categoryId" element={<CategoryDetail />} />
+    <Route path="business/panel/:panelId" element={<PanelDetail />} />
+  </>
+)
+
 export function App() {
+  if (isDemoSubdomain()) {
+    return (
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/" element={<Navigate to="/chaos-goblin" replace />} />
+          <Route path="/:persona" element={<DemoLayout />}>
+            {DEMO_CHILD_ROUTES}
+          </Route>
+        </Routes>
+      </ErrorBoundary>
+    )
+  }
+
   return (
     <ErrorBoundary>
       <Routes>
@@ -40,13 +66,7 @@ export function App() {
         <Route path="/auth/verify" element={<AuthVerify />} />
         <Route path="/demo" element={<Navigate to="/demo/chaos-goblin" replace />} />
         <Route path="/demo/:persona" element={<DemoLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="personal" element={<RouteView type="personal" />} />
-          <Route path="personal/category/:categoryId" element={<CategoryDetail />} />
-          <Route path="personal/panel/:panelId" element={<PanelDetail />} />
-          <Route path="business" element={<RouteView type="business" />} />
-          <Route path="business/category/:categoryId" element={<CategoryDetail />} />
-          <Route path="business/panel/:panelId" element={<PanelDetail />} />
+          {DEMO_CHILD_ROUTES}
         </Route>
       </Routes>
     </ErrorBoundary>

@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useParams, useNavigate, useMatch } from 'react-router-dom'
 import { DemoAppProvider } from './demo-provider.js'
-import { useDemoContext } from './demo-context.js'
+import { useDemoContext, isDemoSubdomain } from './demo-context.js'
 import { DemoSummaryCard } from './demo-summary-card.js'
 import { PERSONA_LIST } from './demo-personas.js'
 
@@ -30,7 +30,7 @@ function NavIcon({ d }: { d: string }) {
 
 function DemoNavBar() {
   const { persona } = useParams<{ persona: string }>()
-  const prefix = `/demo/${persona}`
+  const prefix = isDemoSubdomain() ? `/${persona}` : `/demo/${persona}`
 
   const navItems = [
     { to: prefix, label: 'Dashboard', icon: NAV_ICON_PATHS.dashboard, end: true },
@@ -105,7 +105,7 @@ function PersonaSwitcher() {
         return (
           <button
             key={p.slug}
-            onClick={() => navigate(`/demo/${p.slug}`)}
+            onClick={() => navigate(isDemoSubdomain() ? `/${p.slug}` : `/demo/${p.slug}`)}
             className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
               isActive
                 ? 'bg-neon-cyan/15 text-neon-cyan'
@@ -149,7 +149,7 @@ function DemoBanner() {
 }
 
 function DemoContent() {
-  const isDashboard = useMatch('/demo/:persona')
+  const isDashboard = useMatch(isDemoSubdomain() ? '/:persona' : '/demo/:persona')
 
   return (
     <div className="min-h-screen bg-bg-primary pb-16 sm:pb-0">

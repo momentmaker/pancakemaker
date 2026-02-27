@@ -112,7 +112,7 @@ export function DemoSummaryCard() {
 
       <div className="border-t border-border-dim bg-[#08080f] px-5 py-3">
         <div className="flex items-center justify-between">
-          <span className="font-mono text-[10px] text-text-muted">pancakemaker.com/demo</span>
+          <span className="font-mono text-[10px] text-text-muted">demo.pancakemaker.com</span>
           <span className="font-mono text-[10px] font-bold text-neon-cyan">pancakemaker</span>
         </div>
       </div>
