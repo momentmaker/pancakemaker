@@ -21,8 +21,10 @@ export async function reconcileAfterAuth(db: Database, serverUser: ServerUser): 
   const hasExpenses = expenseCount[0].count > 0
 
   if (hasExpenses) {
+    console.log('[reconcile] Path A: has expenses, remapping user ID')
     await reconcileFirstDevice(db, localUser, serverUser)
   } else {
+    console.log('[reconcile] Path B: no expenses, wiping seed data')
     await reconcileSecondDevice(db, localUser, serverUser)
   }
 }

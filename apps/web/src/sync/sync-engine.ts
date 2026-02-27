@@ -46,6 +46,7 @@ export function createSyncEngine(db: Database): SyncEngine {
 
   async function push(): Promise<boolean> {
     const entries = await getUnsyncedEntries(db)
+    console.log('[sync] push: %d unsynced entries', entries.length)
     if (entries.length === 0) return true
 
     const result = await pushEntries(
@@ -59,7 +60,10 @@ export function createSyncEngine(db: Database): SyncEngine {
       })),
     )
 
-    if (!result.success) return false
+    if (!result.success) {
+      console.log('[sync] push failed:', result.error)
+      return false
+    }
 
     await markEntriesSynced(
       db,
@@ -103,9 +107,15 @@ export function createSyncEngine(db: Database): SyncEngine {
 
   async function pull(): Promise<boolean> {
     const cursor = getStoredSyncCursor() ?? (await getLastSyncTimestamp(db))
+    console.log('[sync] pull: cursor=%s', cursor)
 
     const result = await pullEntries(cursor)
-    if (!result.success) return false
+    if (!result.success) {
+      console.log('[sync] pull failed:', result.error)
+      return false
+    }
+
+    console.log('[sync] pull: received %d entries', result.data.entries.length)
 
     const sorted = [...result.data.entries].sort((a, b) => {
       const pa = TABLE_PRIORITY[a.table_name] ?? 99
@@ -113,13 +123,23 @@ export function createSyncEngine(db: Database): SyncEngine {
       return pa - pb
     })
 
+    let applied = 0
     for (const entry of sorted) {
       try {
         await applyRemoteEntry(entry)
-      } catch {
-        // skip entries that fail to apply — don't block sync
+        applied++
+      } catch (err) {
+        console.log(
+          '[sync] apply failed: table=%s action=%s id=%s',
+          entry.table_name,
+          entry.action,
+          entry.record_id,
+          err,
+        )
       }
     }
+
+    console.log('[sync] pull: applied %d/%d entries', applied, sorted.length)
 
     if (result.data.entries.length > 0) {
       storeSyncCursor(result.data.server_timestamp)
@@ -141,6 +161,7 @@ export function createSyncEngine(db: Database): SyncEngine {
 
     syncing = true
     setStatus('pending')
+    console.log('[sync] starting sync cycle')
 
     try {
       const pushOk = await push()
