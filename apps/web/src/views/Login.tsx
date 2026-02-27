@@ -155,9 +155,7 @@ export function Login() {
                   ))}
                 </div>
 
-                {verifying && (
-                  <p className="mt-4 text-xs text-text-muted">Verifying...</p>
-                )}
+                {verifying && <p className="mt-4 text-xs text-text-muted">Verifying...</p>}
                 {error && <p className="mt-4 text-xs text-red-400">{error}</p>}
 
                 <button
