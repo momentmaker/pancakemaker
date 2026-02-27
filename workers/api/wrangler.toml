@@ -6,6 +6,10 @@ compatibility_date = "2025-02-01"
 ENVIRONMENT = "production"
 APP_URL = "https://pancakemaker.com"
 
+[[routes]]
+pattern = "api.pancakemaker.com"
+custom_domain = true
+
 [[d1_databases]]
 binding = "DB"
 database_name = "pancakemaker"
