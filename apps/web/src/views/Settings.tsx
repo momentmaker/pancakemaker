@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { SUPPORTED_CURRENCIES } from '@pancakemaker/shared'
 import { useAppState } from '../hooks/useAppState'
 import { useCategories } from '../hooks/useCategories'
@@ -12,6 +13,7 @@ import { FormInput, FormSelect } from '../components/FormInput'
 import { Modal } from '../components/Modal'
 import { SyncIndicator } from '../components/SyncIndicator'
 import { useSync } from '../sync/SyncContext'
+import { getStoredUserEmail, clearToken, clearUserEmail } from '../sync/api-client'
 
 const PALETTE = [
   '#00ffcc',
@@ -39,6 +41,8 @@ export function Settings() {
   const businessCategories = useCategories(businessRouteId)
 
   const db = useDatabase()
+  const navigate = useNavigate()
+  const userEmail = getStoredUserEmail()
   const [exporting, setExporting] = useState(false)
 
   const [editingCategory, setEditingCategory] = useState<{
@@ -147,6 +151,12 @@ export function Settings() {
     [db, userId],
   )
 
+  const handleSignOut = useCallback(() => {
+    clearToken()
+    clearUserEmail()
+    window.location.reload()
+  }, [])
+
   const currencyOptions = SUPPORTED_CURRENCIES.map((c) => ({ value: c, label: c }))
 
   return (
@@ -171,24 +181,52 @@ export function Settings() {
         </div>
       </Card>
 
-      {/* Sync Status */}
+      {/* Cloud Sync */}
       <Card className="mt-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-mono text-sm font-semibold text-text-secondary">Sync Status</h2>
+          <h2 className="font-mono text-sm font-semibold text-text-secondary">Cloud Sync</h2>
           <SyncIndicator status={syncStatus} />
         </div>
-        <div className="mt-2 flex items-center justify-between">
-          <p className="text-xs text-text-muted">
-            {syncStatus === 'offline'
-              ? 'No network connection.'
-              : syncStatus === 'pending'
-                ? 'Syncing changes...'
-                : 'All changes synced.'}
-          </p>
-          <Button variant="ghost" onClick={triggerSync} disabled={syncStatus === 'offline'}>
-            Sync now
-          </Button>
-        </div>
+
+        {userEmail ? (
+          <div className="mt-2">
+            <p className="text-xs text-text-muted">
+              Signed in as <span className="text-text-primary">{userEmail}</span>
+            </p>
+            <div className="mt-2 flex items-center justify-between">
+              <p className="text-xs text-text-muted">
+                {syncStatus === 'offline'
+                  ? 'No network connection.'
+                  : syncStatus === 'pending'
+                    ? 'Syncing changes...'
+                    : 'All changes synced.'}
+              </p>
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={triggerSync} disabled={syncStatus === 'offline'}>
+                  Sync now
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={handleSignOut}
+                  className="text-red-400 hover:text-red-300"
+                >
+                  Sign out
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-2">
+            <p className="text-xs text-text-muted">
+              Sync your data across devices. Your data stays on this device until you sign in.
+            </p>
+            <div className="mt-3">
+              <Button variant="secondary" onClick={() => navigate('/auth/login')}>
+                Sign in with email
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Export Data */}
