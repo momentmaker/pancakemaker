@@ -112,6 +112,13 @@ export function PanelDetail() {
     [update, db, panelId, month],
   )
 
+  const handleUpdateDescription = useCallback(
+    async (id: string, description: string) => {
+      await update(id, { description: description || undefined })
+    },
+    [update],
+  )
+
   const handleRemove = useCallback(
     async (id: string) => {
       await remove(id)
@@ -315,6 +322,7 @@ export function PanelDetail() {
                       expense={expense}
                       category={categoryMap.get(expense.category_id)}
                       onUpdateAmount={handleUpdateAmount}
+                      onUpdateDescription={handleUpdateDescription}
                       onDelete={handleRemove}
                     />
                   ))}
