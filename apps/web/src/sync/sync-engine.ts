@@ -6,6 +6,7 @@ import {
   getStoredToken,
   getStoredSyncCursor,
   storeSyncCursor,
+  clearSyncCursor,
   type SyncPullEntry,
 } from './api-client.js'
 
@@ -109,10 +110,41 @@ export function createSyncEngine(db: Database): SyncEngine {
     const cursor = getStoredSyncCursor() ?? (await getLastSyncTimestamp(db))
     console.log('[sync] pull: cursor=%s', cursor)
 
-    const result = await pullEntries(cursor)
+    let result = await pullEntries(cursor)
     if (!result.success) {
       console.log('[sync] pull failed:', result.error)
       return false
+    }
+
+    if (result.data.entries.length === 0 && cursor) {
+      const expenses = await db.query<{ id: string }>(
+        'SELECT id FROM expenses WHERE deleted_at IS NULL LIMIT 1',
+      )
+      if (expenses.length === 0) {
+        console.log('[sync] stale cursor detected, retrying full pull')
+        clearSyncCursor()
+        result = await pullEntries(null)
+        if (!result.success) return false
+
+        if (result.data.entries.length > 0) {
+          console.log(
+            '[sync] full pull got %d entries, wiping local seed data',
+            result.data.entries.length,
+          )
+          await db.execute('PRAGMA foreign_keys=OFF')
+          try {
+            await db.execute('DELETE FROM expense_tags')
+            await db.execute('DELETE FROM recurring_templates')
+            await db.execute('DELETE FROM expenses')
+            await db.execute('DELETE FROM categories')
+            await db.execute('DELETE FROM panels')
+            await db.execute('DELETE FROM routes')
+            await db.execute('DELETE FROM tags')
+          } finally {
+            await db.execute('PRAGMA foreign_keys=ON')
+          }
+        }
+      }
     }
 
     console.log('[sync] pull: received %d entries', result.data.entries.length)
@@ -143,6 +175,10 @@ export function createSyncEngine(db: Database): SyncEngine {
 
     if (result.data.entries.length > 0) {
       storeSyncCursor(result.data.server_timestamp)
+      if (cursor) {
+        console.log('[sync] recovered from stale cursor, reloading')
+        window.location.reload()
+      }
     }
 
     return true

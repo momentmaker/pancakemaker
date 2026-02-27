@@ -3,6 +3,7 @@ import type { Database } from '../db/interface.js'
 import { DatabaseProvider } from '../db/DatabaseContext.js'
 import { runMigrations } from '../db/migrations.js'
 import { seedDefaultData, seedRoutesForUser } from '../db/seed.js'
+import { clearSyncCursor } from '../sync/api-client.js'
 import { getRoutesByUser, getPanelsByRoute, createPanel } from '../db/queries.js'
 import { generateRecurringExpenses } from '../db/recurring-generator.js'
 
@@ -62,6 +63,7 @@ export function AppProvider({ createDatabase, children }: AppProviderProps) {
           let businessRoute = routes.find((r) => r.type === 'business')
 
           if (!personalRoute || !businessRoute) {
+            clearSyncCursor()
             await seedRoutesForUser(database, userId, baseCurrency)
             routes = await getRoutesByUser(database, userId)
             personalRoute = routes.find((r) => r.type === 'personal')

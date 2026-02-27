@@ -106,14 +106,19 @@ describe('createSyncEngine', () => {
           status: 200,
         }),
       )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ entries: [], server_timestamp: serverTs, has_more: false }), {
+          status: 200,
+        }),
+      )
 
     const engine = createSyncEngine(db)
 
     // #when
     await engine.sync()
 
-    // #then
-    expect(fetchSpy).toHaveBeenCalledTimes(2)
+    // #then — push + pull + stale-cursor retry pull
+    expect(fetchSpy).toHaveBeenCalledTimes(3)
     const pushCall = fetchSpy.mock.calls[0]
     expect(pushCall[0]).toContain('/sync/push')
 
