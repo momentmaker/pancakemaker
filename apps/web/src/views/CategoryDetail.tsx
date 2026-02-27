@@ -152,6 +152,13 @@ export function CategoryDetail() {
     [update, db, categoryId, month],
   )
 
+  const handleUpdateDescription = useCallback(
+    async (id: string, description: string) => {
+      await update(id, { description: description || undefined })
+    },
+    [update],
+  )
+
   const routeLabel = routeType.charAt(0).toUpperCase() + routeType.slice(1)
 
   if (!category) {
@@ -270,6 +277,7 @@ export function CategoryDetail() {
                                 key={expense.id}
                                 expense={expense}
                                 onUpdateAmount={handleUpdateAmount}
+                                onUpdateDescription={handleUpdateDescription}
                                 onDelete={handleRemove}
                               />
                             ))}
