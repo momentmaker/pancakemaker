@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Card } from './Card'
 import { AmountDisplay } from './AmountDisplay'
+import { useRoutePrefix } from '../demo/demo-context'
 
 interface PanelCardProps {
   id: string
@@ -26,10 +27,11 @@ export function PanelCard({
   recurrenceType,
 }: PanelCardProps) {
   const navigate = useNavigate()
+  const prefix = useRoutePrefix()
 
   return (
     <Card
-      onClick={() => navigate(`/${routeType}/panel/${id}`)}
+      onClick={() => navigate(`${prefix}/${routeType}/panel/${id}`)}
       className={isArchived ? 'opacity-50' : ''}
     >
       <div className="flex items-start justify-between">

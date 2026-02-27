@@ -8,6 +8,7 @@ import { CategoryDetail } from './views/CategoryDetail'
 import { Settings } from './views/Settings'
 import { Login } from './views/Login'
 import { AuthVerify } from './views/AuthVerify'
+import { DemoLayout } from './demo/demo-layout'
 
 function PersonalPanelRedirect() {
   const { panelId } = useParams<{ panelId: string }>()
@@ -37,6 +38,16 @@ export function App() {
         </Route>
         <Route path="/auth/login" element={<Login />} />
         <Route path="/auth/verify" element={<AuthVerify />} />
+        <Route path="/demo" element={<Navigate to="/demo/chaos-goblin" replace />} />
+        <Route path="/demo/:persona" element={<DemoLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="personal" element={<RouteView type="personal" />} />
+          <Route path="personal/category/:categoryId" element={<CategoryDetail />} />
+          <Route path="personal/panel/:panelId" element={<PanelDetail />} />
+          <Route path="business" element={<RouteView type="business" />} />
+          <Route path="business/category/:categoryId" element={<CategoryDetail />} />
+          <Route path="business/panel/:panelId" element={<PanelDetail />} />
+        </Route>
       </Routes>
     </ErrorBoundary>
   )
