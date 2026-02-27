@@ -258,7 +258,7 @@ export function Settings() {
               )
             }
           >
-            + Add
+            +<span className="hidden sm:inline"> Add</span>
           </Button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -297,7 +297,7 @@ export function Settings() {
               )
             }
           >
-            + Add
+            +<span className="hidden sm:inline"> Add</span>
           </Button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">

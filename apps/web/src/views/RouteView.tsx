@@ -174,7 +174,7 @@ export function RouteView({ type }: RouteViewProps) {
           <div className="flex items-center justify-between">
             <MonthPicker month={month} onChange={setMonth} />
             <Button variant="secondary" onClick={() => setShowQuickAdd(true)}>
-              + Add Expense
+              +<span className="hidden sm:inline"> Add Expense</span>
             </Button>
           </div>
 

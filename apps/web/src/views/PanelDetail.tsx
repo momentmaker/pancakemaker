@@ -259,7 +259,7 @@ export function PanelDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => setShowQuickAdd(true)}>+ Add</Button>
+          <Button onClick={() => setShowQuickAdd(true)}>+<span className="hidden sm:inline"> Add</span></Button>
           <div className="relative">
             <PanelActions
               isDefault={isDefault}
