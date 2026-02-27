@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] - 2026-02-27
+
+### Added
+
+- Trigger sync immediately after expense writes instead of waiting for next poll
+- Show pending status immediately after local changes for instant feedback
+- Auto-refresh UI when remote sync data arrives (event-driven, no page reload)
+
+### Fixed
+
+- Improve sync reliability with per-table version tracking and granular notifications
+- Suppress loading flash on background sync refreshes (only show spinner on navigation)
+- Add missing sync triggers to QuickAdd expense handler in RouteView
+
 ## [1.3.0] - 2026-02-27
 
 ### Added
