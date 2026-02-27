@@ -1,6 +1,6 @@
 # Pancakemaker
 
-*Stack your expenses. Keep your data.*
+_Stack your expenses. Keep your data._
 
 A personal and business expense tracker that works offline-first with optional cloud sync. Built as a PWA with an in-browser SQLite database, so your data stays on your device until you choose to sync. Open-source and privacy-respecting — no account required to start tracking.
 
