@@ -35,6 +35,10 @@ export function storeSyncCursor(timestamp: string): void {
   localStorage.setItem(SYNC_CURSOR_KEY, timestamp)
 }
 
+export function clearSyncCursor(): void {
+  localStorage.removeItem(SYNC_CURSOR_KEY)
+}
+
 export interface SyncPushEntry {
   id: string
   table_name: string

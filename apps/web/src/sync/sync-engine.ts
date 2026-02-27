@@ -21,6 +21,17 @@ export interface SyncEngine {
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000
 
+const TABLE_PRIORITY: Record<string, number> = {
+  users: 0,
+  routes: 1,
+  categories: 2,
+  panels: 3,
+  tags: 4,
+  recurring_templates: 5,
+  expenses: 6,
+  expense_tags: 7,
+}
+
 export function createSyncEngine(db: Database): SyncEngine {
   let status: SyncStatus = !navigator.onLine ? 'offline' : getStoredToken() ? 'synced' : 'local'
   let intervalId: ReturnType<typeof setInterval> | null = null
@@ -96,7 +107,13 @@ export function createSyncEngine(db: Database): SyncEngine {
     const result = await pullEntries(cursor)
     if (!result.success) return false
 
-    for (const entry of result.data.entries) {
+    const sorted = [...result.data.entries].sort((a, b) => {
+      const pa = TABLE_PRIORITY[a.table_name] ?? 99
+      const pb = TABLE_PRIORITY[b.table_name] ?? 99
+      return pa - pb
+    })
+
+    for (const entry of sorted) {
       try {
         await applyRemoteEntry(entry)
       } catch {

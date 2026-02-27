@@ -12,7 +12,7 @@ import { createSyncEngine, type SyncStatus, type SyncEngine } from './sync-engin
 
 interface SyncState {
   status: SyncStatus
-  triggerSync: () => void
+  triggerSync: () => Promise<void>
 }
 
 const SyncContext = createContext<SyncState | null>(null)
@@ -36,8 +36,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }
   }, [db])
 
-  const triggerSync = useCallback(() => {
-    engineRef.current?.sync()
+  const triggerSync = useCallback(async () => {
+    await engineRef.current?.sync()
   }, [])
 
   return <SyncContext.Provider value={{ status, triggerSync }}>{children}</SyncContext.Provider>

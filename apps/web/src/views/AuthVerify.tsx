@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams, Link, useNavigate } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { verifyToken, storeToken, storeUserEmail } from '../sync/api-client'
 import { useSync } from '../sync/SyncContext'
+import { useDatabase } from '../db/DatabaseContext'
+import { reconcileAfterAuth } from '../sync/reconcile'
 
 export function AuthVerify() {
   const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
+  const db = useDatabase()
   const { triggerSync } = useSync()
   const [error, setError] = useState<string | null>(null)
   const [verifying, setVerifying] = useState(true)
+  const [syncing, setSyncing] = useState(false)
 
   useEffect(() => {
     const token = searchParams.get('token')
@@ -18,18 +21,37 @@ export function AuthVerify() {
       return
     }
 
-    verifyToken(token).then((result) => {
-      if (result.success) {
-        storeToken(result.data.token)
-        storeUserEmail(result.data.user.email)
-        triggerSync()
-        navigate('/settings', { replace: true })
-      } else {
+    async function verify(t: string): Promise<void> {
+      const result = await verifyToken(t)
+      if (!result.success) {
         setError(result.error)
         setVerifying(false)
+        return
       }
+
+      storeToken(result.data.token)
+      storeUserEmail(result.data.user.email)
+      setVerifying(false)
+      setSyncing(true)
+
+      try {
+        await reconcileAfterAuth(db, result.data.user)
+        await triggerSync()
+      } catch {
+        setError('Failed to sync your data. Please refresh and try again.')
+        setSyncing(false)
+        return
+      }
+
+      window.location.reload()
+    }
+
+    verify(token).catch(() => {
+      setError('Something went wrong. Please try again.')
+      setVerifying(false)
+      setSyncing(false)
     })
-  }, [searchParams, navigate, triggerSync])
+  }, [searchParams, db, triggerSync])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-primary">
@@ -38,6 +60,10 @@ export function AuthVerify() {
 
         {verifying && !error && (
           <p className="mt-6 text-sm text-text-secondary">Verifying your magic link...</p>
+        )}
+
+        {syncing && !error && (
+          <p className="mt-6 text-sm text-text-secondary">Syncing your data...</p>
         )}
 
         {error && (
