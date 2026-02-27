@@ -43,10 +43,7 @@ async function reconcileFirstDevice(
       serverUser.id,
       localUser.id,
     ])
-    await db.execute('UPDATE tags SET user_id = ? WHERE user_id = ?', [
-      serverUser.id,
-      localUser.id,
-    ])
+    await db.execute('UPDATE tags SET user_id = ? WHERE user_id = ?', [serverUser.id, localUser.id])
     await db.execute('UPDATE sync_log SET user_id = ? WHERE user_id = ?', [
       serverUser.id,
       localUser.id,
@@ -75,10 +72,7 @@ async function reconcileSecondDevice(
       serverUser.id,
       localUser.id,
     ])
-    await db.execute('UPDATE tags SET user_id = ? WHERE user_id = ?', [
-      serverUser.id,
-      localUser.id,
-    ])
+    await db.execute('UPDATE tags SET user_id = ? WHERE user_id = ?', [serverUser.id, localUser.id])
     await db.execute('DELETE FROM sync_log')
   } finally {
     await db.execute('PRAGMA foreign_keys=ON')
@@ -149,7 +143,11 @@ async function logSeedData(db: Database, userId: string): Promise<void> {
   }
 }
 
-async function hasSyncLogEntry(db: Database, tableName: string, recordId: string): Promise<boolean> {
+async function hasSyncLogEntry(
+  db: Database,
+  tableName: string,
+  recordId: string,
+): Promise<boolean> {
   const rows = await db.query<{ count: number }>(
     'SELECT COUNT(*) as count FROM sync_log WHERE table_name = ? AND record_id = ?',
     [tableName, recordId],
