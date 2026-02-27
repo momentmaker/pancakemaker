@@ -18,6 +18,7 @@ export interface SyncEngine {
   start(): void
   stop(): void
   onStatusChange(listener: (status: SyncStatus) => void): () => void
+  onDataReceived(listener: () => void): () => void
 }
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000
@@ -34,10 +35,11 @@ const TABLE_PRIORITY: Record<string, number> = {
 }
 
 export function createSyncEngine(db: Database): SyncEngine {
-  let status: SyncStatus = !navigator.onLine ? 'offline' : getStoredToken() ? 'synced' : 'local'
+  let status: SyncStatus = !navigator.onLine ? 'offline' : getStoredToken() ? 'pending' : 'local'
   let intervalId: ReturnType<typeof setInterval> | null = null
   let syncing = false
   const listeners = new Set<(status: SyncStatus) => void>()
+  const dataListeners = new Set<() => void>()
 
   function setStatus(next: SyncStatus): void {
     if (next === status) return
@@ -109,6 +111,7 @@ export function createSyncEngine(db: Database): SyncEngine {
   async function pull(): Promise<boolean> {
     const cursor = getStoredSyncCursor() ?? (await getLastSyncTimestamp(db))
     console.log('[sync] pull: cursor=%s', cursor)
+    let wipedLocalData = false
 
     let result = await pullEntries(cursor)
     if (!result.success) {
@@ -131,6 +134,7 @@ export function createSyncEngine(db: Database): SyncEngine {
             '[sync] full pull got %d entries, wiping local seed data',
             result.data.entries.length,
           )
+          wipedLocalData = true
           await db.execute('PRAGMA foreign_keys=OFF')
           try {
             await db.execute('DELETE FROM expense_tags')
@@ -175,9 +179,11 @@ export function createSyncEngine(db: Database): SyncEngine {
 
     if (result.data.entries.length > 0) {
       storeSyncCursor(result.data.server_timestamp)
-      if (cursor) {
+      if (wipedLocalData) {
         console.log('[sync] recovered from stale cursor, reloading')
         window.location.reload()
+      } else if (applied > 0) {
+        for (const fn of dataListeners) fn()
       }
     }
 
@@ -256,11 +262,17 @@ export function createSyncEngine(db: Database): SyncEngine {
     return () => listeners.delete(listener)
   }
 
+  function onDataReceived(listener: () => void): () => void {
+    dataListeners.add(listener)
+    return () => dataListeners.delete(listener)
+  }
+
   return {
     getStatus: () => status,
     sync,
     start,
     stop,
     onStatusChange,
+    onDataReceived,
   }
 }

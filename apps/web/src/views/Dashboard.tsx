@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useAppState } from '../hooks/useAppState'
 import { useDatabase } from '../db/DatabaseContext'
+import { useSync } from '../sync/SyncContext'
 import { useRoutePrefix } from '../demo/demo-context'
 import { Card } from '../components/Card'
 import { AmountDisplay } from '../components/AmountDisplay'
@@ -230,6 +231,7 @@ function HeroPancake() {
 export function Dashboard() {
   const { userId, personalRouteId, businessRouteId, baseCurrency } = useAppState()
   const db = useDatabase()
+  const { dataVersion } = useSync()
   const prefix = useRoutePrefix()
   const [stats, setStats] = useState<DashboardStats | null>(null)
 
@@ -287,7 +289,7 @@ export function Dashboard() {
     }
 
     loadStats()
-  }, [db, personalRouteId, businessRouteId, userId])
+  }, [db, personalRouteId, businessRouteId, userId, dataVersion])
 
   const greeting = useMemo(getGreeting, [])
   const currentMonthLabel = new Date().toLocaleDateString('en-US', {

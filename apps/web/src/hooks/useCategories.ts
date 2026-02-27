@@ -9,10 +9,12 @@ import {
   type CategoryRow,
 } from '../db/queries.js'
 import { useAppState } from './useAppState.js'
+import { useSync } from '../sync/SyncContext.js'
 
 export function useCategories(routeId: string) {
   const db = useDatabase()
   const { userId } = useAppState()
+  const { dataVersion } = useSync()
   const [categories, setCategories] = useState<CategoryRow[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -24,7 +26,7 @@ export function useCategories(routeId: string) {
     } finally {
       setLoading(false)
     }
-  }, [db, routeId])
+  }, [db, routeId, dataVersion])
 
   const add = useCallback(
     async (name: string, color: string, sortOrder: number) => {

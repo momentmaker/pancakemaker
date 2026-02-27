@@ -13,7 +13,9 @@ const noopSync = async (): Promise<void> => {}
 
 export function DemoSyncProvider({ children }: { children: ReactNode }) {
   return (
-    <SyncContext.Provider value={{ status: 'local', triggerSync: noopSync, markPending: () => {} }}>
+    <SyncContext.Provider
+      value={{ status: 'local', triggerSync: noopSync, markPending: () => {}, dataVersion: 0 }}
+    >
       {children}
     </SyncContext.Provider>
   )

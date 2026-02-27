@@ -14,6 +14,7 @@ interface SyncState {
   status: SyncStatus
   triggerSync: () => Promise<void>
   markPending: () => void
+  dataVersion: number
 }
 
 export const SyncContext = createContext<SyncState | null>(null)
@@ -22,16 +23,19 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const db = useDatabase()
   const engineRef = useRef<SyncEngine | null>(null)
   const [status, setStatus] = useState<SyncStatus>(!navigator.onLine ? 'offline' : 'local')
+  const [dataVersion, setDataVersion] = useState(0)
 
   useEffect(() => {
     const engine = createSyncEngine(db)
     engineRef.current = engine
 
-    const unsubscribe = engine.onStatusChange(setStatus)
+    const unsubStatus = engine.onStatusChange(setStatus)
+    const unsubData = engine.onDataReceived(() => setDataVersion((v) => v + 1))
     engine.start()
 
     return () => {
-      unsubscribe()
+      unsubStatus()
+      unsubData()
       engine.stop()
       engineRef.current = null
     }
@@ -46,7 +50,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [status])
 
   return (
-    <SyncContext.Provider value={{ status, triggerSync, markPending }}>
+    <SyncContext.Provider value={{ status, triggerSync, markPending, dataVersion }}>
       {children}
     </SyncContext.Provider>
   )

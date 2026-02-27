@@ -9,10 +9,12 @@ import {
   type PanelRow,
 } from '../db/queries.js'
 import { useAppState } from './useAppState.js'
+import { useSync } from '../sync/SyncContext.js'
 
 export function usePanels(routeId: string, includeArchived = false) {
   const db = useDatabase()
   const { userId } = useAppState()
+  const { dataVersion } = useSync()
   const [panels, setPanels] = useState<PanelRow[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -24,7 +26,7 @@ export function usePanels(routeId: string, includeArchived = false) {
     } finally {
       setLoading(false)
     }
-  }, [db, routeId, includeArchived])
+  }, [db, routeId, includeArchived, dataVersion])
 
   const add = useCallback(
     async (

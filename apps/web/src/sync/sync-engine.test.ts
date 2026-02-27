@@ -57,18 +57,31 @@ describe('createSyncEngine', () => {
     const engine = createSyncEngine(db)
     engine.onStatusChange((s) => statuses.push(s))
 
+    const serverTs = new Date().toISOString()
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(
-        JSON.stringify({ ok: true, synced: 0, server_timestamp: new Date().toISOString() }),
-        { status: 200 },
-      ),
+      new Response(JSON.stringify({ entries: [], server_timestamp: serverTs, has_more: false }), {
+        status: 200,
+      }),
     )
 
     // #when
     await engine.sync()
 
     // #then
-    expect(statuses).toContain('pending')
+    expect(statuses).toContain('synced')
+    engine.stop()
+  })
+
+  it('starts with pending status when authenticated', () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+
+    // #when
+    const engine = createSyncEngine(db)
+
+    // #then
+    expect(engine.getStatus()).toBe('pending')
     engine.stop()
   })
 

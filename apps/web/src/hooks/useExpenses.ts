@@ -24,7 +24,7 @@ export function useExpenses(params: UseExpensesParams | string) {
 
   const db = useDatabase()
   const { userId } = useAppState()
-  const { triggerSync, markPending } = useSync()
+  const { triggerSync, markPending, dataVersion } = useSync()
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -43,7 +43,7 @@ export function useExpenses(params: UseExpensesParams | string) {
     } finally {
       setLoading(false)
     }
-  }, [db, normalized.panelId, normalized.categoryId, normalized.month])
+  }, [db, normalized.panelId, normalized.categoryId, normalized.month, dataVersion])
 
   const add = useCallback(
     async (input: CreateExpenseInput) => {
