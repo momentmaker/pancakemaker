@@ -24,7 +24,7 @@ export function useExpenses(params: UseExpensesParams | string) {
 
   const db = useDatabase()
   const { userId } = useAppState()
-  const { triggerSync } = useSync()
+  const { triggerSync, markPending } = useSync()
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -57,10 +57,11 @@ export function useExpenses(params: UseExpensesParams | string) {
         'create',
         expense as unknown as Record<string, unknown>,
       )
+      markPending()
       triggerSync()
       return expense
     },
-    [db, userId, triggerSync],
+    [db, userId, markPending, triggerSync],
   )
 
   const update = useCallback(
@@ -76,11 +77,12 @@ export function useExpenses(params: UseExpensesParams | string) {
           'update',
           updated as unknown as Record<string, unknown>,
         )
+        markPending()
         triggerSync()
       }
       return updated
     },
-    [db, userId, triggerSync],
+    [db, userId, markPending, triggerSync],
   )
 
   const remove = useCallback(
@@ -88,9 +90,10 @@ export function useExpenses(params: UseExpensesParams | string) {
       await softDeleteExpense(db, id)
       setExpenses((prev) => prev.filter((e) => e.id !== id))
       await logSyncEntry(db, userId, 'expenses', id, 'delete', { id })
+      markPending()
       triggerSync()
     },
-    [db, userId, triggerSync],
+    [db, userId, markPending, triggerSync],
   )
 
   return { expenses, loading, load, add, update, remove }

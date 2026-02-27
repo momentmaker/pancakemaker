@@ -13,6 +13,7 @@ import { createSyncEngine, type SyncStatus, type SyncEngine } from './sync-engin
 interface SyncState {
   status: SyncStatus
   triggerSync: () => Promise<void>
+  markPending: () => void
 }
 
 export const SyncContext = createContext<SyncState | null>(null)
@@ -40,7 +41,15 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     await engineRef.current?.sync()
   }, [])
 
-  return <SyncContext.Provider value={{ status, triggerSync }}>{children}</SyncContext.Provider>
+  const markPending = useCallback(() => {
+    if (status === 'synced') setStatus('pending')
+  }, [status])
+
+  return (
+    <SyncContext.Provider value={{ status, triggerSync, markPending }}>
+      {children}
+    </SyncContext.Provider>
+  )
 }
 
 export function useSync(): SyncState {
