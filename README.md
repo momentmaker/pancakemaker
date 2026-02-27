@@ -1,15 +1,22 @@
 # Pancakemaker
 
-A personal and business expense tracker that works offline-first with optional cloud sync. Built as a PWA with an in-browser SQLite database, so your data stays on your device until you choose to sync.
+*Stack your expenses. Keep your data.*
+
+A personal and business expense tracker that works offline-first with optional cloud sync. Built as a PWA with an in-browser SQLite database, so your data stays on your device until you choose to sync. Open-source and privacy-respecting — no account required to start tracking.
+
+**[Try the demo](https://demo.pancakemaker.com)** — explore with 7 pre-built spending personas, no sign-up needed.
 
 ## Features
 
+- **Offline-first** — All data stored locally in wa-sqlite (IndexedDB-backed). Works without a network connection. No account required
+- **Privacy by default** — Your data lives on your device. Cloud sync is opt-in, never forced
+- **Open-source** — MIT licensed. Audit the code, self-host, or contribute
+- **Recurring expenses** — Auto-generated monthly or annual expenses that keep your subscriptions and bills tracked
 - **Dual tracking** — Separate personal and business expense routes with independent categories and panels
-- **Panels** — Flexible containers for grouping expenses (monthly budgets, trips, projects) with optional monthly/annual recurrence
+- **Panels** — Flexible containers for grouping expenses (monthly budgets, trips, projects)
 - **Categories** — Color-coded spending categories with per-route customization
-- **Recurring expenses** — Templates that auto-generate expenses on a schedule
-- **Multi-currency** — Track expenses in any supported currency with daily exchange rates from Frankfurter API
-- **Offline-first** — All data stored locally in wa-sqlite (IndexedDB-backed). Works without a network connection
+- **Multi-currency** — Track expenses in 33 currencies with daily exchange rates from Frankfurter API
+- **Inline editing** — Click any expense amount or description to edit in place
 - **Cloud sync** — Optional bidirectional sync via Cloudflare Workers + D1
 - **Magic link auth** — Passwordless email authentication for sync
 - **Export** — Download all expenses as CSV or JSON
