@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useAppState } from '../hooks/useAppState'
 import { useDatabase } from '../db/DatabaseContext'
+import { useRoutePrefix } from '../demo/demo-context'
 import { Card } from '../components/Card'
 import { AmountDisplay } from '../components/AmountDisplay'
 import { PancakeStack } from '../components/PancakeStack'
@@ -229,6 +230,7 @@ function HeroPancake() {
 export function Dashboard() {
   const { userId, personalRouteId, businessRouteId, baseCurrency } = useAppState()
   const db = useDatabase()
+  const prefix = useRoutePrefix()
   const [stats, setStats] = useState<DashboardStats | null>(null)
 
   useEffect(() => {
@@ -338,7 +340,7 @@ export function Dashboard() {
                 <AmountDisplay amount={stats.personalAmount} currency={baseCurrency} size="lg" />
               </div>
               <Link
-                to="/personal"
+                to={`${prefix}/personal`}
                 className="mt-2 inline-block font-mono text-[10px] text-text-muted transition-colors hover:text-neon-cyan"
               >
                 View panels →
@@ -353,7 +355,7 @@ export function Dashboard() {
                 <AmountDisplay amount={stats.businessAmount} currency={baseCurrency} size="lg" />
               </div>
               <Link
-                to="/business"
+                to={`${prefix}/business`}
                 className="mt-2 inline-block font-mono text-[10px] text-text-muted transition-colors hover:text-neon-cyan"
               >
                 View panels →

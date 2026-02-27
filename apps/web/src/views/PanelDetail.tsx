@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useParams, useLocation, Link, useNavigate } from 'react-router-dom'
 import { useDatabase } from '../db/DatabaseContext'
 import { useAppState } from '../hooks/useAppState'
+import { useRoutePrefix } from '../demo/demo-context'
 import { useExpenses } from '../hooks/useExpenses'
 import { useCategories } from '../hooks/useCategories'
 import {
@@ -38,7 +39,8 @@ export function PanelDetail() {
   const { panelId } = useParams<{ panelId: string }>()
   const location = useLocation()
   const navigate = useNavigate()
-  const routeType = location.pathname.startsWith('/business/') ? 'business' : 'personal'
+  const prefix = useRoutePrefix()
+  const routeType = location.pathname.includes('/business/') ? 'business' : 'personal'
   const { userId, personalRouteId, businessRouteId } = useAppState()
   const routeId = routeType === 'personal' ? personalRouteId : businessRouteId
   const db = useDatabase()
@@ -186,9 +188,9 @@ export function PanelDetail() {
       }
       await logSyncEntry(db, userId, 'panels', panel.id, 'delete', { id: panel.id })
       setShowDeleteModal(false)
-      navigate(`/${routeType}`)
+      navigate(`${prefix}/${routeType}`)
     },
-    [db, userId, panel, routeId, routeType, navigate],
+    [db, userId, panel, routeId, routeType, navigate, prefix],
   )
 
   if (!panel) {
@@ -206,7 +208,7 @@ export function PanelDetail() {
   return (
     <div>
       <div className="flex items-center gap-2 text-sm text-text-muted">
-        <Link to={`/${routeType}`} className="transition-colors hover:text-neon-cyan">
+        <Link to={`${prefix}/${routeType}`} className="transition-colors hover:text-neon-cyan">
           {routeLabel}
         </Link>
         <span>/</span>

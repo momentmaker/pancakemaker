@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Card } from './Card'
 import { AmountDisplay } from './AmountDisplay'
+import { useRoutePrefix } from '../demo/demo-context'
 
 interface CategoryCardProps {
   id: string
@@ -22,9 +23,10 @@ export function CategoryCard({
   routeType,
 }: CategoryCardProps) {
   const navigate = useNavigate()
+  const prefix = useRoutePrefix()
 
   return (
-    <Card onClick={() => navigate(`/${routeType}/category/${id}`)}>
+    <Card onClick={() => navigate(`${prefix}/${routeType}/category/${id}`)}>
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
           <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: color }} />

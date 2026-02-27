@@ -93,7 +93,20 @@ function buildDatabase(sqlite3: SqliteApi, db: number): Database {
   return self
 }
 
-export async function createWaSqliteDatabase(name: string): Promise<Database> {
+export async function createInMemoryDatabase(name: string): Promise<Database> {
+  const module = await SQLiteAsyncESMFactory({
+    locateFile: (file: string) => `/${file}`,
+  })
+  const sqlite3 = SQLite.Factory(module)
+  const db = await sqlite3.open_v2(name)
+  await sqlite3.exec(db, 'PRAGMA foreign_keys=ON')
+  return buildDatabase(sqlite3, db)
+}
+
+export async function createWaSqliteDatabase(
+  name: string,
+  idbStoreName = 'pancakemaker',
+): Promise<Database> {
   const module = await SQLiteAsyncESMFactory({
     locateFile: (file: string) => `/${file}`,
   })
@@ -102,11 +115,10 @@ export async function createWaSqliteDatabase(name: string): Promise<Database> {
   let db: number
   try {
     const { IDBBatchAtomicVFS } = await import('wa-sqlite/src/examples/IDBBatchAtomicVFS.js')
-    const idbName = 'pancakemaker'
-    const vfs = new IDBBatchAtomicVFS(idbName)
+    const vfs = new IDBBatchAtomicVFS(idbStoreName)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- VFS types don't extend SQLiteVFS
     sqlite3.vfs_register(vfs as any, false)
-    db = await sqlite3.open_v2(name, undefined, idbName)
+    db = await sqlite3.open_v2(name, undefined, idbStoreName)
   } catch (err) {
     console.warn('IDB VFS not available, using in-memory database:', err)
     db = await sqlite3.open_v2(name)

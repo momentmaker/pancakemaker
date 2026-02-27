@@ -15,7 +15,7 @@ interface SyncState {
   triggerSync: () => Promise<void>
 }
 
-const SyncContext = createContext<SyncState | null>(null)
+export const SyncContext = createContext<SyncState | null>(null)
 
 export function SyncProvider({ children }: { children: ReactNode }) {
   const db = useDatabase()

@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useParams, useLocation, Link } from 'react-router-dom'
 import { useDatabase } from '../db/DatabaseContext'
 import { useAppState } from '../hooks/useAppState'
+import { useRoutePrefix } from '../demo/demo-context'
 import { useExpenses } from '../hooks/useExpenses'
 import { useCategories } from '../hooks/useCategories'
 import { useExchangeRates } from '../hooks/useExchangeRates'
@@ -32,7 +33,8 @@ function monthLabel(month: string): string {
 export function CategoryDetail() {
   const { categoryId } = useParams<{ categoryId: string }>()
   const location = useLocation()
-  const routeType = location.pathname.startsWith('/business') ? 'business' : 'personal'
+  const prefix = useRoutePrefix()
+  const routeType = location.pathname.includes('/business') ? 'business' : 'personal'
   const { userId, personalRouteId, businessRouteId, baseCurrency } = useAppState()
   const routeId = routeType === 'personal' ? personalRouteId : businessRouteId
   const db = useDatabase()
@@ -163,7 +165,7 @@ export function CategoryDetail() {
   return (
     <div>
       <div className="flex items-center gap-2 text-sm text-text-muted">
-        <Link to={`/${routeType}`} className="transition-colors hover:text-neon-cyan">
+        <Link to={`${prefix}/${routeType}`} className="transition-colors hover:text-neon-cyan">
           {routeLabel}
         </Link>
         <span>/</span>
