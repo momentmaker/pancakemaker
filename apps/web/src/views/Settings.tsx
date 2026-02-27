@@ -483,6 +483,7 @@ export function Settings() {
           </form>
         )}
       </Modal>
+      <p className="mt-8 text-center text-xs text-text-muted">v{__APP_VERSION__}</p>
     </div>
   )
 }
