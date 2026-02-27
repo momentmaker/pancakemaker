@@ -7,6 +7,7 @@ interface ExpenseRowProps {
   expense: ExpenseRowType
   category?: CategoryRow
   onUpdateAmount: (id: string, amount: number) => Promise<void>
+  onUpdateDescription?: (id: string, description: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }
 
@@ -20,11 +21,20 @@ function dollarsToCents(dollars: string): number | null {
   return Math.round(parsed * 100)
 }
 
-export function ExpenseRow({ expense, category, onUpdateAmount, onDelete }: ExpenseRowProps) {
+export function ExpenseRow({
+  expense,
+  category,
+  onUpdateAmount,
+  onUpdateDescription,
+  onDelete,
+}: ExpenseRowProps) {
   const [editingAmount, setEditingAmount] = useState(false)
   const [editValue, setEditValue] = useState('')
+  const [editingDescription, setEditingDescription] = useState(false)
+  const [editDescValue, setEditDescValue] = useState('')
   const [confirming, setConfirming] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const descInputRef = useRef<HTMLInputElement>(null)
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
   const confirmRef = useRef<HTMLDivElement>(null)
 
@@ -40,6 +50,19 @@ export function ExpenseRow({ expense, category, onUpdateAmount, onDelete }: Expe
     if (cents === null || cents === expense.amount) return
     await onUpdateAmount(expense.id, cents)
   }, [editValue, expense.id, expense.amount, onUpdateAmount])
+
+  const startEditingDescription = useCallback(() => {
+    setEditDescValue(expense.description ?? '')
+    setEditingDescription(true)
+    requestAnimationFrame(() => descInputRef.current?.select())
+  }, [expense.description])
+
+  const saveDescription = useCallback(async () => {
+    setEditingDescription(false)
+    const trimmed = editDescValue.trim()
+    if (trimmed === (expense.description ?? '')) return
+    await onUpdateDescription?.(expense.id, trimmed)
+  }, [editDescValue, expense.id, expense.description, onUpdateDescription])
 
   const startConfirm = useCallback(() => {
     setConfirming(true)
@@ -78,8 +101,28 @@ export function ExpenseRow({ expense, category, onUpdateAmount, onDelete }: Expe
     <div className="flex items-center justify-between rounded-md border border-border-dim bg-bg-card px-4 py-3 transition-colors hover:border-border-glow">
       <div className="flex items-center gap-3">
         {category && <Badge label={category.name} color={category.color} />}
-        {expense.description && (
-          <span className="text-sm text-text-secondary">{expense.description}</span>
+        {editingDescription ? (
+          <input
+            ref={descInputRef}
+            type="text"
+            value={editDescValue}
+            onChange={(e) => setEditDescValue(e.target.value)}
+            onBlur={saveDescription}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveDescription()
+              if (e.key === 'Escape') setEditingDescription(false)
+            }}
+            className="w-32 border-b-2 border-neon-cyan bg-transparent text-sm text-text-primary outline-none"
+            placeholder="add note"
+          />
+        ) : (
+          <button
+            onClick={onUpdateDescription ? startEditingDescription : undefined}
+            className={`text-sm ${expense.description ? 'text-text-secondary' : 'text-text-muted/50 italic'} ${onUpdateDescription ? 'cursor-text transition-opacity hover:opacity-70' : ''}`}
+            title="Click to edit description"
+          >
+            {expense.description || 'add note'}
+          </button>
         )}
         {expense.source_expense_id && (
           <span className="text-xs text-text-muted" title="Recurring">

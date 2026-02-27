@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
+import fs from 'fs'
 
 export default defineConfig({
   plugins: [
@@ -14,7 +15,8 @@ export default defineConfig({
       manifest: {
         name: 'pancakemaker',
         short_name: 'pancakemaker',
-        description: 'Track personal and business expenses offline-first with cloud sync.',
+        description:
+          'Stack your expenses. Keep your data. Open-source, offline-first expense tracking.',
         theme_color: '#0a0a0f',
         background_color: '#0a0a0f',
         display: 'standalone',
@@ -51,6 +53,11 @@ export default defineConfig({
       },
     }),
   ],
+  define: {
+    __APP_VERSION__: JSON.stringify(
+      JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../package.json'), 'utf-8')).version,
+    ),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

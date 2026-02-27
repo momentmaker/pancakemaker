@@ -122,6 +122,9 @@ export function Login() {
     <div className="flex min-h-screen items-center justify-center bg-bg-primary">
       <div className="w-full max-w-sm rounded-lg border border-border-dim bg-bg-card p-8">
         <h1 className="text-center font-mono text-2xl font-bold text-neon-cyan">pancakemaker</h1>
+        <p className="mt-1 text-center text-xs text-text-muted">
+          Stack your expenses. Keep your data.
+        </p>
 
         {sent ? (
           <div className="mt-6 text-center">
@@ -157,6 +160,13 @@ export function Login() {
 
                 {verifying && <p className="mt-4 text-xs text-text-muted">Verifying...</p>}
                 {error && <p className="mt-4 text-xs text-red-400">{error}</p>}
+
+                <a
+                  href="mailto:"
+                  className="mt-4 inline-block rounded-md border border-border-dim px-4 py-2 text-sm text-text-secondary transition-colors hover:border-neon-cyan hover:text-neon-cyan"
+                >
+                  Open Mail App
+                </a>
 
                 <button
                   type="button"
