@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-02-27
+
+### Added
+
+- 6-digit verification code for PWA auth — users on iOS can now authenticate entirely within the installed app instead of being redirected to Safari via magic link
+- `POST /auth/verify-code` API endpoint with shared verification logic
+- Code input UI in Login screen with auto-advance, paste support, and post-auth sync
+
 ## [1.1.1] - 2026-02-26
 
 ### Fixed
