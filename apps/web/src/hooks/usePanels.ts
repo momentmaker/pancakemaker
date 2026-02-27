@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useDatabase } from '../db/DatabaseContext.js'
 import {
   getPanelsByRoute,
@@ -14,19 +14,22 @@ import { useSync } from '../sync/SyncContext.js'
 export function usePanels(routeId: string, includeArchived = false) {
   const db = useDatabase()
   const { userId } = useAppState()
-  const { dataVersion } = useSync()
+  const { triggerSync, markPending, tableVersions } = useSync()
+  const panelVersion = tableVersions['panels'] ?? 0
   const [panels, setPanels] = useState<PanelRow[]>([])
   const [loading, setLoading] = useState(false)
+  const loadedRef = useRef(false)
 
   const load = useCallback(async () => {
-    setLoading(true)
+    if (!loadedRef.current) setLoading(true)
     try {
       const rows = await getPanelsByRoute(db, routeId, includeArchived)
       setPanels(rows)
     } finally {
       setLoading(false)
+      loadedRef.current = true
     }
-  }, [db, routeId, includeArchived, dataVersion])
+  }, [db, routeId, includeArchived, panelVersion])
 
   const add = useCallback(
     async (
@@ -45,9 +48,11 @@ export function usePanels(routeId: string, includeArchived = false) {
         'create',
         panel as unknown as Record<string, unknown>,
       )
+      markPending()
+      triggerSync()
       return panel
     },
-    [db, routeId, userId],
+    [db, routeId, userId, markPending, triggerSync],
   )
 
   const update = useCallback(
@@ -70,10 +75,12 @@ export function usePanels(routeId: string, includeArchived = false) {
           'update',
           updated as unknown as Record<string, unknown>,
         )
+        markPending()
+        triggerSync()
       }
       return updated
     },
-    [db, userId],
+    [db, userId, markPending, triggerSync],
   )
 
   const setDefault = useCallback(
@@ -90,8 +97,10 @@ export function usePanels(routeId: string, includeArchived = false) {
       })
       setPanels((prev) => prev.map((p) => ({ ...p, is_default: p.id === id ? 1 : 0 })))
       await logSyncEntry(db, userId, 'panels', id, 'update', { is_default: 1 })
+      markPending()
+      triggerSync()
     },
-    [db, routeId, userId],
+    [db, routeId, userId, markPending, triggerSync],
   )
 
   const archive = useCallback(
@@ -104,8 +113,10 @@ export function usePanels(routeId: string, includeArchived = false) {
         return prev.filter((p) => p.id !== id)
       })
       await logSyncEntry(db, userId, 'panels', id, 'update', { is_archived: 1 })
+      markPending()
+      triggerSync()
     },
-    [db, userId, includeArchived],
+    [db, userId, includeArchived, markPending, triggerSync],
   )
 
   const unarchive = useCallback(
@@ -113,8 +124,10 @@ export function usePanels(routeId: string, includeArchived = false) {
       await updatePanel(db, id, { is_archived: 0 })
       setPanels((prev) => prev.map((p) => (p.id === id ? { ...p, is_archived: 0 } : p)))
       await logSyncEntry(db, userId, 'panels', id, 'update', { is_archived: 0 })
+      markPending()
+      triggerSync()
     },
-    [db, userId],
+    [db, userId, markPending, triggerSync],
   )
 
   const remove = useCallback(
@@ -124,8 +137,10 @@ export function usePanels(routeId: string, includeArchived = false) {
       })
       setPanels((prev) => prev.filter((p) => p.id !== id))
       await logSyncEntry(db, userId, 'panels', id, 'delete', { id, reassignToPanelId })
+      markPending()
+      triggerSync()
     },
-    [db, userId],
+    [db, userId, markPending, triggerSync],
   )
 
   return { panels, loading, load, add, update, remove, setDefault, archive, unarchive }

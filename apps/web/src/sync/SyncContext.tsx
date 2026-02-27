@@ -15,6 +15,7 @@ interface SyncState {
   triggerSync: () => Promise<void>
   markPending: () => void
   dataVersion: number
+  tableVersions: Readonly<Record<string, number>>
 }
 
 export const SyncContext = createContext<SyncState | null>(null)
@@ -24,13 +25,21 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const engineRef = useRef<SyncEngine | null>(null)
   const [status, setStatus] = useState<SyncStatus>(!navigator.onLine ? 'offline' : 'local')
   const [dataVersion, setDataVersion] = useState(0)
+  const [tableVersions, setTableVersions] = useState<Record<string, number>>({})
 
   useEffect(() => {
     const engine = createSyncEngine(db)
     engineRef.current = engine
 
     const unsubStatus = engine.onStatusChange(setStatus)
-    const unsubData = engine.onDataReceived(() => setDataVersion((v) => v + 1))
+    const unsubData = engine.onDataReceived((tables) => {
+      setDataVersion((v) => v + 1)
+      setTableVersions((prev) => {
+        const next = { ...prev }
+        for (const t of tables) next[t] = (next[t] ?? 0) + 1
+        return next
+      })
+    })
     engine.start()
 
     return () => {
@@ -50,7 +59,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [status])
 
   return (
-    <SyncContext.Provider value={{ status, triggerSync, markPending, dataVersion }}>
+    <SyncContext.Provider value={{ status, triggerSync, markPending, dataVersion, tableVersions }}>
       {children}
     </SyncContext.Provider>
   )

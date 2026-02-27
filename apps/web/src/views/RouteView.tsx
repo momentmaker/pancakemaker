@@ -5,6 +5,7 @@ import { usePanels } from '../hooks/usePanels'
 import { useCategories } from '../hooks/useCategories'
 import { useExchangeRates } from '../hooks/useExchangeRates'
 import { useDatabase } from '../db/DatabaseContext'
+import { useSync } from '../sync/SyncContext'
 import {
   getCategoryTotalsByCurrency,
   getPanelsByRoute,
@@ -39,6 +40,7 @@ export function RouteView({ type }: RouteViewProps) {
   const { userId, personalRouteId, businessRouteId, baseCurrency } = useAppState()
   const routeId = type === 'personal' ? personalRouteId : businessRouteId
   const db = useDatabase()
+  const { dataVersion } = useSync()
 
   const [activeTab, setActiveTab] = useState<'categories' | 'panels'>('categories')
   const [month, setMonth] = useState(currentMonth)
@@ -76,7 +78,7 @@ export function RouteView({ type }: RouteViewProps) {
       setAllPanels(rows)
     }
     loadAllPanels()
-  }, [db, routeId])
+  }, [db, routeId, dataVersion])
 
   const { convert } = useExchangeRates(baseCurrency)
 
@@ -86,7 +88,7 @@ export function RouteView({ type }: RouteViewProps) {
       setCategoryTotals(totals)
     }
     loadCategoryTotals()
-  }, [db, routeId, month])
+  }, [db, routeId, month, dataVersion])
 
   useEffect(() => {
     async function loadPanelTotals() {

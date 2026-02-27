@@ -18,7 +18,7 @@ export interface SyncEngine {
   start(): void
   stop(): void
   onStatusChange(listener: (status: SyncStatus) => void): () => void
-  onDataReceived(listener: () => void): () => void
+  onDataReceived(listener: (tables: Set<string>) => void): () => void
 }
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000
@@ -39,7 +39,7 @@ export function createSyncEngine(db: Database): SyncEngine {
   let intervalId: ReturnType<typeof setInterval> | null = null
   let syncing = false
   const listeners = new Set<(status: SyncStatus) => void>()
-  const dataListeners = new Set<() => void>()
+  const dataListeners = new Set<(tables: Set<string>) => void>()
 
   function setStatus(next: SyncStatus): void {
     if (next === status) return
@@ -160,10 +160,12 @@ export function createSyncEngine(db: Database): SyncEngine {
     })
 
     let applied = 0
+    const appliedTables = new Set<string>()
     for (const entry of sorted) {
       try {
         await applyRemoteEntry(entry)
         applied++
+        appliedTables.add(entry.table_name)
       } catch (err) {
         console.log(
           '[sync] apply failed: table=%s action=%s id=%s',
@@ -183,7 +185,7 @@ export function createSyncEngine(db: Database): SyncEngine {
         console.log('[sync] recovered from stale cursor, reloading')
         window.location.reload()
       } else if (applied > 0) {
-        for (const fn of dataListeners) fn()
+        for (const fn of dataListeners) fn(appliedTables)
       }
     }
 
@@ -262,7 +264,7 @@ export function createSyncEngine(db: Database): SyncEngine {
     return () => listeners.delete(listener)
   }
 
-  function onDataReceived(listener: () => void): () => void {
+  function onDataReceived(listener: (tables: Set<string>) => void): () => void {
     dataListeners.add(listener)
     return () => dataListeners.delete(listener)
   }
