@@ -146,6 +146,26 @@ export async function requestMagicLink(email: string): Promise<ApiResult<{ ok: t
   }
 }
 
+export async function verifyCode(email: string, code: string): Promise<ApiResult<VerifyResult>> {
+  try {
+    const res = await fetch(`${getApiUrl()}/auth/verify-code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code }),
+    })
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      return { success: false, error: (body as { error?: string }).error ?? `HTTP ${res.status}` }
+    }
+
+    const data = (await res.json()) as VerifyResult
+    return { success: true, data }
+  } catch {
+    return { success: false, error: 'Network error' }
+  }
+}
+
 export async function verifyToken(token: string): Promise<ApiResult<VerifyResult>> {
   try {
     const res = await fetch(`${getApiUrl()}/auth/verify`, {

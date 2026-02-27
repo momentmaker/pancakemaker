@@ -111,6 +111,10 @@ describe('POST /auth/magic-link', () => {
     expect(testEnv.DB.prepare).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO auth_tokens'),
     )
+    const insertCall = testEnv.DB.prepare.mock.calls.find((call: string[]) =>
+      call[0].includes('INSERT INTO auth_tokens'),
+    )
+    expect(insertCall[0]).toContain('code')
   })
 })
 
@@ -275,6 +279,110 @@ describe('POST /auth/verify', () => {
     const body = await res.json()
     expect(body.user.id).toBe('user-123')
     expect(body.user.baseCurrency).toBe('EUR')
+  })
+})
+
+describe('POST /auth/verify-code', () => {
+  it('rejects missing email or code', async () => {
+    // #given
+    const testEnv = env()
+
+    // #when
+    const res = await app.request(
+      '/auth/verify-code',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      },
+      testEnv,
+    )
+
+    // #then
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toContain('required')
+  })
+
+  it('rejects invalid code', async () => {
+    // #given
+    const testEnv = env({ first: vi.fn().mockResolvedValue(null) })
+
+    // #when
+    const res = await app.request(
+      '/auth/verify-code',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'test@example.com', code: '000000' }),
+      },
+      testEnv,
+    )
+
+    // #then
+    expect(res.status).toBe(401)
+    const body = await res.json()
+    expect(body.error).toContain('Invalid')
+  })
+
+  it('rejects expired code', async () => {
+    // #given
+    const testEnv = env({
+      first: vi.fn().mockResolvedValue({
+        id: 'token-id',
+        email: 'test@example.com',
+        expires_at: '2020-01-01T00:00:00.000Z',
+        used_at: null,
+      }),
+    })
+
+    // #when
+    const res = await app.request(
+      '/auth/verify-code',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'test@example.com', code: '123456' }),
+      },
+      testEnv,
+    )
+
+    // #then
+    expect(res.status).toBe(401)
+    const body = await res.json()
+    expect(body.error).toContain('expired')
+  })
+
+  it('returns JWT for valid email and code', async () => {
+    // #given
+    const firstFn = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: 'token-id',
+        email: 'test@example.com',
+        expires_at: new Date(Date.now() + 600000).toISOString(),
+        used_at: null,
+      })
+      .mockResolvedValueOnce(null)
+
+    const testEnv = env({ first: firstFn })
+
+    // #when
+    const res = await app.request(
+      '/auth/verify-code',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'test@example.com', code: '123456' }),
+      },
+      testEnv,
+    )
+
+    // #then
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.token).toBeDefined()
+    expect(body.user.email).toBe('test@example.com')
   })
 })
 
