@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-02-27
+
+### Added
+
+- Display app version at bottom of Settings page
+- "Open Mail App" button on login code entry screen for iOS/Android
+- Inline click-to-edit for expense descriptions (Enter/blur saves, Escape cancels)
+- "add note" placeholder for expenses without descriptions
+- "Stack your expenses. Keep your data." tagline on login page and PWA manifest
+- Demo page with 7 viral spending personas at demo.pancakemaker.com
+- Subdomain routing for demo.pancakemaker.com
+
+### Changed
+
+- Updated README with tagline, demo link, and reordered features
+- Added prettier check requirement before pushing to CLAUDE.md
+- Exposed app version via Vite define for build-time injection
+
 ## [1.2.0] - 2026-02-27
 
 ### Added
