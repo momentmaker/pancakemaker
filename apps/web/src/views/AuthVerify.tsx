@@ -43,7 +43,7 @@ export function AuthVerify() {
         return
       }
 
-      window.location.reload()
+      window.location.href = '/'
     }
 
     verify(token).catch(() => {

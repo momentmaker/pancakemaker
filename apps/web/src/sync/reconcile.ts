@@ -57,23 +57,25 @@ async function reconcileFirstDevice(
 
 async function reconcileSecondDevice(
   db: Database,
-  localUser: UserRow,
+  _localUser: UserRow,
   serverUser: ServerUser,
 ): Promise<void> {
   await db.execute('PRAGMA foreign_keys=OFF')
   try {
-    await db.execute('UPDATE users SET id = ?, email = ?, base_currency = ? WHERE id = ?', [
-      serverUser.id,
-      serverUser.email,
-      serverUser.baseCurrency,
-      localUser.id,
-    ])
-    await db.execute('UPDATE routes SET user_id = ? WHERE user_id = ?', [
-      serverUser.id,
-      localUser.id,
-    ])
-    await db.execute('UPDATE tags SET user_id = ? WHERE user_id = ?', [serverUser.id, localUser.id])
+    await db.execute('DELETE FROM expense_tags')
+    await db.execute('DELETE FROM recurring_templates')
+    await db.execute('DELETE FROM expenses')
+    await db.execute('DELETE FROM categories')
+    await db.execute('DELETE FROM panels')
+    await db.execute('DELETE FROM routes')
+    await db.execute('DELETE FROM tags')
     await db.execute('DELETE FROM sync_log')
+    await db.execute('DELETE FROM users')
+    const timestamp = new Date().toISOString()
+    await db.execute(
+      'INSERT INTO users (id, email, base_currency, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+      [serverUser.id, serverUser.email, serverUser.baseCurrency, timestamp, timestamp],
+    )
   } finally {
     await db.execute('PRAGMA foreign_keys=ON')
   }

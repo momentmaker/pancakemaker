@@ -88,7 +88,7 @@ describe('reconcileAfterAuth', () => {
     }
   })
 
-  it('remaps user ID and clears sync_log when no expenses (Path B)', async () => {
+  it('wipes seed data and creates server user when no expenses (Path B)', async () => {
     // #given
     await seedDefaultData(db, 'local@pancakemaker.app', 'USD')
     const serverUser = { id: 'server-user-id', email: 'real@email.com', baseCurrency: 'EUR' }
@@ -96,27 +96,24 @@ describe('reconcileAfterAuth', () => {
     // #when
     await reconcileAfterAuth(db, serverUser)
 
-    // #then — user remapped with server details
+    // #then — only server user exists
     const users = await db.query<UserRow>('SELECT * FROM users')
     expect(users).toHaveLength(1)
     expect(users[0].id).toBe('server-user-id')
     expect(users[0].email).toBe('real@email.com')
     expect(users[0].base_currency).toBe('EUR')
 
-    // #then — seed data preserved with remapped user ID
+    // #then — all seed data wiped (pull will repopulate)
     const routes = await db.query<RouteRow>('SELECT * FROM routes')
-    expect(routes).toHaveLength(2)
-    for (const route of routes) {
-      expect(route.user_id).toBe('server-user-id')
-    }
+    expect(routes).toHaveLength(0)
 
     const categories = await db.query<{ id: string }>('SELECT * FROM categories')
-    expect(categories.length).toBeGreaterThan(0)
+    expect(categories).toHaveLength(0)
 
     const panels = await db.query<{ id: string }>('SELECT * FROM panels')
-    expect(panels.length).toBeGreaterThan(0)
+    expect(panels).toHaveLength(0)
 
-    // #then — sync_log empty (seed data not pushed)
+    // #then — sync_log empty
     const syncEntries = await db.query<SyncLogRow>('SELECT * FROM sync_log')
     expect(syncEntries).toHaveLength(0)
   })

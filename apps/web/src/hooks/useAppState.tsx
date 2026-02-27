@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, type ReactNode 
 import type { Database } from '../db/interface.js'
 import { DatabaseProvider } from '../db/DatabaseContext.js'
 import { runMigrations } from '../db/migrations.js'
-import { seedDefaultData } from '../db/seed.js'
+import { seedDefaultData, seedRoutesForUser } from '../db/seed.js'
 import { getRoutesByUser, getPanelsByRoute, createPanel } from '../db/queries.js'
 import { generateRecurringExpenses } from '../db/recurring-generator.js'
 
@@ -57,9 +57,16 @@ export function AppProvider({ createDatabase, children }: AppProviderProps) {
             baseCurrency = users[0].base_currency
           }
 
-          const routes = await getRoutesByUser(database, userId)
-          const personalRoute = routes.find((r) => r.type === 'personal')
-          const businessRoute = routes.find((r) => r.type === 'business')
+          let routes = await getRoutesByUser(database, userId)
+          let personalRoute = routes.find((r) => r.type === 'personal')
+          let businessRoute = routes.find((r) => r.type === 'business')
+
+          if (!personalRoute || !businessRoute) {
+            await seedRoutesForUser(database, userId, baseCurrency)
+            routes = await getRoutesByUser(database, userId)
+            personalRoute = routes.find((r) => r.type === 'personal')
+            businessRoute = routes.find((r) => r.type === 'business')
+          }
 
           if (!personalRoute || !businessRoute) {
             throw new Error('Missing personal or business route')
