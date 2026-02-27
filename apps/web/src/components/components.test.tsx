@@ -1,11 +1,12 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Card } from './Card'
 import { Button } from './Button'
 import { Badge } from './Badge'
 import { AmountDisplay } from './AmountDisplay'
 import { SyncIndicator } from './SyncIndicator'
 import { EmptyState } from './EmptyState'
+import { setupTestDb, renderWithProviders } from '../test-utils'
 
 describe('Card', () => {
   it('renders children', () => {
@@ -60,14 +61,23 @@ describe('AmountDisplay', () => {
 })
 
 describe('SyncIndicator', () => {
+  beforeEach(async () => {
+    await setupTestDb()
+  })
+
   it('shows synced status', () => {
-    render(<SyncIndicator status="synced" />)
+    renderWithProviders(<SyncIndicator status="synced" />)
     expect(screen.getByText('Synced')).toBeInTheDocument()
   })
 
   it('shows offline status', () => {
-    render(<SyncIndicator status="offline" />)
+    renderWithProviders(<SyncIndicator status="offline" />)
     expect(screen.getByText('Offline')).toBeInTheDocument()
+  })
+
+  it('shows local status', () => {
+    renderWithProviders(<SyncIndicator status="local" />)
+    expect(screen.getByText('Local')).toBeInTheDocument()
   })
 })
 
