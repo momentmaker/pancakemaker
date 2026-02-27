@@ -1,6 +1,12 @@
 import type { Database } from '../db/interface.js'
 import type { AppState } from '../hooks/useAppState.js'
-import { createUser, createRoute, createCategory, createPanel, createExpense } from '../db/queries.js'
+import {
+  createUser,
+  createRoute,
+  createCategory,
+  createPanel,
+  createExpense,
+} from '../db/queries.js'
 import type { DemoPersona } from './demo-personas.js'
 
 function dayOffsetToDate(dayOffset: number): string {

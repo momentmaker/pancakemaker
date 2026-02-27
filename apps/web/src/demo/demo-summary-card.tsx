@@ -80,10 +80,7 @@ export function DemoSummaryCard() {
               <p className="text-xs italic text-text-muted">"{persona.tagline}"</p>
             </div>
           </div>
-          <DemoShareButton
-            topExpense={topExpense.description}
-            topAmount={topExpense.amount}
-          />
+          <DemoShareButton topExpense={topExpense.description} topAmount={topExpense.amount} />
         </div>
 
         <div className="mt-5">
