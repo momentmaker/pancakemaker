@@ -13,6 +13,20 @@ export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY)
 }
 
+const USER_EMAIL_KEY = 'pancakemaker_user_email'
+
+export function getStoredUserEmail(): string | null {
+  return localStorage.getItem(USER_EMAIL_KEY)
+}
+
+export function storeUserEmail(email: string): void {
+  localStorage.setItem(USER_EMAIL_KEY, email)
+}
+
+export function clearUserEmail(): void {
+  localStorage.removeItem(USER_EMAIL_KEY)
+}
+
 export function getStoredSyncCursor(): string | null {
   return localStorage.getItem(SYNC_CURSOR_KEY)
 }
@@ -101,4 +115,45 @@ export async function pushEntries(entries: SyncPushEntry[]): Promise<ApiResult<P
 export async function pullEntries(since?: string | null): Promise<ApiResult<PullResult>> {
   const params = since ? `?since=${encodeURIComponent(since)}` : ''
   return apiRequest<PullResult>(`/sync/pull${params}`)
+}
+
+interface VerifyResult {
+  token: string
+  user: { id: string; email: string; baseCurrency: string }
+}
+
+export async function requestMagicLink(email: string): Promise<ApiResult<{ ok: true }>> {
+  try {
+    const res = await fetch(`${getApiUrl()}/auth/magic-link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      return { success: false, error: (body as { error?: string }).error ?? `HTTP ${res.status}` }
+    }
+
+    const data = (await res.json()) as { ok: true }
+    return { success: true, data }
+  } catch {
+    return { success: false, error: 'Network error' }
+  }
+}
+
+export async function verifyToken(token: string): Promise<ApiResult<VerifyResult>> {
+  try {
+    const res = await fetch(`${getApiUrl()}/auth/verify?token=${encodeURIComponent(token)}`)
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      return { success: false, error: (body as { error?: string }).error ?? `HTTP ${res.status}` }
+    }
+
+    const data = (await res.json()) as VerifyResult
+    return { success: true, data }
+  } catch {
+    return { success: false, error: 'Network error' }
+  }
 }

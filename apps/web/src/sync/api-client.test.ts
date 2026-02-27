@@ -7,6 +7,10 @@ import {
   storeSyncCursor,
   pushEntries,
   pullEntries,
+  requestMagicLink,
+  verifyToken,
+  getStoredUserEmail,
+  storeUserEmail,
 } from './api-client.js'
 
 beforeEach(() => {
@@ -187,5 +191,110 @@ describe('pullEntries', () => {
     // #then
     const [url] = fetchSpy.mock.calls[0]
     expect(url).not.toContain('since=')
+  })
+})
+
+describe('requestMagicLink', () => {
+  it('sends email to magic-link endpoint', async () => {
+    // #given
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }))
+
+    // #when
+    const result = await requestMagicLink('test@example.com')
+
+    // #then
+    expect(result.success).toBe(true)
+    const [url, init] = fetchSpy.mock.calls[0]
+    expect(url).toContain('/auth/magic-link')
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({
+      email: 'test@example.com',
+    })
+  })
+
+  it('returns error on failure', async () => {
+    // #given
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'Valid email is required' }), { status: 400 }),
+    )
+
+    // #when
+    const result = await requestMagicLink('bad')
+
+    // #then
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toBe('Valid email is required')
+    }
+  })
+
+  it('handles network error', async () => {
+    // #given
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network failed'))
+
+    // #when
+    const result = await requestMagicLink('test@example.com')
+
+    // #then
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toBe('Network error')
+    }
+  })
+})
+
+describe('verifyToken', () => {
+  it('verifies token and returns jwt and user', async () => {
+    // #given
+    const payload = {
+      token: 'jwt-string',
+      user: { id: 'u1', email: 'test@example.com', baseCurrency: 'USD' },
+    }
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify(payload), { status: 200 }))
+
+    // #when
+    const result = await verifyToken('magic-token')
+
+    // #then
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.token).toBe('jwt-string')
+      expect(result.data.user.email).toBe('test@example.com')
+    }
+    const [url] = fetchSpy.mock.calls[0]
+    expect(url).toContain('/auth/verify?token=magic-token')
+  })
+
+  it('returns error for invalid token', async () => {
+    // #given
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401 }),
+    )
+
+    // #when
+    const result = await verifyToken('bad-token')
+
+    // #then
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toBe('Invalid token')
+    }
+  })
+})
+
+describe('user email storage', () => {
+  it('stores and retrieves user email', () => {
+    // #given / #when
+    storeUserEmail('test@example.com')
+
+    // #then
+    expect(getStoredUserEmail()).toBe('test@example.com')
+  })
+
+  it('returns null when no email stored', () => {
+    expect(getStoredUserEmail()).toBeNull()
   })
 })
