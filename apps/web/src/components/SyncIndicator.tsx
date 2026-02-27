@@ -38,6 +38,7 @@ export function SyncIndicator({ status }: { status: SyncStatus }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
+        title={status === 'local' ? 'Your data is 100% private — stored only in your browser, never sent to any server' : undefined}
         className="flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors hover:bg-bg-card"
       >
         <span className="relative flex h-2 w-2">
