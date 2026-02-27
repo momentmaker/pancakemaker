@@ -120,11 +120,15 @@ describe('POST /auth/verify', () => {
     const testEnv = env()
 
     // #when
-    const res = await app.request('/auth/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    }, testEnv)
+    const res = await app.request(
+      '/auth/verify',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      },
+      testEnv,
+    )
 
     // #then
     expect(res.status).toBe(400)
@@ -135,11 +139,15 @@ describe('POST /auth/verify', () => {
     const testEnv = env({ first: vi.fn().mockResolvedValue(null) })
 
     // #when
-    const res = await app.request('/auth/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: 'invalid-token' }),
-    }, testEnv)
+    const res = await app.request(
+      '/auth/verify',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: 'invalid-token' }),
+      },
+      testEnv,
+    )
 
     // #then
     expect(res.status).toBe(401)
@@ -157,11 +165,15 @@ describe('POST /auth/verify', () => {
     })
 
     // #when
-    const res = await app.request('/auth/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: 'some-token' }),
-    }, testEnv)
+    const res = await app.request(
+      '/auth/verify',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: 'some-token' }),
+      },
+      testEnv,
+    )
 
     // #then
     expect(res.status).toBe(401)
@@ -181,11 +193,15 @@ describe('POST /auth/verify', () => {
     })
 
     // #when
-    const res = await app.request('/auth/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: 'used-token' }),
-    }, testEnv)
+    const res = await app.request(
+      '/auth/verify',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: 'used-token' }),
+      },
+      testEnv,
+    )
 
     // #then
     expect(res.status).toBe(401)
@@ -208,11 +224,15 @@ describe('POST /auth/verify', () => {
     const testEnv = env({ first: firstFn })
 
     // #when
-    const res = await app.request('/auth/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: 'valid-token' }),
-    }, testEnv)
+    const res = await app.request(
+      '/auth/verify',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: 'valid-token' }),
+      },
+      testEnv,
+    )
 
     // #then
     expect(res.status).toBe(200)
@@ -240,11 +260,15 @@ describe('POST /auth/verify', () => {
     const testEnv = env({ first: firstFn })
 
     // #when
-    const res = await app.request('/auth/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: 'valid-token' }),
-    }, testEnv)
+    const res = await app.request(
+      '/auth/verify',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: 'valid-token' }),
+      },
+      testEnv,
+    )
 
     // #then
     expect(res.status).toBe(200)
