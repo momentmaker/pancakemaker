@@ -13,7 +13,7 @@ export async function sendEmail(params: SendEmailParams): Promise<{ id: string }
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'Pancakemaker <noreply@pancakemaker.app>',
+      from: 'pancakemaker <noreply@pancakemaker.com>',
       to: params.to,
       subject: params.subject,
       html: params.html,
