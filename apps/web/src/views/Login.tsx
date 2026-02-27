@@ -158,6 +158,13 @@ export function Login() {
                 {verifying && <p className="mt-4 text-xs text-text-muted">Verifying...</p>}
                 {error && <p className="mt-4 text-xs text-red-400">{error}</p>}
 
+                <a
+                  href="mailto:"
+                  className="mt-4 inline-block rounded-md border border-border-dim px-4 py-2 text-sm text-text-secondary transition-colors hover:border-neon-cyan hover:text-neon-cyan"
+                >
+                  Open Mail App
+                </a>
+
                 <button
                   type="button"
                   onClick={resetToEmail}
