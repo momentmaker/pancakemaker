@@ -9,6 +9,8 @@ APP_URL = "https://pancakemaker.com"
 [[routes]]
 pattern = "api.pancakemaker.com"
 custom_domain = true
+override_existing_origin = true
+override_existing_dns_record = true
 
 [[d1_databases]]
 binding = "DB"
