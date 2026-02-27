@@ -18,16 +18,17 @@ export function useCategories(routeId: string) {
   const categoryVersion = tableVersions['categories'] ?? 0
   const [categories, setCategories] = useState<CategoryRow[]>([])
   const [loading, setLoading] = useState(false)
-  const loadedRef = useRef(false)
+  const lastRouteRef = useRef('')
 
   const load = useCallback(async () => {
-    if (!loadedRef.current) setLoading(true)
+    const isNewRoute = routeId !== lastRouteRef.current
+    if (isNewRoute) setLoading(true)
     try {
       const rows = await getCategoriesByRoute(db, routeId)
       setCategories(rows)
     } finally {
       setLoading(false)
-      loadedRef.current = true
+      lastRouteRef.current = routeId
     }
   }, [db, routeId, categoryVersion])
 

@@ -18,18 +18,20 @@ export function usePanels(routeId: string, includeArchived = false) {
   const panelVersion = tableVersions['panels'] ?? 0
   const [panels, setPanels] = useState<PanelRow[]>([])
   const [loading, setLoading] = useState(false)
-  const loadedRef = useRef(false)
+  const queryKey = `${routeId}-${includeArchived}`
+  const lastQueryKeyRef = useRef('')
 
   const load = useCallback(async () => {
-    if (!loadedRef.current) setLoading(true)
+    const isNewQuery = queryKey !== lastQueryKeyRef.current
+    if (isNewQuery) setLoading(true)
     try {
       const rows = await getPanelsByRoute(db, routeId, includeArchived)
       setPanels(rows)
     } finally {
       setLoading(false)
-      loadedRef.current = true
+      lastQueryKeyRef.current = queryKey
     }
-  }, [db, routeId, includeArchived, panelVersion])
+  }, [db, routeId, includeArchived, queryKey, panelVersion])
 
   const add = useCallback(
     async (

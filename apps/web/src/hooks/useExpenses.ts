@@ -28,10 +28,12 @@ export function useExpenses(params: UseExpensesParams | string) {
   const expenseVersion = tableVersions['expenses'] ?? 0
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
   const [loading, setLoading] = useState(false)
-  const loadedRef = useRef(false)
+  const queryKey = `${normalized.panelId}-${normalized.categoryId}-${normalized.month}`
+  const lastQueryKeyRef = useRef('')
 
   const load = useCallback(async () => {
-    if (!loadedRef.current) setLoading(true)
+    const isNewQuery = queryKey !== lastQueryKeyRef.current
+    if (isNewQuery) setLoading(true)
     try {
       let rows: ExpenseRow[]
       if (normalized.categoryId) {
@@ -44,9 +46,9 @@ export function useExpenses(params: UseExpensesParams | string) {
       setExpenses(rows)
     } finally {
       setLoading(false)
-      loadedRef.current = true
+      lastQueryKeyRef.current = queryKey
     }
-  }, [db, normalized.panelId, normalized.categoryId, normalized.month, expenseVersion])
+  }, [db, normalized.panelId, normalized.categoryId, normalized.month, queryKey, expenseVersion])
 
   const add = useCallback(
     async (input: CreateExpenseInput) => {
