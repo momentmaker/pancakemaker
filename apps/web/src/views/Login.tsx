@@ -57,7 +57,7 @@ export function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full rounded-md border border-border-dim bg-bg-secondary px-4 py-2.5 font-mono text-sm text-text-primary placeholder:text-text-muted focus:border-neon-cyan focus:outline-none"
+                className="w-full rounded-md border border-border-dim bg-bg-secondary px-4 py-2.5 font-mono text-base text-text-primary placeholder:text-text-muted focus:border-neon-cyan focus:outline-none"
               />
               {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
               <button

@@ -100,7 +100,7 @@ export function ExpenseRow({ expense, category, onUpdateAmount, onDelete }: Expe
               if (e.key === 'Enter') saveAmount()
               if (e.key === 'Escape') setEditingAmount(false)
             }}
-            className="w-24 border-b-2 border-neon-cyan bg-transparent text-right font-mono text-sm font-semibold text-text-primary outline-none"
+            className="w-24 border-b-2 border-neon-cyan bg-transparent text-right font-mono text-base font-semibold text-text-primary outline-none"
           />
         ) : (
           <button

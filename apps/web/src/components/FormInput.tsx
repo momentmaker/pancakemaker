@@ -15,7 +15,7 @@ export function FormInput({ label, mono = false, className = '', id, ...props }:
       </label>
       <input
         id={inputId}
-        className={`rounded-md border border-border-dim bg-bg-primary px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-neon-cyan focus:outline-none ${mono ? 'font-mono' : ''} ${className}`}
+        className={`rounded-md border border-border-dim bg-bg-primary px-3 py-2 text-base text-text-primary placeholder:text-text-muted focus:border-neon-cyan focus:outline-none ${mono ? 'font-mono' : ''} ${className}`}
         {...props}
       />
     </div>
