@@ -21,7 +21,13 @@ function dollarsToCents(dollars: string): number | null {
   return Math.round(parsed * 100)
 }
 
-export function ExpenseRow({ expense, category, onUpdateAmount, onUpdateDescription, onDelete }: ExpenseRowProps) {
+export function ExpenseRow({
+  expense,
+  category,
+  onUpdateAmount,
+  onUpdateDescription,
+  onDelete,
+}: ExpenseRowProps) {
   const [editingAmount, setEditingAmount] = useState(false)
   const [editValue, setEditValue] = useState('')
   const [editingDescription, setEditingDescription] = useState(false)
