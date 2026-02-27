@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { Modal } from './Modal'
 import { Button } from './Button'
 import { FormInput, FormSelect } from './FormInput'
-import { Toggle } from './Toggle'
 import type { CategoryRow, PanelRow } from '../db/queries'
 
 interface QuickAddProps {
@@ -16,8 +15,6 @@ interface QuickAddProps {
     currency: string
     date: string
     description?: string
-    isRecurring?: boolean
-    recurrenceType?: 'monthly' | 'annual' | null
   }) => Promise<void>
   panelId?: string
   currency?: string
@@ -46,8 +43,6 @@ export function QuickAdd({
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [description, setDescription] = useState('')
   const [showMore, setShowMore] = useState(false)
-  const [isRecurring, setIsRecurring] = useState(false)
-  const [recurrenceType, setRecurrenceType] = useState<'monthly' | 'annual'>('monthly')
   const [submitting, setSubmitting] = useState(false)
 
   const prevOpen = useRef(false)
@@ -59,8 +54,6 @@ export function QuickAdd({
       setDate(new Date().toISOString().slice(0, 10))
       setDescription('')
       setShowMore(false)
-      setIsRecurring(false)
-      setRecurrenceType('monthly')
     }
     prevOpen.current = open
   }, [open, categories, panels, fixedPanelId, defaultPanelId, lockedCategoryId])
@@ -77,8 +70,6 @@ export function QuickAdd({
     setDate(new Date().toISOString().slice(0, 10))
     setDescription('')
     setShowMore(false)
-    setIsRecurring(false)
-    setRecurrenceType('monthly')
   }, [categories, fixedPanelId, defaultPanelId, panels, lockedCategoryId])
 
   const handleSubmit = useCallback(
@@ -96,8 +87,6 @@ export function QuickAdd({
           currency: resolvedCurrency,
           date,
           description: description || undefined,
-          isRecurring,
-          recurrenceType: isRecurring ? recurrenceType : null,
         })
         reset()
         onClose()
@@ -112,8 +101,6 @@ export function QuickAdd({
       resolvedCurrency,
       date,
       description,
-      isRecurring,
-      recurrenceType,
       onAdd,
       onClose,
       reset,
@@ -182,34 +169,12 @@ export function QuickAdd({
         )}
 
         {showMore && (
-          <>
-            <FormInput
-              label="Description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Optional note"
-            />
-
-            <div className="flex items-center gap-2">
-              <Toggle
-                checked={isRecurring}
-                onChange={setIsRecurring}
-                label="Recurring"
-                id="recurring"
-              />
-              {isRecurring && (
-                <FormSelect
-                  label=""
-                  value={recurrenceType}
-                  onChange={(v) => setRecurrenceType(v as 'monthly' | 'annual')}
-                  options={[
-                    { value: 'monthly', label: 'Monthly' },
-                    { value: 'annual', label: 'Annual' },
-                  ]}
-                />
-              )}
-            </div>
-          </>
+          <FormInput
+            label="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Optional note"
+          />
         )}
 
         <div className="flex justify-end gap-2 pt-2">
