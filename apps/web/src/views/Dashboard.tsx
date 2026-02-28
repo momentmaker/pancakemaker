@@ -1,25 +1,29 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAppState } from '../hooks/useAppState'
 import { useDatabase } from '../db/DatabaseContext'
 import { useSync } from '../sync/SyncContext'
 import { useRoutePrefix } from '../demo/demo-context'
+import { useDashboardStats, type BurnRate } from '../hooks/useDashboardStats'
+import {
+  getPanelsByRoute,
+  getCategoriesByRoute,
+  createExpense,
+  logSyncEntry,
+  type PanelRow,
+  type CategoryRow,
+} from '../db/queries'
 import { Card } from '../components/Card'
 import { AmountDisplay } from '../components/AmountDisplay'
+import { MonthPicker } from '../components/MonthPicker'
 import { PancakeStack } from '../components/PancakeStack'
+import { SparkBars } from '../components/SparkBars'
+import { QuickAdd } from '../components/QuickAdd'
+import { Button } from '../components/Button'
 
-interface CategorySpend {
-  name: string
-  color: string
-  amount: number
-}
-
-interface DashboardStats {
-  totalExpenses: number
-  totalAmount: number
-  personalAmount: number
-  businessAmount: number
-  categoryBreakdown: CategorySpend[]
+function currentMonth(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
 function getGreeting(): { line1: string; line2: string } {
@@ -53,6 +57,13 @@ function getSpendingLevel(cents: number): { label: string; color: string } {
   if (dollars <= 500) return { label: 'Full stack', color: 'text-neon-amber' }
   if (dollars <= 1000) return { label: 'Tall stack!', color: 'text-neon-orange' }
   return { label: 'Grand slam!', color: 'text-neon-magenta' }
+}
+
+function formatDate(date: string): string {
+  return new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  })
 }
 
 function HeroPancake() {
@@ -228,96 +239,175 @@ function HeroPancake() {
   )
 }
 
+const BURN_SEGMENTS: {
+  key: keyof Pick<BurnRate, 'oneTime' | 'monthly' | 'annualMonthly'>
+  label: string
+  color: string
+}[] = [
+  { key: 'oneTime', label: 'One-time', color: '#00ffcc' },
+  { key: 'monthly', label: 'Monthly', color: '#c084fc' },
+  { key: 'annualMonthly', label: 'Annual/mo', color: '#fbbf24' },
+]
+
+function BurnRateCard({ burnRate, currency }: { burnRate: BurnRate; currency: string }) {
+  const segments = BURN_SEGMENTS.filter((s) => burnRate[s.key] > 0)
+
+  return (
+    <Card className="mt-6">
+      <div className="flex items-baseline justify-between">
+        <h2 className="font-mono text-sm font-semibold text-text-secondary">Monthly Burn Rate</h2>
+        <AmountDisplay amount={burnRate.total} currency={currency} size="md" />
+      </div>
+
+      {segments.length > 1 && (
+        <div className="mt-3 flex h-2.5 overflow-hidden rounded-full">
+          {segments.map((s) => (
+            <div
+              key={s.key}
+              className="transition-all duration-300"
+              style={{
+                width: `${(burnRate[s.key] / burnRate.total) * 100}%`,
+                backgroundColor: s.color,
+                opacity: 0.7,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1">
+        {segments.map((s) => (
+          <div key={s.key} className="flex items-center gap-1.5">
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full"
+              style={{ backgroundColor: s.color }}
+            />
+            <span className="font-mono text-xs text-text-muted">{s.label}</span>
+            <span className="font-mono text-xs text-text-secondary">
+              <AmountDisplay amount={burnRate[s.key]} currency={currency} size="sm" />
+            </span>
+            {s.key === 'annualMonthly' && burnRate.annualYearly > 0 && (
+              <span className="font-mono text-[10px] text-text-muted">
+                (<AmountDisplay amount={burnRate.annualYearly} currency={currency} size="sm" />
+                /yr)
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
 export function Dashboard() {
   const { userId, personalRouteId, businessRouteId, baseCurrency } = useAppState()
   const db = useDatabase()
-  const { dataVersion } = useSync()
+  const { triggerSync, markPending } = useSync()
   const prefix = useRoutePrefix()
-  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [month, setMonth] = useState(currentMonth)
+  const { stats, loading, reload } = useDashboardStats(month)
+
+  const [allPanels, setAllPanels] = useState<PanelRow[]>([])
+  const [allCategories, setAllCategories] = useState<CategoryRow[]>([])
+  const [showQuickAdd, setShowQuickAdd] = useState(false)
 
   useEffect(() => {
-    async function loadStats() {
-      const currentMonth = new Date().toISOString().slice(0, 7)
-
-      const allExpenses = await db.query<{ amount: number; panel_id: string }>(
-        `SELECT e.amount, e.panel_id FROM expenses e
-         JOIN panels p ON e.panel_id = p.id
-         WHERE e.deleted_at IS NULL AND e.date LIKE ?`,
-        [`${currentMonth}%`],
-      )
-
-      const personalPanels = await db.query<{ id: string }>(
-        'SELECT id FROM panels WHERE route_id = ?',
-        [personalRouteId],
-      )
-      const businessPanels = await db.query<{ id: string }>(
-        'SELECT id FROM panels WHERE route_id = ?',
-        [businessRouteId],
-      )
-      const personalIds = new Set(personalPanels.map((p) => p.id))
-      const businessIds = new Set(businessPanels.map((p) => p.id))
-
-      let personalAmount = 0
-      let businessAmount = 0
-      for (const exp of allExpenses) {
-        if (personalIds.has(exp.panel_id as string)) personalAmount += exp.amount as number
-        if (businessIds.has(exp.panel_id as string)) businessAmount += exp.amount as number
-      }
-
-      const categoryData = await db.query<{ name: string; color: string; total: number }>(
-        `SELECT c.name, c.color, SUM(e.amount) as total
-         FROM expenses e
-         JOIN categories c ON e.category_id = c.id
-         WHERE e.deleted_at IS NULL AND e.date LIKE ?
-         GROUP BY c.id
-         ORDER BY total DESC
-         LIMIT 10`,
-        [`${currentMonth}%`],
-      )
-
-      setStats({
-        totalExpenses: allExpenses.length,
-        totalAmount: personalAmount + businessAmount,
-        personalAmount,
-        businessAmount,
-        categoryBreakdown: categoryData.map((d) => ({
-          name: d.name as string,
-          color: d.color as string,
-          amount: d.total as number,
-        })),
-      })
+    async function loadPanelsAndCategories() {
+      const [pPanels, bPanels, pCats, bCats] = await Promise.all([
+        getPanelsByRoute(db, personalRouteId),
+        getPanelsByRoute(db, businessRouteId),
+        getCategoriesByRoute(db, personalRouteId),
+        getCategoriesByRoute(db, businessRouteId),
+      ])
+      setAllPanels([...pPanels, ...bPanels])
+      setAllCategories([...pCats, ...bCats])
     }
+    loadPanelsAndCategories()
+  }, [db, personalRouteId, businessRouteId])
 
-    loadStats()
-  }, [db, personalRouteId, businessRouteId, userId, dataVersion])
+  const handleAdd = useCallback(
+    async (data: {
+      panelId: string
+      categoryId: string
+      amount: number
+      currency: string
+      date: string
+      description?: string
+    }) => {
+      const expense = await createExpense(db, data)
+      await logSyncEntry(
+        db,
+        userId,
+        'expenses',
+        expense.id,
+        'create',
+        expense as unknown as Record<string, unknown>,
+      )
+      markPending()
+      triggerSync()
+      reload()
+    },
+    [db, userId, markPending, triggerSync, reload],
+  )
 
   const greeting = useMemo(getGreeting, [])
-  const currentMonthLabel = new Date().toLocaleDateString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  })
   const spendingLevel = stats ? getSpendingLevel(stats.totalAmount) : null
+
+  const comparisonBadge = useMemo(() => {
+    if (!stats?.prevMonthTotal) return null
+    const delta = ((stats.totalAmount - stats.prevMonthTotal) / stats.prevMonthTotal) * 100
+    const sign = delta >= 0 ? '+' : ''
+    const color = delta >= 0 ? 'text-neon-orange' : 'text-neon-lime'
+    return { text: `${sign}${Math.round(delta)}% vs last month`, color }
+  }, [stats])
+
+  const hasSpending = stats?.dayBreakdown.some((d) => d.value > 0) ?? false
+
+  const panelRouteMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const p of allPanels) {
+      map.set(p.id, p.route_id === personalRouteId ? 'personal' : 'business')
+    }
+    return map
+  }, [allPanels, personalRouteId])
 
   return (
     <div>
       {/* Hero greeting */}
       <div className="flex items-center gap-5">
         <HeroPancake />
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="font-mono text-2xl font-bold text-neon-cyan">{greeting.line1}</h1>
           <p className="mt-0.5 text-sm text-text-secondary">{greeting.line2}</p>
-          <p className="mt-1 font-mono text-xs text-text-muted">{currentMonthLabel}</p>
         </div>
+        <Button onClick={() => setShowQuickAdd(true)} className="hidden sm:flex">
+          + Add
+        </Button>
       </div>
+
+      <div className="mt-4">
+        <MonthPicker month={month} onChange={setMonth} />
+      </div>
+
+      {loading && !stats && (
+        <div className="mt-8 flex justify-center py-8">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-neon-cyan border-t-transparent" />
+        </div>
+      )}
 
       {stats && (
         <>
           {/* Stat cards */}
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
             <Card glow>
               <p className="font-mono text-xs text-text-muted">Your Stack</p>
-              <div className="mt-2">
+              <div className="mt-2 flex items-baseline gap-3">
                 <AmountDisplay amount={stats.totalAmount} currency={baseCurrency} size="lg" />
+                {comparisonBadge && (
+                  <span className={`font-mono text-[10px] font-semibold ${comparisonBadge.color}`}>
+                    {comparisonBadge.text}
+                  </span>
+                )}
               </div>
               <div className="mt-1.5 flex items-center gap-2">
                 <span className="font-mono text-xs text-text-muted">
@@ -450,8 +540,130 @@ export function Dashboard() {
               </div>
             </Card>
           )}
+
+          {/* Monthly Burn Rate */}
+          {stats.burnRate.total > 0 && (
+            <BurnRateCard burnRate={stats.burnRate} currency={baseCurrency} />
+          )}
+
+          {/* Daily Spending */}
+          {hasSpending && (
+            <Card className="mt-6">
+              <h2 className="mb-3 font-mono text-sm font-semibold text-text-secondary">
+                Daily Spending
+              </h2>
+              <SparkBars
+                data={stats.dayBreakdown}
+                color="#00ffcc"
+                currency={baseCurrency}
+                highlightLast={false}
+              />
+            </Card>
+          )}
+
+          {/* Biggest Pancake */}
+          {stats.biggestExpense && (
+            <Card className="mt-6 border-neon-amber/40">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-semibold text-neon-amber">
+                  Biggest Pancake
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline justify-between">
+                <div>
+                  <span className="font-mono text-sm text-text-primary">
+                    {stats.biggestExpense.description || stats.biggestExpense.category_name}
+                  </span>
+                  <div className="mt-0.5 flex items-center gap-2 text-xs text-text-muted">
+                    <span
+                      className="inline-block h-1.5 w-1.5 rounded-full"
+                      style={{ backgroundColor: stats.biggestExpense.category_color }}
+                    />
+                    <span>{stats.biggestExpense.category_name}</span>
+                    <span>·</span>
+                    <span>{formatDate(stats.biggestExpense.date)}</span>
+                    <span>·</span>
+                    <Link
+                      to={`${prefix}/${panelRouteMap.get(stats.biggestExpense.panel_id) ?? 'personal'}/panel/${stats.biggestExpense.panel_id}`}
+                      className="transition-colors hover:text-neon-cyan"
+                    >
+                      {stats.biggestExpense.panel_name}
+                    </Link>
+                  </div>
+                </div>
+                <span className="text-neon-amber">
+                  <AmountDisplay
+                    amount={stats.biggestExpense.amount}
+                    currency={stats.biggestExpense.currency}
+                    size="md"
+                  />
+                </span>
+              </div>
+            </Card>
+          )}
+
+          {/* Recent Expenses */}
+          {stats.recentExpenses.length > 0 && (
+            <div className="mt-6">
+              <h2 className="mb-3 font-mono text-sm font-semibold text-text-secondary">
+                Recent Expenses
+              </h2>
+              <div className="flex flex-col gap-1">
+                {stats.recentExpenses.map((e) => (
+                  <div
+                    key={e.id}
+                    className="flex items-center justify-between rounded-md px-3 py-2 transition-colors hover:bg-bg-card"
+                  >
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <span
+                        className="inline-block h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: e.category_color }}
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-mono text-sm text-text-primary">
+                          {e.description || e.category_name}
+                        </p>
+                        <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                          <span>{formatDate(e.date)}</span>
+                          <span>·</span>
+                          <Link
+                            to={`${prefix}/${panelRouteMap.get(e.panel_id) ?? 'personal'}/panel/${e.panel_id}`}
+                            className="transition-colors hover:text-neon-cyan"
+                          >
+                            {e.panel_name}
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="shrink-0 pl-3 font-mono text-sm text-text-secondary">
+                      <AmountDisplay amount={e.amount} currency={e.currency} size="sm" />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
+
+      {/* Floating add button — mobile only */}
+      <button
+        onClick={() => setShowQuickAdd(true)}
+        className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-neon-cyan text-bg-primary shadow-lg shadow-neon-cyan/20 transition-transform hover:scale-105 active:scale-95 sm:hidden"
+        aria-label="Add expense"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </button>
+
+      <QuickAdd
+        open={showQuickAdd}
+        onClose={() => setShowQuickAdd(false)}
+        categories={allCategories}
+        panels={allPanels}
+        onAdd={handleAdd}
+      />
     </div>
   )
 }
