@@ -592,6 +592,7 @@ export async function getCategoryMonthlyTrend(
   categoryId: string,
   currentMonth: string,
   count = 6,
+  convert?: (amount: number, currency: string) => number,
 ): Promise<MonthlyTotal[]> {
   const months: string[] = []
   const [year, m] = currentMonth.split('-').map(Number)
@@ -603,15 +604,19 @@ export async function getCategoryMonthlyTrend(
   }
 
   const placeholders = months.map(() => '?').join(', ')
-  const rows = await db.query<{ month: string; total: number }>(
-    `SELECT substr(date, 1, 7) as month, SUM(amount) as total
+  const rows = await db.query<{ month: string; currency: string; total: number }>(
+    `SELECT substr(date, 1, 7) as month, currency, SUM(amount) as total
      FROM expenses
      WHERE category_id = ? AND deleted_at IS NULL AND substr(date, 1, 7) IN (${placeholders})
-     GROUP BY month`,
+     GROUP BY month, currency`,
     [categoryId, ...months],
   )
 
-  const totalsMap = new Map(rows.map((r) => [r.month, r.total]))
+  const totalsMap = new Map<string, number>()
+  for (const r of rows) {
+    const converted = convert ? convert(r.total, r.currency) : r.total
+    totalsMap.set(r.month, (totalsMap.get(r.month) ?? 0) + converted)
+  }
   return months.map((month) => ({ month, total: totalsMap.get(month) ?? 0 }))
 }
 
@@ -686,21 +691,26 @@ export async function getDashboardYearTotals(
   personalRouteId: string,
   businessRouteId: string,
   year: string,
+  convert?: (amount: number, currency: string) => number,
 ): Promise<{ month: string; total: number }[]> {
   const months = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`)
 
-  const rows = await db.query<{ month: string; total: number }>(
-    `SELECT substr(e.date, 1, 7) as month, SUM(e.amount) as total
+  const rows = await db.query<{ month: string; currency: string; total: number }>(
+    `SELECT substr(e.date, 1, 7) as month, e.currency, SUM(e.amount) as total
      FROM expenses e
      JOIN panels p ON e.panel_id = p.id
      WHERE p.route_id IN (?, ?)
        AND e.deleted_at IS NULL
        AND substr(e.date, 1, 4) = ?
-     GROUP BY month`,
+     GROUP BY month, e.currency`,
     [personalRouteId, businessRouteId, year],
   )
 
-  const totalsMap = new Map(rows.map((r) => [r.month, r.total]))
+  const totalsMap = new Map<string, number>()
+  for (const r of rows) {
+    const converted = convert ? convert(r.total, r.currency) : r.total
+    totalsMap.set(r.month, (totalsMap.get(r.month) ?? 0) + converted)
+  }
   return months.map((month) => ({ month, total: totalsMap.get(month) ?? 0 }))
 }
 

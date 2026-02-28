@@ -441,11 +441,19 @@ function InsightsCard({ insights }: { insights: string[] }) {
   )
 }
 
-function YearToDateCard({ ytd, currency }: { ytd: YtdStats; currency: string }) {
+function YearToDateCard({
+  ytd,
+  year,
+  currency,
+}: {
+  ytd: YtdStats
+  year: string
+  currency: string
+}) {
   return (
     <Card className="mt-6">
       <h2 className="mb-3 font-mono text-sm font-semibold text-text-secondary">
-        {new Date().getFullYear()} Year to Date
+        {year} Year to Date
       </h2>
 
       <div className="flex items-baseline gap-6">
@@ -494,7 +502,7 @@ export function Dashboard() {
   const { triggerSync, markPending } = useSync()
   const prefix = useRoutePrefix()
   const [month, setMonth] = useState(currentMonth)
-  const { stats, loading, reload } = useDashboardStats(month)
+  const { stats, loading, error, reload } = useDashboardStats(month)
 
   const [allPanels, setAllPanels] = useState<PanelRow[]>([])
   const [allCategories, setAllCategories] = useState<CategoryRow[]>([])
@@ -582,6 +590,15 @@ export function Dashboard() {
         <div className="mt-8 flex justify-center py-8">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-neon-cyan border-t-transparent" />
         </div>
+      )}
+
+      {error && (
+        <Card className="mt-8">
+          <p className="font-mono text-sm text-neon-orange">
+            Something went wrong loading your stats.
+          </p>
+          <p className="mt-1 font-mono text-xs text-text-muted">{error}</p>
+        </Card>
       )}
 
       {stats && (
@@ -776,7 +793,7 @@ export function Dashboard() {
 
           {/* Year to Date */}
           {stats.ytdStats.yearTotal > 0 && (
-            <YearToDateCard ytd={stats.ytdStats} currency={baseCurrency} />
+            <YearToDateCard ytd={stats.ytdStats} year={month.slice(0, 4)} currency={baseCurrency} />
           )}
 
           {/* Biggest Pancake */}

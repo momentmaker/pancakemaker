@@ -189,12 +189,12 @@ function deriveInsights(
   const prevCategoryMap = new Map<string, number>()
   for (const e of prevExpenses) {
     const converted = convert(e.amount, e.currency)
-    prevCategoryMap.set(e.category_name, (prevCategoryMap.get(e.category_name) ?? 0) + converted)
+    prevCategoryMap.set(e.category_id, (prevCategoryMap.get(e.category_id) ?? 0) + converted)
   }
 
   let biggestDelta = { name: '', pct: 0 }
   for (const cat of categoryBreakdown) {
-    const prev = prevCategoryMap.get(cat.name)
+    const prev = prevCategoryMap.get(cat.id)
     if (prev && prev > 0) {
       const pct = Math.round(((cat.amount - prev) / prev) * 100)
       if (Math.abs(pct) > Math.abs(biggestDelta.pct) && Math.abs(pct) >= 20) {
@@ -233,11 +233,16 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
 
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const lastMonthRef = useRef('')
 
   const loadStats = useCallback(async () => {
     const isNewMonth = month !== lastMonthRef.current
-    if (isNewMonth) setLoading(true)
+    if (isNewMonth) {
+      setLoading(true)
+      setStats(null)
+    }
+    setError(null)
 
     try {
       const prevMonth = previousMonth(month)
@@ -255,9 +260,11 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
       const burnRate = computeBurnRate(currentExpenses, convert)
 
       const top5Ids = current.categoryBreakdown.slice(0, 5).map((c) => c.id)
-      const trendResults = await Promise.all(
-        top5Ids.map((id) => getCategoryMonthlyTrend(db, id, month, 6)),
-      )
+      const year = month.slice(0, 4)
+      const [trendResults, yearTotals] = await Promise.all([
+        Promise.all(top5Ids.map((id) => getCategoryMonthlyTrend(db, id, month, 6, convert))),
+        getDashboardYearTotals(db, personalRouteId, businessRouteId, year, convert),
+      ])
       const categoryTrends = new Map<string, { label: string; value: number }[]>()
       for (let i = 0; i < top5Ids.length; i++) {
         categoryTrends.set(
@@ -276,9 +283,6 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
         personalRouteId,
         convert,
       )
-
-      const year = month.slice(0, 4)
-      const yearTotals = await getDashboardYearTotals(db, personalRouteId, businessRouteId, year)
       const monthLabels = [
         'Jan',
         'Feb',
@@ -317,8 +321,8 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
         yearTotal,
         monthlyAvg,
         monthlyTotals: ytdMonths,
-        bestMonth: bestMonth !== lightestMonth ? bestMonth : bestMonth,
-        lightestMonth: bestMonth !== lightestMonth ? lightestMonth : null,
+        bestMonth,
+        lightestMonth: bestMonth?.label !== lightestMonth?.label ? lightestMonth : null,
       }
 
       const elapsed = computeDaysElapsed(month, daysElapsedOverride)
@@ -346,6 +350,9 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
         daysElapsed: elapsed,
         projectedTotal,
       })
+    } catch (err) {
+      console.error('Failed to load dashboard stats:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load stats')
     } finally {
       setLoading(false)
       lastMonthRef.current = month
@@ -358,5 +365,5 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
 
   const reload = useCallback(() => loadStats(), [loadStats])
 
-  return { stats, loading, reload }
+  return { stats, loading, error, reload }
 }
