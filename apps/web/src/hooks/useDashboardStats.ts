@@ -41,6 +41,7 @@ export interface DashboardStats {
   daysElapsed: number
   projectedTotal: number | null
   categoryTrends: Map<string, { label: string; value: number }[]>
+  insights: string[]
 }
 
 function previousMonth(month: string): string {
@@ -166,6 +167,54 @@ function computeBurnRate(
   }
 }
 
+function deriveInsights(
+  categoryBreakdown: CategorySpend[],
+  prevExpenses: DashboardExpenseRow[],
+  dayBreakdown: { label: string; value: number }[],
+  personalRouteId: string,
+  convert: (amount: number, currency: string) => number,
+): string[] {
+  const insights: string[] = []
+
+  const prevCategoryMap = new Map<string, number>()
+  for (const e of prevExpenses) {
+    const converted = convert(e.amount, e.currency)
+    prevCategoryMap.set(e.category_name, (prevCategoryMap.get(e.category_name) ?? 0) + converted)
+  }
+
+  let biggestDelta = { name: '', pct: 0 }
+  for (const cat of categoryBreakdown) {
+    const prev = prevCategoryMap.get(cat.name)
+    if (prev && prev > 0) {
+      const pct = Math.round(((cat.amount - prev) / prev) * 100)
+      if (Math.abs(pct) > Math.abs(biggestDelta.pct) && Math.abs(pct) >= 20) {
+        biggestDelta = { name: cat.name, pct }
+      }
+    }
+  }
+  if (biggestDelta.name) {
+    const direction = biggestDelta.pct > 0 ? 'up' : 'down'
+    insights.push(
+      `${biggestDelta.name} is ${direction} ${Math.abs(biggestDelta.pct)}% vs last month`,
+    )
+  }
+
+  const noSpendDays = dayBreakdown.filter((d) => d.value === 0).length
+  if (noSpendDays > 0) {
+    insights.push(`${noSpendDays} no-spend ${noSpendDays === 1 ? 'day' : 'days'} this month`)
+  }
+
+  const biggestDay = dayBreakdown.reduce(
+    (max, d) => (d.value > max.value ? d : max),
+    dayBreakdown[0],
+  )
+  if (biggestDay && biggestDay.value > 0) {
+    insights.push(`Day ${biggestDay.label} was your biggest spending day`)
+  }
+
+  return insights.slice(0, 3)
+}
+
 export function useDashboardStats(month: string, daysElapsedOverride?: number) {
   const db = useDatabase()
   const { personalRouteId, businessRouteId, baseCurrency } = useAppState()
@@ -210,6 +259,14 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
         )
       }
 
+      const insights = deriveInsights(
+        current.categoryBreakdown,
+        prevExpenses,
+        dayBreakdown,
+        personalRouteId,
+        convert,
+      )
+
       const elapsed = computeDaysElapsed(month, daysElapsedOverride)
       const days = daysInMonth(month)
       const projectedTotal =
@@ -228,6 +285,7 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
         dayBreakdown,
         burnRate,
         categoryTrends,
+        insights,
         recentExpenses,
         biggestExpense,
         daysElapsed: elapsed,

@@ -426,6 +426,21 @@ function CategoryTrendsCard({
   )
 }
 
+function InsightsCard({ insights }: { insights: string[] }) {
+  return (
+    <Card className="mt-6">
+      <h2 className="mb-3 font-mono text-sm font-semibold text-text-secondary">Insights</h2>
+      <div className="flex flex-col gap-2">
+        {insights.map((insight, i) => (
+          <p key={i} className="font-mono text-xs text-text-muted">
+            {insight}
+          </p>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
 export function Dashboard() {
   const { userId, personalRouteId, businessRouteId, baseCurrency } = useAppState()
   const db = useDatabase()
@@ -708,6 +723,9 @@ export function Dashboard() {
               />
             </Card>
           )}
+
+          {/* Smart Insights */}
+          {stats.insights.length > 0 && <InsightsCard insights={stats.insights} />}
 
           {/* Biggest Pancake */}
           {stats.biggestExpense && (

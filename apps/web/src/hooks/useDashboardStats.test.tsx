@@ -523,6 +523,64 @@ describe('useDashboardStats', () => {
     expect(result.current.stats!.projectedTotal).toBeNull()
   })
 
+  it('derives category delta insight when spending changes >20%', async () => {
+    // #given
+    const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
+    const cat = await createCategory(db, personalRouteId, 'Food', '#ff0000', 0)
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 1000,
+      currency: 'USD',
+      date: '2025-12-15',
+    })
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 2000,
+      currency: 'USD',
+      date: '2026-01-15',
+    })
+
+    // #when
+    const { result } = renderHook(() => useDashboardStats('2026-01', 15), { wrapper })
+    await act(async () => {})
+
+    // #then
+    expect(result.current.stats!.insights).toContain('Food is up 100% vs last month')
+  })
+
+  it('counts no-spend days in insights', async () => {
+    // #given
+    const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
+    const cat = await createCategory(db, personalRouteId, 'Food', '#ff0000', 0)
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 1000,
+      currency: 'USD',
+      date: '2026-01-15',
+    })
+
+    // #when
+    const { result } = renderHook(() => useDashboardStats('2026-01', 15), { wrapper })
+    await act(async () => {})
+
+    // #then
+    expect(result.current.stats!.insights).toContain('30 no-spend days this month')
+  })
+
+  it('returns only no-spend insight for empty month', async () => {
+    // #given — no expenses
+
+    // #when
+    const { result } = renderHook(() => useDashboardStats('2026-03', 15), { wrapper })
+    await act(async () => {})
+
+    // #then
+    expect(result.current.stats!.insights).toEqual(['31 no-spend days this month'])
+  })
+
   it('returns category trends for top categories', async () => {
     // #given
     const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
