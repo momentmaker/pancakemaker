@@ -509,6 +509,11 @@ export async function markEntriesSynced(db: Database, ids: string[]): Promise<vo
   ])
 }
 
+export async function pruneOldSyncEntries(db: Database, retentionDays = 7): Promise<void> {
+  const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000).toISOString()
+  await db.execute('DELETE FROM sync_log WHERE synced_at IS NOT NULL AND synced_at < ?', [cutoff])
+}
+
 export async function getLastSyncTimestamp(db: Database): Promise<string | null> {
   const rows = await db.query<{ synced_at: string }>(
     'SELECT synced_at FROM sync_log WHERE synced_at IS NOT NULL ORDER BY synced_at DESC LIMIT 1',
