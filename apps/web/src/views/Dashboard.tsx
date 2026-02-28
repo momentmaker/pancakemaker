@@ -299,6 +299,80 @@ function BurnRateCard({ burnRate, currency }: { burnRate: BurnRate; currency: st
   )
 }
 
+function SpendingPaceCard({
+  totalAmount,
+  projectedTotal,
+  prevMonthTotal,
+  daysElapsed,
+  daysInMonth,
+  currency,
+}: {
+  totalAmount: number
+  projectedTotal: number
+  prevMonthTotal: number | null
+  daysElapsed: number
+  daysInMonth: number
+  currency: string
+}) {
+  const dailyAverage = daysElapsed > 0 ? Math.round(totalAmount / daysElapsed) : 0
+  const actualPct = Math.min((totalAmount / (projectedTotal || 1)) * 100, 100)
+  const isOver = prevMonthTotal !== null && projectedTotal > prevMonthTotal
+  const isUnder = prevMonthTotal !== null && projectedTotal <= prevMonthTotal
+  const projectedColor = isOver
+    ? 'text-neon-orange'
+    : isUnder
+      ? 'text-neon-cyan'
+      : 'text-text-secondary'
+
+  const prevPct =
+    prevMonthTotal !== null && projectedTotal > 0
+      ? Math.min((prevMonthTotal / projectedTotal) * 100, 100)
+      : null
+
+  return (
+    <Card className="mt-6">
+      <div className="flex items-baseline justify-between">
+        <h2 className="font-mono text-sm font-semibold text-text-secondary">Spending Pace</h2>
+        <div className={`font-mono ${projectedColor}`}>
+          <AmountDisplay amount={projectedTotal} currency={currency} size="md" />
+        </div>
+      </div>
+
+      <div className="relative mt-3 h-2.5 overflow-hidden rounded-full bg-bg-primary/50">
+        <div
+          className="h-full rounded-full bg-neon-cyan/70 transition-all duration-500"
+          style={{ width: `${actualPct}%` }}
+        />
+        {prevPct !== null && (
+          <div
+            className="absolute top-0 h-full w-0.5 bg-text-muted/60"
+            style={{ left: `${prevPct}%` }}
+            title="Last month"
+          />
+        )}
+      </div>
+
+      <div className="mt-2 flex items-center justify-between">
+        <div className="flex items-center gap-3 font-mono text-xs text-text-muted">
+          <span>
+            Day {daysElapsed} of {daysInMonth}
+          </span>
+          <span>·</span>
+          <span>
+            ~<AmountDisplay amount={dailyAverage} currency={currency} size="sm" />
+            /day
+          </span>
+        </div>
+        {prevMonthTotal !== null && (
+          <span className="font-mono text-[10px] text-text-muted">
+            last month: <AmountDisplay amount={prevMonthTotal} currency={currency} size="sm" />
+          </span>
+        )}
+      </div>
+    </Card>
+  )
+}
+
 export function Dashboard() {
   const { userId, personalRouteId, businessRouteId, baseCurrency } = useAppState()
   const db = useDatabase()
@@ -454,6 +528,18 @@ export function Dashboard() {
               </Link>
             </Card>
           </div>
+
+          {/* Spending Pace */}
+          {stats.projectedTotal !== null && stats.totalAmount > 0 && (
+            <SpendingPaceCard
+              totalAmount={stats.totalAmount}
+              projectedTotal={stats.projectedTotal}
+              prevMonthTotal={stats.prevMonthTotal}
+              daysElapsed={stats.daysElapsed}
+              daysInMonth={stats.dayBreakdown.length}
+              currency={baseCurrency}
+            />
+          )}
 
           {/* Pancake Stack visualization */}
           {stats.categoryBreakdown.length > 0 ? (
