@@ -440,4 +440,86 @@ describe('useDashboardStats', () => {
     // #then
     expect(result.current.stats!.burnRate.total).toBe(0)
   })
+
+  it('computes projectedTotal for mid-month', async () => {
+    // #given
+    const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
+    const cat = await createCategory(db, personalRouteId, 'Food', '#ff0000', 0)
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 10000,
+      currency: 'USD',
+      date: '2026-01-10',
+    })
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 5000,
+      currency: 'USD',
+      date: '2026-01-15',
+    })
+
+    // #when — passing daysElapsed=15 means $15000 over 15 days => $1000/day => $31000 projected
+    const { result } = renderHook(() => useDashboardStats('2026-01', 15), { wrapper })
+    await act(async () => {})
+
+    // #then
+    expect(result.current.stats!.daysElapsed).toBe(15)
+    expect(result.current.stats!.projectedTotal).toBe(31000)
+  })
+
+  it('projectedTotal equals totalAmount for completed months', async () => {
+    // #given
+    const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
+    const cat = await createCategory(db, personalRouteId, 'Food', '#ff0000', 0)
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 5000,
+      currency: 'USD',
+      date: '2025-11-10',
+    })
+
+    // #when — Nov 2025 has 30 days; override to make test deterministic
+    const { result } = renderHook(() => useDashboardStats('2025-11', 30), { wrapper })
+    await act(async () => {})
+
+    // #then
+    expect(result.current.stats!.daysElapsed).toBe(30)
+    expect(result.current.stats!.projectedTotal).toBe(5000)
+  })
+
+  it('projectedTotal is computed when daysElapsed is exactly 2', async () => {
+    // #given
+    const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
+    const cat = await createCategory(db, personalRouteId, 'Food', '#ff0000', 0)
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 6000,
+      currency: 'USD',
+      date: '2026-01-02',
+    })
+
+    // #when — 6000 over 2 days in Jan (31 days) => 3000/day => 93000 projected
+    const { result } = renderHook(() => useDashboardStats('2026-01', 2), { wrapper })
+    await act(async () => {})
+
+    // #then
+    expect(result.current.stats!.daysElapsed).toBe(2)
+    expect(result.current.stats!.projectedTotal).toBe(93000)
+  })
+
+  it('projectedTotal is null when daysElapsed is less than 2', async () => {
+    // #given — no expenses
+
+    // #when — day 1 of month
+    const { result } = renderHook(() => useDashboardStats('2026-03', 1), { wrapper })
+    await act(async () => {})
+
+    // #then
+    expect(result.current.stats!.daysElapsed).toBe(1)
+    expect(result.current.stats!.projectedTotal).toBeNull()
+  })
 })

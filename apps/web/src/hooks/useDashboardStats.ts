@@ -35,6 +35,8 @@ export interface DashboardStats {
   recentExpenses: DashboardRecentExpenseRow[]
   biggestExpense: DashboardRecentExpenseRow | null
   burnRate: BurnRate
+  daysElapsed: number
+  projectedTotal: number | null
 }
 
 function previousMonth(month: string): string {
@@ -48,6 +50,15 @@ function previousMonth(month: string): string {
 function daysInMonth(month: string): number {
   const [year, m] = month.split('-').map(Number)
   return new Date(year, m, 0).getDate()
+}
+
+function computeDaysElapsed(month: string, override?: number): number {
+  if (override !== undefined) return override
+  const now = new Date()
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  if (month === currentMonth) return now.getDate()
+  if (month < currentMonth) return daysInMonth(month)
+  return 0
 }
 
 function aggregateExpenses(
@@ -149,7 +160,7 @@ function computeBurnRate(
   }
 }
 
-export function useDashboardStats(month: string) {
+export function useDashboardStats(month: string, daysElapsedOverride?: number) {
   const db = useDatabase()
   const { personalRouteId, businessRouteId, baseCurrency } = useAppState()
   const { dataVersion } = useSync()
@@ -178,6 +189,11 @@ export function useDashboardStats(month: string) {
       const dayBreakdown = buildDayBreakdown(currentExpenses, month, convert)
       const burnRate = computeBurnRate(currentExpenses, convert)
 
+      const elapsed = computeDaysElapsed(month, daysElapsedOverride)
+      const days = daysInMonth(month)
+      const projectedTotal =
+        elapsed >= 2 ? Math.round((current.totalAmount / elapsed) * days) : null
+
       const biggestExpense =
         recentExpenses.length > 0
           ? recentExpenses.reduce((max, e) =>
@@ -192,12 +208,14 @@ export function useDashboardStats(month: string) {
         burnRate,
         recentExpenses,
         biggestExpense,
+        daysElapsed: elapsed,
+        projectedTotal,
       })
     } finally {
       setLoading(false)
       lastMonthRef.current = month
     }
-  }, [db, personalRouteId, businessRouteId, month, convert, dataVersion])
+  }, [db, personalRouteId, businessRouteId, month, convert, dataVersion, daysElapsedOverride])
 
   useEffect(() => {
     loadStats()
