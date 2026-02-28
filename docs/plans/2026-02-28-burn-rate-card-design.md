@@ -7,6 +7,7 @@ Show the user their normalized monthly burn rate by breaking expenses into three
 ## Data Model
 
 Expenses are classified by their panel's `recurrence_type`:
+
 - `null` → one-time
 - `'monthly'` → monthly recurring
 - `'annual'` → annual recurring, displayed as amount ÷ 12
@@ -21,11 +22,11 @@ New field on `DashboardStats`:
 
 ```ts
 interface BurnRate {
-  oneTime: number       // sum of expenses in non-recurring panels
-  monthly: number       // sum of expenses in monthly panels
+  oneTime: number // sum of expenses in non-recurring panels
+  monthly: number // sum of expenses in monthly panels
   annualMonthly: number // sum of expenses in annual panels ÷ 12
-  annualYearly: number  // sum of expenses in annual panels (for annotation)
-  total: number         // oneTime + monthly + annualMonthly
+  annualYearly: number // sum of expenses in annual panels (for annotation)
+  total: number // oneTime + monthly + annualMonthly
 }
 ```
 
@@ -61,9 +62,9 @@ Placement: between Pancake Stack and Daily Spending.
 
 ## Files to Modify
 
-| File | Change |
-|------|--------|
-| `apps/web/src/db/queries.ts` | Add `recurrence_type` to `DashboardExpenseRow` |
-| `apps/web/src/hooks/useDashboardStats.ts` | Add `burnRate` field, classify expenses by panel recurrence |
-| `apps/web/src/views/Dashboard.tsx` | Render BurnRate card |
-| `apps/web/src/hooks/useDashboardStats.test.tsx` | Tests for burn rate computation |
+| File                                            | Change                                                      |
+| ----------------------------------------------- | ----------------------------------------------------------- |
+| `apps/web/src/db/queries.ts`                    | Add `recurrence_type` to `DashboardExpenseRow`              |
+| `apps/web/src/hooks/useDashboardStats.ts`       | Add `burnRate` field, classify expenses by panel recurrence |
+| `apps/web/src/views/Dashboard.tsx`              | Render BurnRate card                                        |
+| `apps/web/src/hooks/useDashboardStats.test.tsx` | Tests for burn rate computation                             |

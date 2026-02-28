@@ -11,7 +11,7 @@ All derived from existing `DashboardStats` fields — no new queries.
 New fields on `DashboardStats`:
 
 ```ts
-daysElapsed: number    // today's day-of-month (or full month for past months)
+daysElapsed: number // today's day-of-month (or full month for past months)
 projectedTotal: number // (totalAmount / daysElapsed) * daysInMonth
 ```
 
@@ -66,8 +66,8 @@ Placement: between stat cards and Pancake Stack.
 
 ## Files to Modify
 
-| File | Change |
-|------|--------|
-| `apps/web/src/hooks/useDashboardStats.ts` | Add `daysElapsed` and `projectedTotal` to `DashboardStats` |
-| `apps/web/src/views/Dashboard.tsx` | New `SpendingPaceCard` component between stat cards and PancakeStack |
-| `apps/web/src/hooks/useDashboardStats.test.tsx` | Tests for projection logic |
+| File                                            | Change                                                               |
+| ----------------------------------------------- | -------------------------------------------------------------------- |
+| `apps/web/src/hooks/useDashboardStats.ts`       | Add `daysElapsed` and `projectedTotal` to `DashboardStats`           |
+| `apps/web/src/views/Dashboard.tsx`              | New `SpendingPaceCard` component between stat cards and PancakeStack |
+| `apps/web/src/hooks/useDashboardStats.test.tsx` | Tests for projection logic                                           |

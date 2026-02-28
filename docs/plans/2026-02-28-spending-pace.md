@@ -13,6 +13,7 @@
 ### Task 1: Add pace fields to DashboardStats and compute them
 
 **Files:**
+
 - Modify: `apps/web/src/hooks/useDashboardStats.ts:27-38` (interface) and `:152-200` (hook body)
 
 **Step 1: Write the failing tests**
@@ -20,66 +21,66 @@
 Add to `apps/web/src/hooks/useDashboardStats.test.tsx`, at the end of the `useDashboardStats` describe block (before the closing `})`):
 
 ```typescript
-  it('computes projectedTotal for mid-month', async () => {
-    // #given
-    const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
-    const cat = await createCategory(db, personalRouteId, 'Food', '#ff0000', 0)
-    await createExpense(db, {
-      panelId: panel.id,
-      categoryId: cat.id,
-      amount: 10000,
-      currency: 'USD',
-      date: '2026-01-10',
-    })
-    await createExpense(db, {
-      panelId: panel.id,
-      categoryId: cat.id,
-      amount: 5000,
-      currency: 'USD',
-      date: '2026-01-15',
-    })
-
-    // #when — passing daysElapsed=15 means $15000 over 15 days => $1000/day => $31000 projected
-    const { result } = renderHook(() => useDashboardStats('2026-01', 15), { wrapper })
-    await act(async () => {})
-
-    // #then
-    expect(result.current.stats!.daysElapsed).toBe(15)
-    expect(result.current.stats!.projectedTotal).toBe(31000)
+it('computes projectedTotal for mid-month', async () => {
+  // #given
+  const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
+  const cat = await createCategory(db, personalRouteId, 'Food', '#ff0000', 0)
+  await createExpense(db, {
+    panelId: panel.id,
+    categoryId: cat.id,
+    amount: 10000,
+    currency: 'USD',
+    date: '2026-01-10',
+  })
+  await createExpense(db, {
+    panelId: panel.id,
+    categoryId: cat.id,
+    amount: 5000,
+    currency: 'USD',
+    date: '2026-01-15',
   })
 
-  it('projectedTotal equals totalAmount for completed months', async () => {
-    // #given
-    const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
-    const cat = await createCategory(db, personalRouteId, 'Food', '#ff0000', 0)
-    await createExpense(db, {
-      panelId: panel.id,
-      categoryId: cat.id,
-      amount: 5000,
-      currency: 'USD',
-      date: '2025-11-10',
-    })
+  // #when — passing daysElapsed=15 means $15000 over 15 days => $1000/day => $31000 projected
+  const { result } = renderHook(() => useDashboardStats('2026-01', 15), { wrapper })
+  await act(async () => {})
 
-    // #when — daysElapsed omitted, Nov 2025 is in the past so full month
-    const { result } = renderHook(() => useDashboardStats('2025-11'), { wrapper })
-    await act(async () => {})
+  // #then
+  expect(result.current.stats!.daysElapsed).toBe(15)
+  expect(result.current.stats!.projectedTotal).toBe(31000)
+})
 
-    // #then
-    expect(result.current.stats!.daysElapsed).toBe(30)
-    expect(result.current.stats!.projectedTotal).toBe(5000)
+it('projectedTotal equals totalAmount for completed months', async () => {
+  // #given
+  const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
+  const cat = await createCategory(db, personalRouteId, 'Food', '#ff0000', 0)
+  await createExpense(db, {
+    panelId: panel.id,
+    categoryId: cat.id,
+    amount: 5000,
+    currency: 'USD',
+    date: '2025-11-10',
   })
 
-  it('projectedTotal is null when daysElapsed is less than 2', async () => {
-    // #given — no expenses
+  // #when — daysElapsed omitted, Nov 2025 is in the past so full month
+  const { result } = renderHook(() => useDashboardStats('2025-11'), { wrapper })
+  await act(async () => {})
 
-    // #when — day 1 of month
-    const { result } = renderHook(() => useDashboardStats('2026-03', 1), { wrapper })
-    await act(async () => {})
+  // #then
+  expect(result.current.stats!.daysElapsed).toBe(30)
+  expect(result.current.stats!.projectedTotal).toBe(5000)
+})
 
-    // #then
-    expect(result.current.stats!.daysElapsed).toBe(1)
-    expect(result.current.stats!.projectedTotal).toBeNull()
-  })
+it('projectedTotal is null when daysElapsed is less than 2', async () => {
+  // #given — no expenses
+
+  // #when — day 1 of month
+  const { result } = renderHook(() => useDashboardStats('2026-03', 1), { wrapper })
+  await act(async () => {})
+
+  // #then
+  expect(result.current.stats!.daysElapsed).toBe(1)
+  expect(result.current.stats!.projectedTotal).toBeNull()
+})
 ```
 
 **Step 2: Run tests to verify they fail**
@@ -94,8 +95,8 @@ In `apps/web/src/hooks/useDashboardStats.ts`:
 1. Add fields to `DashboardStats` interface (after line 37):
 
 ```typescript
-  daysElapsed: number
-  projectedTotal: number | null
+daysElapsed: number
+projectedTotal: number | null
 ```
 
 2. Add a helper function (after the `daysInMonth` function, around line 51):
@@ -120,10 +121,9 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
 4. Inside `loadStats` (after `const burnRate = ...` around line 179), add:
 
 ```typescript
-      const elapsed = computeDaysElapsed(month, daysElapsedOverride)
-      const days = daysInMonth(month)
-      const projectedTotal =
-        elapsed >= 2 ? Math.round((current.totalAmount / elapsed) * days) : null
+const elapsed = computeDaysElapsed(month, daysElapsedOverride)
+const days = daysInMonth(month)
+const projectedTotal = elapsed >= 2 ? Math.round((current.totalAmount / elapsed) * days) : null
 ```
 
 5. Add to `setStats` call (around line 188):
@@ -156,6 +156,7 @@ git commit -m "feat: add spending pace projection to dashboard stats"
 ### Task 2: Build SpendingPaceCard component
 
 **Files:**
+
 - Modify: `apps/web/src/views/Dashboard.tsx:7` (import), `:302-670` (component body)
 
 **Step 1: Add the SpendingPaceCard component**
@@ -247,17 +248,21 @@ The `daysInMonth` function lives in `useDashboardStats.ts` but isn't exported. R
 In the Dashboard component's JSX, after the stat cards `</div>` (around line 456) and before the PancakeStack section, add:
 
 ```tsx
-          {/* Spending Pace */}
-          {stats.projectedTotal !== null && stats.totalAmount > 0 && (
-            <SpendingPaceCard
-              totalAmount={stats.totalAmount}
-              projectedTotal={stats.projectedTotal}
-              prevMonthTotal={stats.prevMonthTotal}
-              daysElapsed={stats.daysElapsed}
-              daysInMonth={stats.dayBreakdown.length}
-              currency={baseCurrency}
-            />
-          )}
+{
+  /* Spending Pace */
+}
+{
+  stats.projectedTotal !== null && stats.totalAmount > 0 && (
+    <SpendingPaceCard
+      totalAmount={stats.totalAmount}
+      projectedTotal={stats.projectedTotal}
+      prevMonthTotal={stats.prevMonthTotal}
+      daysElapsed={stats.daysElapsed}
+      daysInMonth={stats.dayBreakdown.length}
+      currency={baseCurrency}
+    />
+  )
+}
 ```
 
 **Step 4: Verify in browser**
