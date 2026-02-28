@@ -7,6 +7,7 @@ import {
   getDashboardExpenses,
   getDashboardRecentExpenses,
   getCategoryMonthlyTrend,
+  getDashboardYearTotals,
   type DashboardExpenseRow,
   type DashboardRecentExpenseRow,
   type MonthlyTotal,
@@ -27,6 +28,14 @@ export interface BurnRate {
   total: number
 }
 
+export interface YtdStats {
+  yearTotal: number
+  monthlyAvg: number
+  monthlyTotals: { label: string; value: number }[]
+  bestMonth: { label: string; total: number } | null
+  lightestMonth: { label: string; total: number } | null
+}
+
 export interface DashboardStats {
   totalExpenses: number
   totalAmount: number
@@ -42,6 +51,7 @@ export interface DashboardStats {
   projectedTotal: number | null
   categoryTrends: Map<string, { label: string; value: number }[]>
   insights: string[]
+  ytdStats: YtdStats
 }
 
 function previousMonth(month: string): string {
@@ -267,6 +277,50 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
         convert,
       )
 
+      const year = month.slice(0, 4)
+      const yearTotals = await getDashboardYearTotals(db, personalRouteId, businessRouteId, year)
+      const monthLabels = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ]
+      const ytdMonths = yearTotals.map((t, i) => ({
+        label: monthLabels[i],
+        value: t.total,
+      }))
+
+      const monthsWithSpending = yearTotals.filter((t) => t.total > 0)
+      const yearTotal = monthsWithSpending.reduce((sum, t) => sum + t.total, 0)
+      const monthlyAvg =
+        monthsWithSpending.length > 0 ? Math.round(yearTotal / monthsWithSpending.length) : 0
+
+      let bestMonth: { label: string; total: number } | null = null
+      let lightestMonth: { label: string; total: number } | null = null
+      for (const t of monthsWithSpending) {
+        const idx = yearTotals.indexOf(t)
+        const label = monthLabels[idx]
+        if (!bestMonth || t.total > bestMonth.total) bestMonth = { label, total: t.total }
+        if (!lightestMonth || t.total < lightestMonth.total)
+          lightestMonth = { label, total: t.total }
+      }
+
+      const ytdStats: YtdStats = {
+        yearTotal,
+        monthlyAvg,
+        monthlyTotals: ytdMonths,
+        bestMonth: bestMonth !== lightestMonth ? bestMonth : bestMonth,
+        lightestMonth: bestMonth !== lightestMonth ? lightestMonth : null,
+      }
+
       const elapsed = computeDaysElapsed(month, daysElapsedOverride)
       const days = daysInMonth(month)
       const projectedTotal =
@@ -286,6 +340,7 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
         burnRate,
         categoryTrends,
         insights,
+        ytdStats,
         recentExpenses,
         biggestExpense,
         daysElapsed: elapsed,

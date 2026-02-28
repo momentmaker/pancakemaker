@@ -13,6 +13,7 @@ import {
   createExpense,
   getDashboardExpenses,
   getDashboardRecentExpenses,
+  getDashboardYearTotals,
 } from '../db/queries.js'
 import { useDashboardStats } from './useDashboardStats.js'
 import type { Database } from '../db/interface.js'
@@ -611,5 +612,60 @@ describe('useDashboardStats', () => {
     const foodTrend = result.current.stats!.categoryTrends.get(catA.id)
     expect(foodTrend).toHaveLength(6)
     expect(foodTrend![5].value).toBe(3000)
+  })
+
+  it('computes year-to-date stats', async () => {
+    // #given
+    const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
+    const cat = await createCategory(db, personalRouteId, 'Food', '#ff0000', 0)
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 3000,
+      currency: 'USD',
+      date: '2026-01-15',
+    })
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 5000,
+      currency: 'USD',
+      date: '2026-02-10',
+    })
+
+    // #when
+    const { result } = renderHook(() => useDashboardStats('2026-02', 10), { wrapper })
+    await act(async () => {})
+
+    // #then
+    expect(result.current.stats!.ytdStats.yearTotal).toBe(8000)
+    expect(result.current.stats!.ytdStats.monthlyAvg).toBe(4000)
+    expect(result.current.stats!.ytdStats.monthlyTotals).toHaveLength(12)
+    expect(result.current.stats!.ytdStats.bestMonth!.label).toBe('Feb')
+    expect(result.current.stats!.ytdStats.lightestMonth!.label).toBe('Jan')
+  })
+})
+
+describe('getDashboardYearTotals', () => {
+  it('returns 12 months with totals for the year', async () => {
+    // #given
+    const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
+    const cat = await createCategory(db, personalRouteId, 'Food', '#ff0000', 0)
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 1000,
+      currency: 'USD',
+      date: '2026-03-15',
+    })
+
+    // #when
+    const totals = await getDashboardYearTotals(db, personalRouteId, businessRouteId, '2026')
+
+    // #then
+    expect(totals).toHaveLength(12)
+    expect(totals[2].month).toBe('2026-03')
+    expect(totals[2].total).toBe(1000)
+    expect(totals[0].total).toBe(0)
   })
 })

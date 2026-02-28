@@ -681,6 +681,29 @@ export async function upsertExchangeRates(
   }
 }
 
+export async function getDashboardYearTotals(
+  db: Database,
+  personalRouteId: string,
+  businessRouteId: string,
+  year: string,
+): Promise<{ month: string; total: number }[]> {
+  const months = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`)
+
+  const rows = await db.query<{ month: string; total: number }>(
+    `SELECT substr(e.date, 1, 7) as month, SUM(e.amount) as total
+     FROM expenses e
+     JOIN panels p ON e.panel_id = p.id
+     WHERE p.route_id IN (?, ?)
+       AND e.deleted_at IS NULL
+       AND substr(e.date, 1, 4) = ?
+     GROUP BY month`,
+    [personalRouteId, businessRouteId, year],
+  )
+
+  const totalsMap = new Map(rows.map((r) => [r.month, r.total]))
+  return months.map((month) => ({ month, total: totalsMap.get(month) ?? 0 }))
+}
+
 // --- Export ---
 
 export interface ExportRow {

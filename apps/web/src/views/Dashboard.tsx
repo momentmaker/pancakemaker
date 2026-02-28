@@ -4,7 +4,7 @@ import { useAppState } from '../hooks/useAppState'
 import { useDatabase } from '../db/DatabaseContext'
 import { useSync } from '../sync/SyncContext'
 import { useRoutePrefix } from '../demo/demo-context'
-import { useDashboardStats, type BurnRate } from '../hooks/useDashboardStats'
+import { useDashboardStats, type BurnRate, type YtdStats } from '../hooks/useDashboardStats'
 import {
   getPanelsByRoute,
   getCategoriesByRoute,
@@ -441,6 +441,53 @@ function InsightsCard({ insights }: { insights: string[] }) {
   )
 }
 
+function YearToDateCard({ ytd, currency }: { ytd: YtdStats; currency: string }) {
+  return (
+    <Card className="mt-6">
+      <h2 className="mb-3 font-mono text-sm font-semibold text-text-secondary">
+        {new Date().getFullYear()} Year to Date
+      </h2>
+
+      <div className="flex items-baseline gap-6">
+        <div>
+          <AmountDisplay amount={ytd.yearTotal} currency={currency} size="lg" />
+          <p className="mt-0.5 font-mono text-[10px] text-text-muted">total</p>
+        </div>
+        <div>
+          <AmountDisplay amount={ytd.monthlyAvg} currency={currency} size="md" />
+          <p className="mt-0.5 font-mono text-[10px] text-text-muted">/mo avg</p>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <SparkBars
+          data={ytd.monthlyTotals}
+          color="#00ffcc"
+          currency={currency}
+          highlightLast={false}
+        />
+      </div>
+
+      {(ytd.bestMonth || ytd.lightestMonth) && (
+        <div className="mt-3 flex gap-4 font-mono text-xs text-text-muted">
+          {ytd.bestMonth && (
+            <span>
+              Best: {ytd.bestMonth.label} (
+              <AmountDisplay amount={ytd.bestMonth.total} currency={currency} size="sm" />)
+            </span>
+          )}
+          {ytd.lightestMonth && (
+            <span>
+              Lightest: {ytd.lightestMonth.label} (
+              <AmountDisplay amount={ytd.lightestMonth.total} currency={currency} size="sm" />)
+            </span>
+          )}
+        </div>
+      )}
+    </Card>
+  )
+}
+
 export function Dashboard() {
   const { userId, personalRouteId, businessRouteId, baseCurrency } = useAppState()
   const db = useDatabase()
@@ -726,6 +773,11 @@ export function Dashboard() {
 
           {/* Smart Insights */}
           {stats.insights.length > 0 && <InsightsCard insights={stats.insights} />}
+
+          {/* Year to Date */}
+          {stats.ytdStats.yearTotal > 0 && (
+            <YearToDateCard ytd={stats.ytdStats} currency={baseCurrency} />
+          )}
 
           {/* Biggest Pancake */}
           {stats.biggestExpense && (
