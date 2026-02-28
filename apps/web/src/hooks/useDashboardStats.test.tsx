@@ -522,4 +522,36 @@ describe('useDashboardStats', () => {
     expect(result.current.stats!.daysElapsed).toBe(1)
     expect(result.current.stats!.projectedTotal).toBeNull()
   })
+
+  it('returns category trends for top categories', async () => {
+    // #given
+    const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
+    const catA = await createCategory(db, personalRouteId, 'Food', '#ff0000', 0)
+    const catB = await createCategory(db, personalRouteId, 'Transport', '#00ff00', 1)
+
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: catA.id,
+      amount: 3000,
+      currency: 'USD',
+      date: '2026-01-15',
+    })
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: catB.id,
+      amount: 1000,
+      currency: 'USD',
+      date: '2026-01-15',
+    })
+
+    // #when
+    const { result } = renderHook(() => useDashboardStats('2026-01', 15), { wrapper })
+    await act(async () => {})
+
+    // #then
+    expect(result.current.stats!.categoryTrends.size).toBe(2)
+    const foodTrend = result.current.stats!.categoryTrends.get(catA.id)
+    expect(foodTrend).toHaveLength(6)
+    expect(foodTrend![5].value).toBe(3000)
+  })
 })

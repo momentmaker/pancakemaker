@@ -6,11 +6,14 @@ import { useExchangeRates } from './useExchangeRates.js'
 import {
   getDashboardExpenses,
   getDashboardRecentExpenses,
+  getCategoryMonthlyTrend,
   type DashboardExpenseRow,
   type DashboardRecentExpenseRow,
+  type MonthlyTotal,
 } from '../db/queries.js'
 
 interface CategorySpend {
+  id: string
   name: string
   color: string
   amount: number
@@ -37,6 +40,7 @@ export interface DashboardStats {
   burnRate: BurnRate
   daysElapsed: number
   projectedTotal: number | null
+  categoryTrends: Map<string, { label: string; value: number }[]>
 }
 
 function previousMonth(month: string): string {
@@ -93,9 +97,11 @@ function aggregateExpenses(
     }
   }
 
-  const categoryBreakdown = Array.from(categoryMap.values())
-    .sort((a, b) => b.amount - a.amount)
+  const sorted = Array.from(categoryMap.entries())
+    .sort((a, b) => b[1].amount - a[1].amount)
     .slice(0, 10)
+
+  const categoryBreakdown = sorted.map(([id, data]) => ({ id, ...data }))
 
   return {
     totalExpenses: expenses.length,
@@ -189,6 +195,21 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
       const dayBreakdown = buildDayBreakdown(currentExpenses, month, convert)
       const burnRate = computeBurnRate(currentExpenses, convert)
 
+      const top5Ids = current.categoryBreakdown.slice(0, 5).map((c) => c.id)
+      const trendResults = await Promise.all(
+        top5Ids.map((id) => getCategoryMonthlyTrend(db, id, month, 6)),
+      )
+      const categoryTrends = new Map<string, { label: string; value: number }[]>()
+      for (let i = 0; i < top5Ids.length; i++) {
+        categoryTrends.set(
+          top5Ids[i],
+          trendResults[i].map((t) => ({
+            label: t.month.slice(5),
+            value: t.total,
+          })),
+        )
+      }
+
       const elapsed = computeDaysElapsed(month, daysElapsedOverride)
       const days = daysInMonth(month)
       const projectedTotal =
@@ -206,6 +227,7 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
         prevMonthTotal: prevTotal > 0 ? prevTotal : null,
         dayBreakdown,
         burnRate,
+        categoryTrends,
         recentExpenses,
         biggestExpense,
         daysElapsed: elapsed,

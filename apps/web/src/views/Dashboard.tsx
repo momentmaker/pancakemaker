@@ -373,6 +373,59 @@ function SpendingPaceCard({
   )
 }
 
+function CategoryTrendsCard({
+  categories,
+  trends,
+  currency,
+}: {
+  categories: { id: string; name: string; color: string; amount: number }[]
+  trends: Map<string, { label: string; value: number }[]>
+  currency: string
+}) {
+  return (
+    <Card className="mt-6">
+      <h2 className="mb-4 font-mono text-sm font-semibold text-text-secondary">Category Trends</h2>
+      <div className="flex flex-col gap-4">
+        {categories.map((cat) => {
+          const trend = trends.get(cat.id)
+          if (!trend) return null
+          const avg = trend.reduce((s, t) => s + t.value, 0) / trend.length
+          const latest = trend[trend.length - 1]?.value ?? 0
+          const pctChange = avg > 0 ? ((latest - avg) / avg) * 100 : 0
+          const showArrow = Math.abs(pctChange) > 20
+
+          return (
+            <div key={cat.id} className="flex items-center gap-3">
+              <div className="flex w-24 shrink-0 items-center gap-2 overflow-hidden">
+                <span
+                  className="inline-block h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: cat.color }}
+                />
+                <span className="truncate font-mono text-xs text-text-primary">{cat.name}</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <SparkBars data={trend} color={cat.color} currency={currency} highlightLast />
+              </div>
+              <div className="flex w-16 shrink-0 items-center justify-end gap-1">
+                {showArrow && (
+                  <span
+                    className={`text-xs ${pctChange > 0 ? 'text-neon-orange' : 'text-neon-lime'}`}
+                  >
+                    {pctChange > 0 ? '\u2191' : '\u2193'}
+                  </span>
+                )}
+                <span className="font-mono text-xs text-text-secondary">
+                  <AmountDisplay amount={cat.amount} currency={currency} size="sm" />
+                </span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </Card>
+  )
+}
+
 export function Dashboard() {
   const { userId, personalRouteId, businessRouteId, baseCurrency } = useAppState()
   const db = useDatabase()
@@ -625,6 +678,15 @@ export function Dashboard() {
                 </p>
               </div>
             </Card>
+          )}
+
+          {/* Category Trends */}
+          {stats.categoryBreakdown.length > 0 && stats.categoryTrends.size > 0 && (
+            <CategoryTrendsCard
+              categories={stats.categoryBreakdown.slice(0, 5)}
+              trends={stats.categoryTrends}
+              currency={baseCurrency}
+            />
           )}
 
           {/* Monthly Burn Rate */}
