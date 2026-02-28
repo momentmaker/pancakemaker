@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.0] - 2026-02-28
+
+### Added
+
+- Month navigation with MonthPicker on dashboard
+- Month-over-month comparison badge on total spending
+- Spending Pace card with projected month-end total and daily average
+- Category Trend sparklines with 6-month history and trend arrows
+- Monthly Burn Rate card with one-time, monthly, and annual breakdown
+- Daily Spending sparkbar chart
+- Smart Insights with category deltas, no-spend day count, and biggest spending day
+- Year-to-Date summary card with 12-month sparkbars and highest/lightest month
+- Biggest Pancake card highlighting the largest expense of the month
+- Recent Expenses list with category colors and panel links
+- Quick Add expense from dashboard via floating button (mobile) and header button (desktop)
+- Multi-currency conversion for all dashboard aggregations
+- iOS PWA home screen icon support with generated PNG icons
+
+### Fixed
+
+- Multi-currency totals now correctly convert per-expense before summing
+- Race condition guard prevents stale data when navigating months rapidly
+- No-spend day count excludes future days in the current month
+- Biggest expense scoped to selected month instead of last 10 globally
+
 ## [1.4.1] - 2026-02-27
 
 ### Fixed
