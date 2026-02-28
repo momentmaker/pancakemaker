@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.1] - 2026-02-28
+
+### Fixed
+
+- Eliminate PWA white flash, crashes, and sync pressure — switch to prompt-based SW updates, remove hard reload from sync, add focus sync cooldown, prune sync_log, add WASM init retry
+- Prevent SparkBars overflow on small screens
+
 ## [1.5.0] - 2026-02-28
 
 ### Added
