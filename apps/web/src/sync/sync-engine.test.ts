@@ -163,6 +163,98 @@ describe('createSyncEngine', () => {
     engine.stop()
   })
 
+  it('notifies dataListeners with all tables on stale cursor recovery', async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+    localStorage.setItem('pancakemaker_last_sync', '2025-01-01T00:00:00Z')
+
+    const serverTs = new Date().toISOString()
+    const remoteEntry = {
+      id: 'remote-1',
+      table_name: 'expenses',
+      record_id: 'exp-remote',
+      action: 'create',
+      payload: JSON.stringify({
+        id: 'exp-remote',
+        panel_id: 'p1',
+        category_id: 'c1',
+        amount: 500,
+        currency: 'USD',
+        description: null,
+        date: '2026-01-01',
+        is_recurring: 0,
+        recurrence_type: null,
+        recurrence_end_date: null,
+        recurrence_day: null,
+        source_expense_id: null,
+        created_at: serverTs,
+        updated_at: serverTs,
+        deleted_at: null,
+      }),
+      server_timestamp: serverTs,
+    }
+
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ entries: [], server_timestamp: serverTs, has_more: false }), {
+          status: 200,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            entries: [remoteEntry],
+            server_timestamp: serverTs,
+            has_more: false,
+          }),
+          { status: 200 },
+        ),
+      )
+
+    const engine = createSyncEngine(db)
+    const receivedTables: Set<string>[] = []
+    engine.onDataReceived((tables) => receivedTables.push(tables))
+
+    // #when
+    await engine.sync()
+
+    // #then
+    expect(receivedTables).toHaveLength(1)
+    expect(receivedTables[0].has('expenses')).toBe(true)
+    expect(receivedTables[0].has('users')).toBe(true)
+    expect(receivedTables[0].has('panels')).toBe(true)
+    engine.stop()
+  })
+
+  it('skips focus-triggered sync within cooldown period', async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+
+    const serverTs = new Date().toISOString()
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ entries: [], server_timestamp: serverTs, has_more: false }), {
+        status: 200,
+      }),
+    )
+
+    const engine = createSyncEngine(db)
+    engine.start()
+
+    // wait for start()'s initial sync to fully resolve
+    await vi.waitFor(() => expect(engine.getStatus()).toBe('synced'))
+    const callsAfterSync = fetchSpy.mock.calls.length
+
+    // #when — dispatch focus immediately after sync completed
+    window.dispatchEvent(new Event('focus'))
+    await new Promise((r) => setTimeout(r, 50))
+
+    // #then — no additional fetch calls from the focus event
+    expect(fetchSpy.mock.calls.length).toBe(callsAfterSync)
+    engine.stop()
+  })
+
   it('unsubscribes listeners correctly', () => {
     // #given
     const engine = createSyncEngine(db)

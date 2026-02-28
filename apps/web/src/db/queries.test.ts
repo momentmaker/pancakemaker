@@ -28,6 +28,7 @@ import {
   getUnsyncedEntries,
   markEntriesSynced,
   getLastSyncTimestamp,
+  pruneOldSyncEntries,
   getExportRows,
   getExpensesByCategory,
   getCategoryTotals,
@@ -375,6 +376,50 @@ describe('sync log', () => {
   it('handles markEntriesSynced with empty array', async () => {
     // #when / #then - should not throw
     await markEntriesSynced(db, [])
+  })
+
+  it('prunes old synced entries', async () => {
+    // #given
+    await logSyncEntry(db, userId, 'expenses', 'exp-1', 'create', { amount: 1000 })
+    const entries = await getUnsyncedEntries(db)
+    await markEntriesSynced(db, [entries[0].id])
+
+    // backdate the synced_at to 30 days ago
+    const oldDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    await db.execute('UPDATE sync_log SET synced_at = ? WHERE id = ?', [oldDate, entries[0].id])
+
+    // #when
+    await pruneOldSyncEntries(db)
+
+    // #then
+    const remaining = await db.query<{ id: string }>('SELECT id FROM sync_log')
+    expect(remaining).toHaveLength(0)
+  })
+
+  it('preserves unsynced entries during prune', async () => {
+    // #given
+    await logSyncEntry(db, userId, 'expenses', 'exp-1', 'create', { amount: 1000 })
+
+    // #when
+    await pruneOldSyncEntries(db)
+
+    // #then
+    const remaining = await getUnsyncedEntries(db)
+    expect(remaining).toHaveLength(1)
+  })
+
+  it('preserves recently synced entries during prune', async () => {
+    // #given
+    await logSyncEntry(db, userId, 'expenses', 'exp-1', 'create', { amount: 1000 })
+    const entries = await getUnsyncedEntries(db)
+    await markEntriesSynced(db, [entries[0].id])
+
+    // #when
+    await pruneOldSyncEntries(db)
+
+    // #then
+    const remaining = await db.query<{ id: string }>('SELECT id FROM sync_log')
+    expect(remaining).toHaveLength(1)
   })
 })
 

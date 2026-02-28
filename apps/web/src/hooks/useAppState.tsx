@@ -28,6 +28,7 @@ export function AppProvider({ createDatabase, children }: AppProviderProps) {
   const [db, setDb] = useState<Database | null>(null)
   const [appState, setAppState] = useState<AppState | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
   const mounted = useRef(false)
 
   useEffect(() => {
@@ -121,6 +122,8 @@ export function AppProvider({ createDatabase, children }: AppProviderProps) {
           setAppState(result.state)
         }
       } catch (err) {
+        initPromise = null
+        sharedDb = null
         if (mounted.current) {
           setError(err instanceof Error ? err.message : 'Failed to initialize database')
         }
@@ -131,13 +134,22 @@ export function AppProvider({ createDatabase, children }: AppProviderProps) {
     return () => {
       mounted.current = false
     }
-  }, [createDatabase])
+  }, [createDatabase, retryCount])
 
   if (error) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-primary">
-        <div className="rounded-lg border border-red-500/30 bg-bg-card p-6 text-center">
+        <div className="flex flex-col items-center gap-4 rounded-lg border border-red-500/30 bg-bg-card p-6 text-center">
           <p className="font-mono text-sm text-red-400">{error}</p>
+          <button
+            onClick={() => {
+              setError(null)
+              setRetryCount((c) => c + 1)
+            }}
+            className="rounded bg-neon-cyan px-4 py-2 font-mono text-sm font-medium text-bg-primary transition-opacity hover:opacity-80"
+          >
+            Retry
+          </button>
         </div>
       </div>
     )

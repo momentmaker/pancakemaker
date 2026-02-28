@@ -1,5 +1,10 @@
 import type { Database } from '../db/interface.js'
-import { getUnsyncedEntries, markEntriesSynced, getLastSyncTimestamp } from '../db/queries.js'
+import {
+  getUnsyncedEntries,
+  markEntriesSynced,
+  getLastSyncTimestamp,
+  pruneOldSyncEntries,
+} from '../db/queries.js'
 import {
   pushEntries,
   pullEntries,
@@ -22,6 +27,7 @@ export interface SyncEngine {
 }
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000
+const FOCUS_COOLDOWN_MS = 30_000
 
 const TABLE_PRIORITY: Record<string, number> = {
   users: 0,
@@ -38,6 +44,7 @@ export function createSyncEngine(db: Database): SyncEngine {
   let status: SyncStatus = !navigator.onLine ? 'offline' : getStoredToken() ? 'pending' : 'local'
   let intervalId: ReturnType<typeof setInterval> | null = null
   let syncing = false
+  let lastSyncCompletedAt = 0
   const listeners = new Set<(status: SyncStatus) => void>()
   const dataListeners = new Set<(tables: Set<string>) => void>()
 
@@ -72,6 +79,11 @@ export function createSyncEngine(db: Database): SyncEngine {
       db,
       entries.map((e) => e.id),
     )
+    try {
+      await pruneOldSyncEntries(db)
+    } catch {
+      // non-critical cleanup
+    }
     storeSyncCursor(result.data.server_timestamp)
     return true
   }
@@ -181,11 +193,9 @@ export function createSyncEngine(db: Database): SyncEngine {
 
     if (result.data.entries.length > 0) {
       storeSyncCursor(result.data.server_timestamp)
-      if (wipedLocalData) {
-        console.log('[sync] recovered from stale cursor, reloading')
-        window.location.reload()
-      } else if (applied > 0) {
-        for (const fn of dataListeners) fn(appliedTables)
+      if (applied > 0 || wipedLocalData) {
+        const tables = wipedLocalData ? new Set(Object.keys(TABLE_PRIORITY)) : appliedTables
+        for (const fn of dataListeners) fn(tables)
       }
     }
 
@@ -223,6 +233,7 @@ export function createSyncEngine(db: Database): SyncEngine {
       setStatus(navigator.onLine ? 'pending' : 'offline')
     } finally {
       syncing = false
+      lastSyncCompletedAt = Date.now()
     }
   }
 
@@ -235,7 +246,7 @@ export function createSyncEngine(db: Database): SyncEngine {
   }
 
   function handleFocus(): void {
-    if (navigator.onLine) sync()
+    if (navigator.onLine && Date.now() - lastSyncCompletedAt >= FOCUS_COOLDOWN_MS) sync()
   }
 
   function start(): void {

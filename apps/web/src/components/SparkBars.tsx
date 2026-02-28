@@ -17,9 +17,7 @@ export function SparkBars({ data, color, currency, highlightLast = true }: Spark
   const dense = data.length > 12
 
   return (
-    <div
-      className={`flex min-w-0 items-end ${dense ? 'gap-px sm:gap-1' : 'gap-1.5'}`}
-    >
+    <div className={`flex min-w-0 items-end ${dense ? 'gap-px sm:gap-1' : 'gap-1.5'}`}>
       {data.map((d, i) => {
         const isLast = highlightLast && i === data.length - 1
         const barH =
