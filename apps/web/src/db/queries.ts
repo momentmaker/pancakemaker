@@ -592,6 +592,7 @@ export async function getCategoryMonthlyTrend(
   categoryId: string,
   currentMonth: string,
   count = 6,
+  convert?: (amount: number, currency: string) => number,
 ): Promise<MonthlyTotal[]> {
   const months: string[] = []
   const [year, m] = currentMonth.split('-').map(Number)
@@ -603,15 +604,19 @@ export async function getCategoryMonthlyTrend(
   }
 
   const placeholders = months.map(() => '?').join(', ')
-  const rows = await db.query<{ month: string; total: number }>(
-    `SELECT substr(date, 1, 7) as month, SUM(amount) as total
+  const rows = await db.query<{ month: string; currency: string; total: number }>(
+    `SELECT substr(date, 1, 7) as month, currency, SUM(amount) as total
      FROM expenses
      WHERE category_id = ? AND deleted_at IS NULL AND substr(date, 1, 7) IN (${placeholders})
-     GROUP BY month`,
+     GROUP BY month, currency`,
     [categoryId, ...months],
   )
 
-  const totalsMap = new Map(rows.map((r) => [r.month, r.total]))
+  const totalsMap = new Map<string, number>()
+  for (const r of rows) {
+    const converted = convert ? convert(r.total, r.currency) : r.total
+    totalsMap.set(r.month, (totalsMap.get(r.month) ?? 0) + converted)
+  }
   return months.map((month) => ({ month, total: totalsMap.get(month) ?? 0 }))
 }
 
@@ -681,6 +686,34 @@ export async function upsertExchangeRates(
   }
 }
 
+export async function getDashboardYearTotals(
+  db: Database,
+  personalRouteId: string,
+  businessRouteId: string,
+  year: string,
+  convert?: (amount: number, currency: string) => number,
+): Promise<{ month: string; total: number }[]> {
+  const months = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`)
+
+  const rows = await db.query<{ month: string; currency: string; total: number }>(
+    `SELECT substr(e.date, 1, 7) as month, e.currency, SUM(e.amount) as total
+     FROM expenses e
+     JOIN panels p ON e.panel_id = p.id
+     WHERE p.route_id IN (?, ?)
+       AND e.deleted_at IS NULL
+       AND substr(e.date, 1, 4) = ?
+     GROUP BY month, e.currency`,
+    [personalRouteId, businessRouteId, year],
+  )
+
+  const totalsMap = new Map<string, number>()
+  for (const r of rows) {
+    const converted = convert ? convert(r.total, r.currency) : r.total
+    totalsMap.set(r.month, (totalsMap.get(r.month) ?? 0) + converted)
+  }
+  return months.map((month) => ({ month, total: totalsMap.get(month) ?? 0 }))
+}
+
 // --- Export ---
 
 export interface ExportRow {
@@ -692,6 +725,80 @@ export interface ExportRow {
   route_type: string
   description: string
 }
+
+// --- Dashboard ---
+
+export interface DashboardExpenseRow {
+  amount: number
+  currency: string
+  date: string
+  description: string | null
+  panel_id: string
+  panel_name: string
+  category_id: string
+  category_name: string
+  category_color: string
+  route_id: string
+  panel_recurrence_type: string | null
+}
+
+export async function getDashboardExpenses(
+  db: Database,
+  personalRouteId: string,
+  businessRouteId: string,
+  month: string,
+): Promise<DashboardExpenseRow[]> {
+  return db.query<DashboardExpenseRow>(
+    `SELECT e.amount, e.currency, e.date, e.description,
+            e.panel_id, p.name AS panel_name, e.category_id,
+            c.name AS category_name, c.color AS category_color,
+            p.route_id, p.recurrence_type AS panel_recurrence_type
+     FROM expenses e
+     JOIN panels p ON e.panel_id = p.id
+     JOIN categories c ON e.category_id = c.id
+     WHERE p.route_id IN (?, ?)
+       AND e.deleted_at IS NULL AND e.date LIKE ?
+     ORDER BY e.date DESC, e.created_at DESC`,
+    [personalRouteId, businessRouteId, `${month}%`],
+  )
+}
+
+export interface DashboardRecentExpenseRow {
+  id: string
+  amount: number
+  currency: string
+  date: string
+  description: string | null
+  panel_id: string
+  panel_name: string
+  category_name: string
+  category_color: string
+  route_id: string
+}
+
+export async function getDashboardRecentExpenses(
+  db: Database,
+  personalRouteId: string,
+  businessRouteId: string,
+  limit = 10,
+): Promise<DashboardRecentExpenseRow[]> {
+  return db.query<DashboardRecentExpenseRow>(
+    `SELECT e.id, e.amount, e.currency, e.date, e.description,
+            e.panel_id, p.name AS panel_name,
+            c.name AS category_name, c.color AS category_color,
+            p.route_id
+     FROM expenses e
+     JOIN panels p ON e.panel_id = p.id
+     JOIN categories c ON e.category_id = c.id
+     WHERE p.route_id IN (?, ?)
+       AND e.deleted_at IS NULL
+     ORDER BY e.date DESC, e.created_at DESC
+     LIMIT ?`,
+    [personalRouteId, businessRouteId, limit],
+  )
+}
+
+// --- Export ---
 
 export async function getExportRows(db: Database, userId: string): Promise<ExportRow[]> {
   return db.query<ExportRow>(
