@@ -568,7 +568,7 @@ describe('useDashboardStats', () => {
     await act(async () => {})
 
     // #then
-    expect(result.current.stats!.insights).toContain('30 no-spend days this month')
+    expect(result.current.stats!.insights).toContain('14 no-spend days this month')
   })
 
   it('returns only no-spend insight for empty month', async () => {
@@ -579,7 +579,7 @@ describe('useDashboardStats', () => {
     await act(async () => {})
 
     // #then
-    expect(result.current.stats!.insights).toEqual(['31 no-spend days this month'])
+    expect(result.current.stats!.insights).toEqual(['15 no-spend days this month'])
   })
 
   it('returns category trends for top categories', async () => {

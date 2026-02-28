@@ -480,7 +480,7 @@ function YearToDateCard({
         <div className="mt-3 flex gap-4 font-mono text-xs text-text-muted">
           {ytd.bestMonth && (
             <span>
-              Best: {ytd.bestMonth.label} (
+              Highest: {ytd.bestMonth.label} (
               <AmountDisplay amount={ytd.bestMonth.total} currency={currency} size="sm" />)
             </span>
           )}

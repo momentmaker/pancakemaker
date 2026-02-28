@@ -45,7 +45,7 @@ export interface DashboardStats {
   prevMonthTotal: number | null
   dayBreakdown: { label: string; value: number }[]
   recentExpenses: DashboardRecentExpenseRow[]
-  biggestExpense: DashboardRecentExpenseRow | null
+  biggestExpense: DashboardExpenseRow | null
   burnRate: BurnRate
   daysElapsed: number
   projectedTotal: number | null
@@ -183,6 +183,7 @@ function deriveInsights(
   dayBreakdown: { label: string; value: number }[],
   personalRouteId: string,
   convert: (amount: number, currency: string) => number,
+  daysElapsed: number,
 ): string[] {
   const insights: string[] = []
 
@@ -209,7 +210,8 @@ function deriveInsights(
     )
   }
 
-  const noSpendDays = dayBreakdown.filter((d) => d.value === 0).length
+  const elapsedDays = dayBreakdown.slice(0, daysElapsed)
+  const noSpendDays = elapsedDays.filter((d) => d.value === 0).length
   if (noSpendDays > 0) {
     insights.push(`${noSpendDays} no-spend ${noSpendDays === 1 ? 'day' : 'days'} this month`)
   }
@@ -235,8 +237,10 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const lastMonthRef = useRef('')
+  const loadIdRef = useRef(0)
 
   const loadStats = useCallback(async () => {
+    const loadId = ++loadIdRef.current
     const isNewMonth = month !== lastMonthRef.current
     if (isNewMonth) {
       setLoading(true)
@@ -276,12 +280,14 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
         )
       }
 
+      const elapsed = computeDaysElapsed(month, daysElapsedOverride)
       const insights = deriveInsights(
         current.categoryBreakdown,
         prevExpenses,
         dayBreakdown,
         personalRouteId,
         convert,
+        elapsed,
       )
       const monthLabels = [
         'Jan',
@@ -325,17 +331,18 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
         lightestMonth: bestMonth?.label !== lightestMonth?.label ? lightestMonth : null,
       }
 
-      const elapsed = computeDaysElapsed(month, daysElapsedOverride)
       const days = daysInMonth(month)
       const projectedTotal =
         elapsed >= 2 ? Math.round((current.totalAmount / elapsed) * days) : null
 
       const biggestExpense =
-        recentExpenses.length > 0
-          ? recentExpenses.reduce((max, e) =>
+        currentExpenses.length > 0
+          ? currentExpenses.reduce((max, e) =>
               convert(e.amount, e.currency) > convert(max.amount, max.currency) ? e : max,
             )
           : null
+
+      if (loadId !== loadIdRef.current) return
 
       setStats({
         ...current,
@@ -351,11 +358,14 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
         projectedTotal,
       })
     } catch (err) {
+      if (loadId !== loadIdRef.current) return
       console.error('Failed to load dashboard stats:', err)
       setError(err instanceof Error ? err.message : 'Failed to load stats')
     } finally {
-      setLoading(false)
-      lastMonthRef.current = month
+      if (loadId === loadIdRef.current) {
+        setLoading(false)
+        lastMonthRef.current = month
+      }
     }
   }, [db, personalRouteId, businessRouteId, month, convert, dataVersion, daysElapsedOverride])
 

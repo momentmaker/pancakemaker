@@ -734,6 +734,7 @@ export interface DashboardExpenseRow {
   date: string
   description: string | null
   panel_id: string
+  panel_name: string
   category_id: string
   category_name: string
   category_color: string
@@ -749,7 +750,7 @@ export async function getDashboardExpenses(
 ): Promise<DashboardExpenseRow[]> {
   return db.query<DashboardExpenseRow>(
     `SELECT e.amount, e.currency, e.date, e.description,
-            e.panel_id, e.category_id,
+            e.panel_id, p.name AS panel_name, e.category_id,
             c.name AS category_name, c.color AS category_color,
             p.route_id, p.recurrence_type AS panel_recurrence_type
      FROM expenses e
