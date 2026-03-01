@@ -115,7 +115,8 @@ export async function createWaSqliteDatabase(
   let db: number
   try {
     const { IDBBatchAtomicVFS } = await import('wa-sqlite/src/examples/IDBBatchAtomicVFS.js')
-    const vfs = new IDBBatchAtomicVFS(idbStoreName)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- options param not in types
+    const vfs = new (IDBBatchAtomicVFS as any)(idbStoreName, { purge: 'manual' })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- VFS types don't extend SQLiteVFS
     sqlite3.vfs_register(vfs as any, false)
     db = await sqlite3.open_v2(name, undefined, idbStoreName)
@@ -124,7 +125,6 @@ export async function createWaSqliteDatabase(
     db = await sqlite3.open_v2(name)
   }
 
-  await sqlite3.exec(db, 'PRAGMA journal_mode=WAL')
   await sqlite3.exec(db, 'PRAGMA foreign_keys=ON')
 
   return buildDatabase(sqlite3, db)
