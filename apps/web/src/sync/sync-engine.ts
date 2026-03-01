@@ -28,6 +28,15 @@ export interface SyncEngine {
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000
 const FOCUS_COOLDOWN_MS = 30_000
+const PULL_BATCH_SIZE = 20
+const INITIAL_SYNC_DELAY_MS = 3_000
+const CRASH_LOOP_WINDOW_MS = 60_000
+const MAX_CONSECUTIVE_FAILURES = 3
+const BOOT_TS_KEY = 'pancakemaker_boot_ts'
+
+function yieldToMain(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0))
+}
 
 const TABLE_PRIORITY: Record<string, number> = {
   users: 0,
@@ -43,8 +52,10 @@ const TABLE_PRIORITY: Record<string, number> = {
 export function createSyncEngine(db: Database): SyncEngine {
   let status: SyncStatus = !navigator.onLine ? 'offline' : getStoredToken() ? 'pending' : 'local'
   let intervalId: ReturnType<typeof setInterval> | null = null
+  let startTimeoutId: ReturnType<typeof setTimeout> | null = null
   let syncing = false
   let lastSyncCompletedAt = 0
+  let consecutiveFailures = 0
   const listeners = new Set<(status: SyncStatus) => void>()
   const dataListeners = new Set<(tables: Set<string>) => void>()
 
@@ -173,27 +184,36 @@ export function createSyncEngine(db: Database): SyncEngine {
 
     let applied = 0
     const appliedTables = new Set<string>()
-    for (const entry of sorted) {
-      try {
-        await applyRemoteEntry(entry)
-        applied++
-        appliedTables.add(entry.table_name)
-      } catch (err) {
-        console.log(
-          '[sync] apply failed: table=%s action=%s id=%s',
-          entry.table_name,
-          entry.action,
-          entry.record_id,
-          err,
-        )
+    for (let i = 0; i < sorted.length; i += PULL_BATCH_SIZE) {
+      const batch = sorted.slice(i, i + PULL_BATCH_SIZE)
+      for (const entry of batch) {
+        try {
+          await applyRemoteEntry(entry)
+          applied++
+          appliedTables.add(entry.table_name)
+        } catch (err) {
+          console.log(
+            '[sync] apply failed: table=%s action=%s id=%s',
+            entry.table_name,
+            entry.action,
+            entry.record_id,
+            err,
+          )
+        }
       }
+      if (i + PULL_BATCH_SIZE < sorted.length) await yieldToMain()
     }
 
     console.log('[sync] pull: applied %d/%d entries', applied, sorted.length)
 
+    if (result.data.has_more) {
+      console.log('[sync] pull: server has more entries, will fetch on next cycle')
+    }
+
     if (result.data.entries.length > 0) {
       storeSyncCursor(result.data.server_timestamp)
       if (applied > 0 || wipedLocalData) {
+        await yieldToMain()
         const tables = wipedLocalData ? new Set(Object.keys(TABLE_PRIORITY)) : appliedTables
         for (const fn of dataListeners) fn(tables)
       }
@@ -212,6 +232,13 @@ export function createSyncEngine(db: Database): SyncEngine {
       setStatus('local')
       return
     }
+    if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+      console.log(
+        '[sync] circuit breaker open, skipping sync (%d consecutive failures)',
+        consecutiveFailures,
+      )
+      return
+    }
 
     syncing = true
     setStatus('pending')
@@ -223,13 +250,17 @@ export function createSyncEngine(db: Database): SyncEngine {
 
       const remaining = await getUnsyncedEntries(db)
       if (!pushOk || !pullOk) {
+        consecutiveFailures++
         setStatus(navigator.onLine ? 'pending' : 'offline')
       } else if (remaining.length > 0) {
+        consecutiveFailures = 0
         setStatus('pending')
       } else {
+        consecutiveFailures = 0
         setStatus('synced')
       }
     } catch {
+      consecutiveFailures++
       setStatus(navigator.onLine ? 'pending' : 'offline')
     } finally {
       syncing = false
@@ -257,7 +288,20 @@ export function createSyncEngine(db: Database): SyncEngine {
       if (navigator.onLine) sync()
     }, SYNC_INTERVAL_MS)
 
-    if (navigator.onLine && getStoredToken()) sync()
+    if (navigator.onLine && getStoredToken()) {
+      const prevBoot = Number(localStorage.getItem(BOOT_TS_KEY) ?? 0)
+      localStorage.setItem(BOOT_TS_KEY, String(Date.now()))
+      if (Date.now() - prevBoot < CRASH_LOOP_WINDOW_MS) {
+        console.log('[sync] crash loop detected, delaying initial sync')
+      }
+      startTimeoutId = setTimeout(
+        () => {
+          startTimeoutId = null
+          sync()
+        },
+        Date.now() - prevBoot < CRASH_LOOP_WINDOW_MS ? SYNC_INTERVAL_MS : INITIAL_SYNC_DELAY_MS,
+      )
+    }
   }
 
   function stop(): void {
@@ -267,6 +311,10 @@ export function createSyncEngine(db: Database): SyncEngine {
     if (intervalId !== null) {
       clearInterval(intervalId)
       intervalId = null
+    }
+    if (startTimeoutId !== null) {
+      clearTimeout(startTimeoutId)
+      startTimeoutId = null
     }
   }
 

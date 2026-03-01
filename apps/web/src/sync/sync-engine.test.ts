@@ -241,9 +241,8 @@ describe('createSyncEngine', () => {
 
     const engine = createSyncEngine(db)
     engine.start()
-
-    // wait for start()'s initial sync to fully resolve
-    await vi.waitFor(() => expect(engine.getStatus()).toBe('synced'))
+    await engine.sync()
+    expect(engine.getStatus()).toBe('synced')
     const callsAfterSync = fetchSpy.mock.calls.length
 
     // #when — dispatch focus immediately after sync completed

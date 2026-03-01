@@ -499,7 +499,7 @@ function YearToDateCard({
 export function Dashboard() {
   const { userId, personalRouteId, businessRouteId, baseCurrency } = useAppState()
   const db = useDatabase()
-  const { triggerSync, markPending } = useSync()
+  const { markPending } = useSync()
   const prefix = useRoutePrefix()
   const [month, setMonth] = useState(currentMonth)
   const { stats, loading, error, reload } = useDashboardStats(month)
@@ -541,10 +541,9 @@ export function Dashboard() {
         expense as unknown as Record<string, unknown>,
       )
       markPending()
-      triggerSync()
       reload()
     },
-    [db, userId, markPending, triggerSync, reload],
+    [db, userId, markPending, reload],
   )
 
   const greeting = useMemo(getGreeting, [])
