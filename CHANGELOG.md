@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.1] - 2026-02-28
+
+### Fixed
+
+- Sync status stuck at "Local" after page reload for authenticated users — SyncContext now reads the engine's actual initial status instead of hardcoding "local"
+- Auto-sync on app startup when authenticated — engine now fires an initial sync in start() when a JWT token is present
+
 ## [1.6.0] - 2026-02-28
 
 ### Fixed
