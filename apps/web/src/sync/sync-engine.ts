@@ -270,6 +270,7 @@ export function createSyncEngine(db: Database): SyncEngine {
   function start(): void {
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
+    if (getStoredToken() && navigator.onLine) sync()
   }
 
   function stop(): void {

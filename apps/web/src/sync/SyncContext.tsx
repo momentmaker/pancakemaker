@@ -23,7 +23,7 @@ export const SyncContext = createContext<SyncState | null>(null)
 export function SyncProvider({ children }: { children: ReactNode }) {
   const db = useDatabase()
   const engineRef = useRef<SyncEngine | null>(null)
-  const [status, setStatus] = useState<SyncStatus>(!navigator.onLine ? 'offline' : 'local')
+  const [status, setStatus] = useState<SyncStatus>('local')
   const [dataVersion, setDataVersion] = useState(0)
   const [tableVersions, setTableVersions] = useState<Record<string, number>>({})
 
@@ -31,6 +31,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     const engine = createSyncEngine(db)
     engineRef.current = engine
 
+    setStatus(engine.getStatus())
     const unsubStatus = engine.onStatusChange(setStatus)
     const unsubData = engine.onDataReceived((tables) => {
       setDataVersion((v) => v + 1)
