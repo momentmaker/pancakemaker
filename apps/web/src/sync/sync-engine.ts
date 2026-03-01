@@ -32,6 +32,11 @@ const INITIAL_SYNC_DELAY_MS = 3_000
 const CRASH_WINDOW_MS = 60_000
 const CRASH_SENTINEL_KEY = 'pancakemaker_sync_boot'
 const MAX_CONSECUTIVE_FAILURES = 3
+const APPLY_BATCH_SIZE = 20
+
+function yieldToMain(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0))
+}
 
 function detectCrashLoop(): boolean {
   const prev = localStorage.getItem(CRASH_SENTINEL_KEY)
@@ -194,29 +199,34 @@ export function createSyncEngine(db: Database): SyncEngine {
 
     let applied = 0
     const appliedTables = new Set<string>()
-    await db.transaction(async () => {
-      for (const entry of sorted) {
-        try {
-          await applyRemoteEntry(entry)
-          applied++
-          appliedTables.add(entry.table_name)
-        } catch (err) {
-          console.log(
-            '[sync] apply failed: table=%s action=%s id=%s',
-            entry.table_name,
-            entry.action,
-            entry.record_id,
-            err,
-          )
+    for (let i = 0; i < sorted.length; i += APPLY_BATCH_SIZE) {
+      const batch = sorted.slice(i, i + APPLY_BATCH_SIZE)
+      await db.transaction(async () => {
+        for (const entry of batch) {
+          try {
+            await applyRemoteEntry(entry)
+            applied++
+            appliedTables.add(entry.table_name)
+          } catch (err) {
+            console.log(
+              '[sync] apply failed: table=%s action=%s id=%s',
+              entry.table_name,
+              entry.action,
+              entry.record_id,
+              err,
+            )
+          }
         }
-      }
-    })
+      })
+      if (i + APPLY_BATCH_SIZE < sorted.length) await yieldToMain()
+    }
 
     console.log('[sync] pull: applied %d/%d entries', applied, sorted.length)
 
     if (result.data.entries.length > 0) {
       storeSyncCursor(result.data.server_timestamp)
       if (applied > 0 || wipedLocalData) {
+        await yieldToMain()
         const tables = wipedLocalData ? new Set(Object.keys(TABLE_PRIORITY)) : appliedTables
         for (const fn of dataListeners) fn(tables)
       }
@@ -242,6 +252,7 @@ export function createSyncEngine(db: Database): SyncEngine {
 
     try {
       const pushOk = await push()
+      await yieldToMain()
       const pullOk = await pull()
 
       const remaining = await getUnsyncedEntries(db)
