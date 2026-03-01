@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.5] - 2026-02-28
+
+### Fixed
+
+- Break iOS PWA crash-restart loop — detect rapid restarts and disable sync for the session to prevent infinite WKWebView crashes
+- Delay initial sync by 3 seconds after startup to let WASM/IDB settle before making network calls
+- Batch pull writes in SQLite transactions to reduce IDB contention (N individual writes → 1 transaction)
+- Disable sync after 3 consecutive failures to prevent runaway retry loops
+
 ## [1.5.4] - 2026-02-28
 
 ### Fixed
