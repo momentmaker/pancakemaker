@@ -28,27 +28,6 @@ export interface SyncEngine {
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000
 const FOCUS_COOLDOWN_MS = 30_000
-const INITIAL_SYNC_DELAY_MS = 3_000
-const CRASH_WINDOW_MS = 60_000
-const CRASH_SENTINEL_KEY = 'pancakemaker_sync_boot'
-const MAX_CONSECUTIVE_FAILURES = 3
-const APPLY_BATCH_SIZE = 20
-
-function yieldToMain(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0))
-}
-
-function detectCrashLoop(): boolean {
-  const prev = localStorage.getItem(CRASH_SENTINEL_KEY)
-  const now = Date.now()
-  localStorage.setItem(CRASH_SENTINEL_KEY, String(now))
-  if (!prev) return false
-  return now - Number(prev) < CRASH_WINDOW_MS
-}
-
-function clearCrashSentinel(): void {
-  localStorage.removeItem(CRASH_SENTINEL_KEY)
-}
 
 const TABLE_PRIORITY: Record<string, number> = {
   users: 0,
@@ -64,11 +43,8 @@ const TABLE_PRIORITY: Record<string, number> = {
 export function createSyncEngine(db: Database): SyncEngine {
   let status: SyncStatus = !navigator.onLine ? 'offline' : getStoredToken() ? 'pending' : 'local'
   let intervalId: ReturnType<typeof setInterval> | null = null
-  let initialDelayId: ReturnType<typeof setTimeout> | null = null
   let syncing = false
   let lastSyncCompletedAt = 0
-  let consecutiveFailures = 0
-  let syncDisabled = false
   const listeners = new Set<(status: SyncStatus) => void>()
   const dataListeners = new Set<(tables: Set<string>) => void>()
 
@@ -173,15 +149,13 @@ export function createSyncEngine(db: Database): SyncEngine {
           wipedLocalData = true
           await db.execute('PRAGMA foreign_keys=OFF')
           try {
-            await db.transaction(async () => {
-              await db.execute('DELETE FROM expense_tags')
-              await db.execute('DELETE FROM recurring_templates')
-              await db.execute('DELETE FROM expenses')
-              await db.execute('DELETE FROM categories')
-              await db.execute('DELETE FROM panels')
-              await db.execute('DELETE FROM routes')
-              await db.execute('DELETE FROM tags')
-            })
+            await db.execute('DELETE FROM expense_tags')
+            await db.execute('DELETE FROM recurring_templates')
+            await db.execute('DELETE FROM expenses')
+            await db.execute('DELETE FROM categories')
+            await db.execute('DELETE FROM panels')
+            await db.execute('DELETE FROM routes')
+            await db.execute('DELETE FROM tags')
           } finally {
             await db.execute('PRAGMA foreign_keys=ON')
           }
@@ -199,26 +173,20 @@ export function createSyncEngine(db: Database): SyncEngine {
 
     let applied = 0
     const appliedTables = new Set<string>()
-    for (let i = 0; i < sorted.length; i += APPLY_BATCH_SIZE) {
-      const batch = sorted.slice(i, i + APPLY_BATCH_SIZE)
-      await db.transaction(async () => {
-        for (const entry of batch) {
-          try {
-            await applyRemoteEntry(entry)
-            applied++
-            appliedTables.add(entry.table_name)
-          } catch (err) {
-            console.log(
-              '[sync] apply failed: table=%s action=%s id=%s',
-              entry.table_name,
-              entry.action,
-              entry.record_id,
-              err,
-            )
-          }
-        }
-      })
-      if (i + APPLY_BATCH_SIZE < sorted.length) await yieldToMain()
+    for (const entry of sorted) {
+      try {
+        await applyRemoteEntry(entry)
+        applied++
+        appliedTables.add(entry.table_name)
+      } catch (err) {
+        console.log(
+          '[sync] apply failed: table=%s action=%s id=%s',
+          entry.table_name,
+          entry.action,
+          entry.record_id,
+          err,
+        )
+      }
     }
 
     console.log('[sync] pull: applied %d/%d entries', applied, sorted.length)
@@ -226,7 +194,6 @@ export function createSyncEngine(db: Database): SyncEngine {
     if (result.data.entries.length > 0) {
       storeSyncCursor(result.data.server_timestamp)
       if (applied > 0 || wipedLocalData) {
-        await yieldToMain()
         const tables = wipedLocalData ? new Set(Object.keys(TABLE_PRIORITY)) : appliedTables
         for (const fn of dataListeners) fn(tables)
       }
@@ -236,7 +203,7 @@ export function createSyncEngine(db: Database): SyncEngine {
   }
 
   async function sync(): Promise<void> {
-    if (syncing || syncDisabled) return
+    if (syncing) return
     if (!navigator.onLine) {
       setStatus('offline')
       return
@@ -252,31 +219,21 @@ export function createSyncEngine(db: Database): SyncEngine {
 
     try {
       const pushOk = await push()
-      await yieldToMain()
       const pullOk = await pull()
 
       const remaining = await getUnsyncedEntries(db)
       if (!pushOk || !pullOk) {
-        consecutiveFailures++
         setStatus(navigator.onLine ? 'pending' : 'offline')
       } else if (remaining.length > 0) {
-        consecutiveFailures = 0
         setStatus('pending')
       } else {
-        consecutiveFailures = 0
-        clearCrashSentinel()
         setStatus('synced')
       }
     } catch {
-      consecutiveFailures++
       setStatus(navigator.onLine ? 'pending' : 'offline')
     } finally {
       syncing = false
       lastSyncCompletedAt = Date.now()
-      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-        console.log('[sync] too many consecutive failures, disabling sync for this session')
-        syncDisabled = true
-      }
     }
   }
 
@@ -293,13 +250,6 @@ export function createSyncEngine(db: Database): SyncEngine {
   }
 
   function start(): void {
-    if (detectCrashLoop()) {
-      console.log('[sync] crash loop detected, disabling sync for this session')
-      syncDisabled = true
-      setStatus(getStoredToken() ? 'pending' : 'local')
-      return
-    }
-
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
     window.addEventListener('focus', handleFocus)
@@ -307,12 +257,7 @@ export function createSyncEngine(db: Database): SyncEngine {
       if (navigator.onLine) sync()
     }, SYNC_INTERVAL_MS)
 
-    if (navigator.onLine && getStoredToken()) {
-      initialDelayId = setTimeout(() => {
-        initialDelayId = null
-        sync()
-      }, INITIAL_SYNC_DELAY_MS)
-    }
+    if (navigator.onLine && getStoredToken()) sync()
   }
 
   function stop(): void {
@@ -322,10 +267,6 @@ export function createSyncEngine(db: Database): SyncEngine {
     if (intervalId !== null) {
       clearInterval(intervalId)
       intervalId = null
-    }
-    if (initialDelayId !== null) {
-      clearTimeout(initialDelayId)
-      initialDelayId = null
     }
   }
 

@@ -4,39 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [1.5.6] - 2026-02-28
+## [1.5.7] - 2026-02-28
 
-### Fixed
+### Reverted
 
-- Chunk sync entry application into batches of 20 with browser yields between batches to prevent Safari WASM JIT thrashing (known wa-sqlite issue where sustained WASM execution causes 300-500% CPU spikes and WKWebView crashes)
-- Yield to main thread between push and pull operations and before notifying UI of new data
-
-## [1.5.5] - 2026-02-28
-
-### Fixed
-
-- Break iOS PWA crash-restart loop — detect rapid restarts and disable sync for the session to prevent infinite WKWebView crashes
-- Delay initial sync by 3 seconds after startup to let WASM/IDB settle before making network calls
-- Batch pull writes in SQLite transactions to reduce IDB contention (N individual writes → 1 transaction)
-- Disable sync after 3 consecutive failures to prevent runaway retry loops
-
-## [1.5.4] - 2026-02-28
-
-### Fixed
-
-- Remove WAL journal mode and disable deferred IDB purge to prevent iOS standalone WKWebView crashes after idle
-
-## [1.5.3] - 2026-02-28
-
-### Fixed
-
-- Force service worker skipWaiting + clientsClaim to break iOS PWA crash loop — users stuck on old SW can now receive the fix without manual intervention
-
-## [1.5.2] - 2026-02-28
-
-### Fixed
-
-- Prevent iOS PWA auto-reload by replacing useRegisterSW with manual service worker registration — eliminates white flash and error loop on home screen launch
+- Revert all changes from v1.5.2–v1.5.6 (iOS PWA crash fixes) — introduced regressions in regular browser mode
 
 ## [1.5.1] - 2026-02-28
 

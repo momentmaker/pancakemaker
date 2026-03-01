@@ -229,7 +229,6 @@ describe('createSyncEngine', () => {
 
   it('skips focus-triggered sync within cooldown period', async () => {
     // #given
-    vi.useFakeTimers()
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
     localStorage.setItem('pancakemaker_jwt', 'test-token')
 
@@ -243,21 +242,17 @@ describe('createSyncEngine', () => {
     const engine = createSyncEngine(db)
     engine.start()
 
-    // advance past the initial sync delay
-    await vi.advanceTimersByTimeAsync(3_000)
-
     // wait for start()'s initial sync to fully resolve
     await vi.waitFor(() => expect(engine.getStatus()).toBe('synced'))
     const callsAfterSync = fetchSpy.mock.calls.length
 
     // #when — dispatch focus immediately after sync completed
     window.dispatchEvent(new Event('focus'))
-    await vi.advanceTimersByTimeAsync(50)
+    await new Promise((r) => setTimeout(r, 50))
 
     // #then — no additional fetch calls from the focus event
     expect(fetchSpy.mock.calls.length).toBe(callsAfterSync)
     engine.stop()
-    vi.useRealTimers()
   })
 
   it('unsubscribes listeners correctly', () => {
