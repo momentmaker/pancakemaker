@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.0] - 2026-02-28
+
+### Fixed
+
+- Reduce dashboard DB queries from 8+ to 2 — derive all stats from current + previous month expenses to prevent iOS Safari WASM JIT crash
+- Simplify sync engine — remove interval timer, focus handler, and delayed start; sync now only fires after login or CRUD operations
+
 ## [1.5.8] - 2026-02-28
 
 ### Fixed
