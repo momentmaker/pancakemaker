@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.2] - 2026-02-28
+
+### Fixed
+
+- Prevent iOS PWA auto-reload by replacing useRegisterSW with manual service worker registration — eliminates white flash and error loop on home screen launch
+
 ## [1.5.1] - 2026-02-28
 
 ### Fixed
