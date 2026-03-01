@@ -10,7 +10,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'prompt',
+      injectRegister: false,
       devOptions: { enabled: false },
       manifest: {
         name: 'pancakemaker',
@@ -40,6 +40,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,svg,woff2,wasm}'],
         navigateFallbackDenylist: [/\.wasm$/, /^\/auth\/verify/],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
