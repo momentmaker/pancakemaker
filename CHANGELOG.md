@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.3] - 2026-02-28
+
+### Fixed
+
+- Force service worker skipWaiting + clientsClaim to break iOS PWA crash loop — users stuck on old SW can now receive the fix without manual intervention
+
 ## [1.5.2] - 2026-02-28
 
 ### Fixed
