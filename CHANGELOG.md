@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.8] - 2026-02-28
+
+### Fixed
+
+- Batch sync pull with yields to prevent iOS Safari WASM JIT crash — process entries in groups of 20 with main-thread yields between batches
+- Remove reactive sync triggers from all write paths — sync now fires via 5-min interval, focus event, manual button, or after auth login
+- Delay initial sync by 3 seconds to let the app render first
+- Detect crash loops (restart within 60s) and defer sync to next interval
+- Circuit breaker: disable sync after 3 consecutive failures
+
 ## [1.5.7] - 2026-02-28
 
 ### Reverted
