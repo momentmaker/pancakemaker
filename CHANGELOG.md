@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.6] - 2026-02-28
+
+### Fixed
+
+- Chunk sync entry application into batches of 20 with browser yields between batches to prevent Safari WASM JIT thrashing (known wa-sqlite issue where sustained WASM execution causes 300-500% CPU spikes and WKWebView crashes)
+- Yield to main thread between push and pull operations and before notifying UI of new data
+
 ## [1.5.5] - 2026-02-28
 
 ### Fixed
