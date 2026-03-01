@@ -4,7 +4,7 @@ import { useAppState } from '../hooks/useAppState'
 import { useDatabase } from '../db/DatabaseContext'
 import { useSync } from '../sync/SyncContext'
 import { useRoutePrefix } from '../demo/demo-context'
-import { useDashboardStats, type BurnRate, type YtdStats } from '../hooks/useDashboardStats'
+import { useDashboardStats, type BurnRate } from '../hooks/useDashboardStats'
 import {
   getPanelsByRoute,
   getCategoriesByRoute,
@@ -18,6 +18,7 @@ import { AmountDisplay } from '../components/AmountDisplay'
 import { MonthPicker } from '../components/MonthPicker'
 import { PancakeStack } from '../components/PancakeStack'
 import { SparkBars } from '../components/SparkBars'
+import type { DashboardExpenseRow } from '../db/queries'
 import { QuickAdd } from '../components/QuickAdd'
 import { Button } from '../components/Button'
 
@@ -373,59 +374,6 @@ function SpendingPaceCard({
   )
 }
 
-function CategoryTrendsCard({
-  categories,
-  trends,
-  currency,
-}: {
-  categories: { id: string; name: string; color: string; amount: number }[]
-  trends: Map<string, { label: string; value: number }[]>
-  currency: string
-}) {
-  return (
-    <Card className="mt-6">
-      <h2 className="mb-4 font-mono text-sm font-semibold text-text-secondary">Category Trends</h2>
-      <div className="flex flex-col gap-4">
-        {categories.map((cat) => {
-          const trend = trends.get(cat.id)
-          if (!trend) return null
-          const avg = trend.reduce((s, t) => s + t.value, 0) / trend.length
-          const latest = trend[trend.length - 1]?.value ?? 0
-          const pctChange = avg > 0 ? ((latest - avg) / avg) * 100 : 0
-          const showArrow = Math.abs(pctChange) > 20
-
-          return (
-            <div key={cat.id} className="flex items-center gap-3">
-              <div className="flex w-24 shrink-0 items-center gap-2 overflow-hidden">
-                <span
-                  className="inline-block h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: cat.color }}
-                />
-                <span className="truncate font-mono text-xs text-text-primary">{cat.name}</span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <SparkBars data={trend} color={cat.color} currency={currency} highlightLast />
-              </div>
-              <div className="flex w-16 shrink-0 items-center justify-end gap-1">
-                {showArrow && (
-                  <span
-                    className={`text-xs ${pctChange > 0 ? 'text-neon-orange' : 'text-neon-lime'}`}
-                  >
-                    {pctChange > 0 ? '\u2191' : '\u2193'}
-                  </span>
-                )}
-                <span className="font-mono text-xs text-text-secondary">
-                  <AmountDisplay amount={cat.amount} currency={currency} size="sm" />
-                </span>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </Card>
-  )
-}
-
 function InsightsCard({ insights }: { insights: string[] }) {
   return (
     <Card className="mt-6">
@@ -441,65 +389,10 @@ function InsightsCard({ insights }: { insights: string[] }) {
   )
 }
 
-function YearToDateCard({
-  ytd,
-  year,
-  currency,
-}: {
-  ytd: YtdStats
-  year: string
-  currency: string
-}) {
-  return (
-    <Card className="mt-6">
-      <h2 className="mb-3 font-mono text-sm font-semibold text-text-secondary">
-        {year} Year to Date
-      </h2>
-
-      <div className="flex items-baseline gap-6">
-        <div>
-          <AmountDisplay amount={ytd.yearTotal} currency={currency} size="lg" />
-          <p className="mt-0.5 font-mono text-[10px] text-text-muted">total</p>
-        </div>
-        <div>
-          <AmountDisplay amount={ytd.monthlyAvg} currency={currency} size="md" />
-          <p className="mt-0.5 font-mono text-[10px] text-text-muted">/mo avg</p>
-        </div>
-      </div>
-
-      <div className="mt-4">
-        <SparkBars
-          data={ytd.monthlyTotals}
-          color="#00ffcc"
-          currency={currency}
-          highlightLast={false}
-        />
-      </div>
-
-      {(ytd.bestMonth || ytd.lightestMonth) && (
-        <div className="mt-3 flex gap-4 font-mono text-xs text-text-muted">
-          {ytd.bestMonth && (
-            <span>
-              Highest: {ytd.bestMonth.label} (
-              <AmountDisplay amount={ytd.bestMonth.total} currency={currency} size="sm" />)
-            </span>
-          )}
-          {ytd.lightestMonth && (
-            <span>
-              Lightest: {ytd.lightestMonth.label} (
-              <AmountDisplay amount={ytd.lightestMonth.total} currency={currency} size="sm" />)
-            </span>
-          )}
-        </div>
-      )}
-    </Card>
-  )
-}
-
 export function Dashboard() {
   const { userId, personalRouteId, businessRouteId, baseCurrency } = useAppState()
   const db = useDatabase()
-  const { markPending } = useSync()
+  const { triggerSync, markPending } = useSync()
   const prefix = useRoutePrefix()
   const [month, setMonth] = useState(currentMonth)
   const { stats, loading, error, reload } = useDashboardStats(month)
@@ -541,9 +434,10 @@ export function Dashboard() {
         expense as unknown as Record<string, unknown>,
       )
       markPending()
+      triggerSync()
       reload()
     },
-    [db, userId, markPending, reload],
+    [db, userId, markPending, triggerSync, reload],
   )
 
   const greeting = useMemo(getGreeting, [])
@@ -758,15 +652,6 @@ export function Dashboard() {
             </Card>
           )}
 
-          {/* Category Trends */}
-          {stats.categoryBreakdown.length > 0 && stats.categoryTrends.size > 0 && (
-            <CategoryTrendsCard
-              categories={stats.categoryBreakdown.slice(0, 5)}
-              trends={stats.categoryTrends}
-              currency={baseCurrency}
-            />
-          )}
-
           {/* Monthly Burn Rate */}
           {stats.burnRate.total > 0 && (
             <BurnRateCard burnRate={stats.burnRate} currency={baseCurrency} />
@@ -789,11 +674,6 @@ export function Dashboard() {
 
           {/* Smart Insights */}
           {stats.insights.length > 0 && <InsightsCard insights={stats.insights} />}
-
-          {/* Year to Date */}
-          {stats.ytdStats.yearTotal > 0 && (
-            <YearToDateCard ytd={stats.ytdStats} year={month.slice(0, 4)} currency={baseCurrency} />
-          )}
 
           {/* Biggest Pancake */}
           {stats.biggestExpense && (
@@ -843,9 +723,9 @@ export function Dashboard() {
                 Recent Expenses
               </h2>
               <div className="flex flex-col gap-1">
-                {stats.recentExpenses.map((e) => (
+                {stats.recentExpenses.map((e, i) => (
                   <div
-                    key={e.id}
+                    key={i}
                     className="flex items-center justify-between rounded-md px-3 py-2 transition-colors hover:bg-bg-card"
                   >
                     <div className="flex items-center gap-3 overflow-hidden">

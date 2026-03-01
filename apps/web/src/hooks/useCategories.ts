@@ -14,7 +14,7 @@ import { useSync } from '../sync/SyncContext.js'
 export function useCategories(routeId: string) {
   const db = useDatabase()
   const { userId } = useAppState()
-  const { markPending, tableVersions } = useSync()
+  const { triggerSync, markPending, tableVersions } = useSync()
   const categoryVersion = tableVersions['categories'] ?? 0
   const [categories, setCategories] = useState<CategoryRow[]>([])
   const [loading, setLoading] = useState(false)
@@ -45,9 +45,10 @@ export function useCategories(routeId: string) {
         category as unknown as Record<string, unknown>,
       )
       markPending()
+      triggerSync()
       return category
     },
-    [db, routeId, userId, markPending],
+    [db, routeId, userId, markPending, triggerSync],
   )
 
   const update = useCallback(
@@ -66,10 +67,11 @@ export function useCategories(routeId: string) {
           updated as unknown as Record<string, unknown>,
         )
         markPending()
+        triggerSync()
       }
       return updated
     },
-    [db, userId, markPending],
+    [db, userId, markPending, triggerSync],
   )
 
   const remove = useCallback(
@@ -78,8 +80,9 @@ export function useCategories(routeId: string) {
       setCategories((prev) => prev.filter((c) => c.id !== id))
       await logSyncEntry(db, userId, 'categories', id, 'delete', { id, reassignToCategoryId })
       markPending()
+      triggerSync()
     },
-    [db, userId, markPending],
+    [db, userId, markPending, triggerSync],
   )
 
   return { categories, loading, load, add, update, remove }

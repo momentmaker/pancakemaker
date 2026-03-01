@@ -26,13 +26,8 @@ export interface SyncEngine {
   onDataReceived(listener: (tables: Set<string>) => void): () => void
 }
 
-const SYNC_INTERVAL_MS = 5 * 60 * 1000
-const FOCUS_COOLDOWN_MS = 30_000
 const PULL_BATCH_SIZE = 20
-const INITIAL_SYNC_DELAY_MS = 3_000
-const CRASH_LOOP_WINDOW_MS = 60_000
 const MAX_CONSECUTIVE_FAILURES = 3
-const BOOT_TS_KEY = 'pancakemaker_boot_ts'
 
 function yieldToMain(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0))
@@ -51,10 +46,7 @@ const TABLE_PRIORITY: Record<string, number> = {
 
 export function createSyncEngine(db: Database): SyncEngine {
   let status: SyncStatus = !navigator.onLine ? 'offline' : getStoredToken() ? 'pending' : 'local'
-  let intervalId: ReturnType<typeof setInterval> | null = null
-  let startTimeoutId: ReturnType<typeof setTimeout> | null = null
   let syncing = false
-  let lastSyncCompletedAt = 0
   let consecutiveFailures = 0
   const listeners = new Set<(status: SyncStatus) => void>()
   const dataListeners = new Set<(tables: Set<string>) => void>()
@@ -264,58 +256,25 @@ export function createSyncEngine(db: Database): SyncEngine {
       setStatus(navigator.onLine ? 'pending' : 'offline')
     } finally {
       syncing = false
-      lastSyncCompletedAt = Date.now()
     }
-  }
-
-  function handleOnline(): void {
-    sync()
   }
 
   function handleOffline(): void {
     setStatus('offline')
   }
 
-  function handleFocus(): void {
-    if (navigator.onLine && Date.now() - lastSyncCompletedAt >= FOCUS_COOLDOWN_MS) sync()
+  function handleOnline(): void {
+    if (status === 'offline') setStatus(getStoredToken() ? 'pending' : 'local')
   }
 
   function start(): void {
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
-    window.addEventListener('focus', handleFocus)
-    intervalId = setInterval(() => {
-      if (navigator.onLine) sync()
-    }, SYNC_INTERVAL_MS)
-
-    if (navigator.onLine && getStoredToken()) {
-      const prevBoot = Number(localStorage.getItem(BOOT_TS_KEY) ?? 0)
-      localStorage.setItem(BOOT_TS_KEY, String(Date.now()))
-      if (Date.now() - prevBoot < CRASH_LOOP_WINDOW_MS) {
-        console.log('[sync] crash loop detected, delaying initial sync')
-      }
-      startTimeoutId = setTimeout(
-        () => {
-          startTimeoutId = null
-          sync()
-        },
-        Date.now() - prevBoot < CRASH_LOOP_WINDOW_MS ? SYNC_INTERVAL_MS : INITIAL_SYNC_DELAY_MS,
-      )
-    }
   }
 
   function stop(): void {
     window.removeEventListener('online', handleOnline)
     window.removeEventListener('offline', handleOffline)
-    window.removeEventListener('focus', handleFocus)
-    if (intervalId !== null) {
-      clearInterval(intervalId)
-      intervalId = null
-    }
-    if (startTimeoutId !== null) {
-      clearTimeout(startTimeoutId)
-      startTimeoutId = null
-    }
   }
 
   function onStatusChange(listener: (s: SyncStatus) => void): () => void {

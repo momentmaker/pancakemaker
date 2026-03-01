@@ -40,7 +40,7 @@ export function RouteView({ type }: RouteViewProps) {
   const { userId, personalRouteId, businessRouteId, baseCurrency } = useAppState()
   const routeId = type === 'personal' ? personalRouteId : businessRouteId
   const db = useDatabase()
-  const { dataVersion, markPending } = useSync()
+  const { dataVersion, triggerSync, markPending } = useSync()
 
   const [activeTab, setActiveTab] = useState<'categories' | 'panels'>('categories')
   const [month, setMonth] = useState(currentMonth)
@@ -120,11 +120,12 @@ export function RouteView({ type }: RouteViewProps) {
         expense as unknown as Record<string, unknown>,
       )
       markPending()
+      triggerSync()
       const totals = await getCategoryTotalsByCurrency(db, routeId, month)
       setCategoryTotals(totals)
       setShowQuickAdd(false)
     },
-    [db, userId, routeId, month, markPending],
+    [db, userId, routeId, month, markPending, triggerSync],
   )
 
   const defaultPanel = allPanels.find((p) => p.is_default === 1) ?? allPanels[0]

@@ -1,17 +1,9 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useDatabase } from '../db/DatabaseContext.js'
 import { useAppState } from './useAppState.js'
 import { useSync } from '../sync/SyncContext.js'
 import { useExchangeRates } from './useExchangeRates.js'
-import {
-  getDashboardExpenses,
-  getDashboardRecentExpenses,
-  getCategoryMonthlyTrend,
-  getDashboardYearTotals,
-  type DashboardExpenseRow,
-  type DashboardRecentExpenseRow,
-  type MonthlyTotal,
-} from '../db/queries.js'
+import { getDashboardExpenses, type DashboardExpenseRow } from '../db/queries.js'
 
 interface CategorySpend {
   id: string
@@ -28,14 +20,6 @@ export interface BurnRate {
   total: number
 }
 
-export interface YtdStats {
-  yearTotal: number
-  monthlyAvg: number
-  monthlyTotals: { label: string; value: number }[]
-  bestMonth: { label: string; total: number } | null
-  lightestMonth: { label: string; total: number } | null
-}
-
 export interface DashboardStats {
   totalExpenses: number
   totalAmount: number
@@ -44,14 +28,12 @@ export interface DashboardStats {
   categoryBreakdown: CategorySpend[]
   prevMonthTotal: number | null
   dayBreakdown: { label: string; value: number }[]
-  recentExpenses: DashboardRecentExpenseRow[]
+  recentExpenses: DashboardExpenseRow[]
   biggestExpense: DashboardExpenseRow | null
   burnRate: BurnRate
   daysElapsed: number
   projectedTotal: number | null
-  categoryTrends: Map<string, { label: string; value: number }[]>
   insights: string[]
-  ytdStats: YtdStats
 }
 
 function previousMonth(month: string): string {
@@ -181,7 +163,6 @@ function deriveInsights(
   categoryBreakdown: CategorySpend[],
   prevExpenses: DashboardExpenseRow[],
   dayBreakdown: { label: string; value: number }[],
-  personalRouteId: string,
   convert: (amount: number, currency: string) => number,
   daysElapsed: number,
 ): string[] {
@@ -250,10 +231,9 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
 
     try {
       const prevMonth = previousMonth(month)
-      const [currentExpenses, prevExpenses, recentExpenses] = await Promise.all([
+      const [currentExpenses, prevExpenses] = await Promise.all([
         getDashboardExpenses(db, personalRouteId, businessRouteId, month),
         getDashboardExpenses(db, personalRouteId, businessRouteId, prevMonth),
-        getDashboardRecentExpenses(db, personalRouteId, businessRouteId),
       ])
 
       const current = aggregateExpenses(currentExpenses, personalRouteId, convert)
@@ -263,73 +243,14 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
       const dayBreakdown = buildDayBreakdown(currentExpenses, month, convert)
       const burnRate = computeBurnRate(currentExpenses, convert)
 
-      const top5Ids = current.categoryBreakdown.slice(0, 5).map((c) => c.id)
-      const year = month.slice(0, 4)
-      const [trendResults, yearTotals] = await Promise.all([
-        Promise.all(top5Ids.map((id) => getCategoryMonthlyTrend(db, id, month, 6, convert))),
-        getDashboardYearTotals(db, personalRouteId, businessRouteId, year, convert),
-      ])
-      const categoryTrends = new Map<string, { label: string; value: number }[]>()
-      for (let i = 0; i < top5Ids.length; i++) {
-        categoryTrends.set(
-          top5Ids[i],
-          trendResults[i].map((t) => ({
-            label: t.month.slice(5),
-            value: t.total,
-          })),
-        )
-      }
-
       const elapsed = computeDaysElapsed(month, daysElapsedOverride)
       const insights = deriveInsights(
         current.categoryBreakdown,
         prevExpenses,
         dayBreakdown,
-        personalRouteId,
         convert,
         elapsed,
       )
-      const monthLabels = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-      ]
-      const ytdMonths = yearTotals.map((t, i) => ({
-        label: monthLabels[i],
-        value: t.total,
-      }))
-
-      const monthsWithSpending = yearTotals.filter((t) => t.total > 0)
-      const yearTotal = monthsWithSpending.reduce((sum, t) => sum + t.total, 0)
-      const monthlyAvg =
-        monthsWithSpending.length > 0 ? Math.round(yearTotal / monthsWithSpending.length) : 0
-
-      let bestMonth: { label: string; total: number } | null = null
-      let lightestMonth: { label: string; total: number } | null = null
-      for (const t of monthsWithSpending) {
-        const idx = yearTotals.indexOf(t)
-        const label = monthLabels[idx]
-        if (!bestMonth || t.total > bestMonth.total) bestMonth = { label, total: t.total }
-        if (!lightestMonth || t.total < lightestMonth.total)
-          lightestMonth = { label, total: t.total }
-      }
-
-      const ytdStats: YtdStats = {
-        yearTotal,
-        monthlyAvg,
-        monthlyTotals: ytdMonths,
-        bestMonth,
-        lightestMonth: bestMonth?.label !== lightestMonth?.label ? lightestMonth : null,
-      }
 
       const days = daysInMonth(month)
       const projectedTotal =
@@ -342,6 +263,8 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
             )
           : null
 
+      const recentExpenses = currentExpenses.slice(0, 10)
+
       if (loadId !== loadIdRef.current) return
 
       setStats({
@@ -349,9 +272,7 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
         prevMonthTotal: prevTotal > 0 ? prevTotal : null,
         dayBreakdown,
         burnRate,
-        categoryTrends,
         insights,
-        ytdStats,
         recentExpenses,
         biggestExpense,
         daysElapsed: elapsed,

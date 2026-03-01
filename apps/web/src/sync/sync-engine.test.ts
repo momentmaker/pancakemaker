@@ -227,33 +227,6 @@ describe('createSyncEngine', () => {
     engine.stop()
   })
 
-  it('skips focus-triggered sync within cooldown period', async () => {
-    // #given
-    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
-    localStorage.setItem('pancakemaker_jwt', 'test-token')
-
-    const serverTs = new Date().toISOString()
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ entries: [], server_timestamp: serverTs, has_more: false }), {
-        status: 200,
-      }),
-    )
-
-    const engine = createSyncEngine(db)
-    engine.start()
-    await engine.sync()
-    expect(engine.getStatus()).toBe('synced')
-    const callsAfterSync = fetchSpy.mock.calls.length
-
-    // #when — dispatch focus immediately after sync completed
-    window.dispatchEvent(new Event('focus'))
-    await new Promise((r) => setTimeout(r, 50))
-
-    // #then — no additional fetch calls from the focus event
-    expect(fetchSpy.mock.calls.length).toBe(callsAfterSync)
-    engine.stop()
-  })
-
   it('unsubscribes listeners correctly', () => {
     // #given
     const engine = createSyncEngine(db)
