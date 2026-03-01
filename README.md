@@ -1,4 +1,4 @@
-# Pancakemaker
+# pancakemaker
 
 _Stack your expenses. Keep your data._
 
