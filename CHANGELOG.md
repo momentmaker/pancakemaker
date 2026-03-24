@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.0] - 2026-03-24
+
+### Added
+
+- Mobile decimal keyboard for amount input — QuickAdd now uses `inputMode="decimal"` for a cleaner numpad without spinner arrows
+- One-click expense duplicate — copy any expense with the same category, amount, currency, and description, dated to today
+
+### Changed
+
+- Update README.md
+
 ## [1.6.1] - 2026-02-28
 
 ### Fixed
