@@ -116,9 +116,8 @@ export function QuickAdd({
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <FormInput
           label="Amount"
-          type="number"
-          step="0.01"
-          min="0.01"
+          type="text"
+          inputMode="decimal"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           placeholder="0.00"

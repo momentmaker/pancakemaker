@@ -8,6 +8,7 @@ interface ExpenseRowProps {
   category?: CategoryRow
   onUpdateAmount: (id: string, amount: number) => Promise<void>
   onUpdateDescription?: (id: string, description: string) => Promise<void>
+  onDuplicate?: (expense: ExpenseRowType) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }
 
@@ -26,12 +27,14 @@ export function ExpenseRow({
   category,
   onUpdateAmount,
   onUpdateDescription,
+  onDuplicate,
   onDelete,
 }: ExpenseRowProps) {
   const [editingAmount, setEditingAmount] = useState(false)
   const [editValue, setEditValue] = useState('')
   const [editingDescription, setEditingDescription] = useState(false)
   const [editDescValue, setEditDescValue] = useState('')
+  const [duplicating, setDuplicating] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const descInputRef = useRef<HTMLInputElement>(null)
@@ -152,6 +155,39 @@ export function ExpenseRow({
             title="Click to edit amount"
           >
             <AmountDisplay amount={expense.amount} currency={expense.currency} size="sm" />
+          </button>
+        )}
+        {onDuplicate && (
+          <button
+            onClick={async () => {
+              if (duplicating) return
+              setDuplicating(true)
+              try {
+                await onDuplicate(expense)
+              } finally {
+                setDuplicating(false)
+              }
+            }}
+            disabled={duplicating}
+            className={`transition-colors ${duplicating ? 'text-neon-cyan/50' : 'text-text-muted/60 hover:text-neon-cyan'}`}
+            aria-label="Duplicate expense"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <rect
+                x="5"
+                y="5"
+                width="9"
+                height="9"
+                rx="1.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+              <path
+                d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+            </svg>
           </button>
         )}
         {confirming ? (

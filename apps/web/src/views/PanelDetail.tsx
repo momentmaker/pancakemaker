@@ -119,6 +119,20 @@ export function PanelDetail() {
     [update],
   )
 
+  const handleDuplicate = useCallback(
+    async (expense: (typeof expenses)[0]) => {
+      await handleAdd({
+        panelId: expense.panel_id,
+        categoryId: expense.category_id,
+        amount: expense.amount,
+        currency: expense.currency,
+        date: new Date().toISOString().slice(0, 10),
+        description: expense.description || undefined,
+      })
+    },
+    [handleAdd],
+  )
+
   const handleRemove = useCallback(
     async (id: string) => {
       await remove(id)
@@ -323,6 +337,7 @@ export function PanelDetail() {
                       category={categoryMap.get(expense.category_id)}
                       onUpdateAmount={handleUpdateAmount}
                       onUpdateDescription={handleUpdateDescription}
+                      onDuplicate={handleDuplicate}
                       onDelete={handleRemove}
                     />
                   ))}
