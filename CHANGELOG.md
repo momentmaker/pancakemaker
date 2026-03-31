@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.1] - 2026-03-31
+
+### Fixed
+
+- Sync indicator stuck on "Syncing" forever — circuit breaker now shows "Sync error" after 3 failures, manual retry bypasses it, and periodic retry with exponential backoff keeps sync alive
+
+### Changed
+
+- Upgrade GitHub Actions to v5 and Node.js 22
+
 ## [1.7.0] - 2026-03-24
 
 ### Added
