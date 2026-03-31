@@ -9,6 +9,7 @@ const statusConfig: Record<SyncStatus, { color: string; label: string; pulse: bo
   pending: { color: 'var(--color-sync-pending)', label: 'Syncing', pulse: true },
   offline: { color: 'var(--color-sync-offline)', label: 'Offline', pulse: false },
   local: { color: 'var(--color-text-muted)', label: 'Local', pulse: false },
+  error: { color: 'var(--color-sync-error)', label: 'Sync error', pulse: false },
 }
 
 export function SyncIndicator({
@@ -20,7 +21,7 @@ export function SyncIndicator({
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const { triggerSync } = useSync()
+  const { forceSync } = useSync()
   const config = statusConfig[status]
   const email = getStoredUserEmail()
 
@@ -98,22 +99,26 @@ export function SyncIndicator({
             <p className="text-xs text-text-muted">No network connection.</p>
           )}
 
-          {(status === 'synced' || status === 'pending') && (
+          {(status === 'synced' || status === 'pending' || status === 'error') && (
             <>
               {email && <p className="truncate text-xs text-text-secondary">{email}</p>}
               <p className="mt-1 text-xs text-text-muted">
-                {status === 'synced' ? 'All changes synced.' : 'Syncing changes...'}
+                {status === 'synced'
+                  ? 'All changes synced.'
+                  : status === 'error'
+                    ? 'Sync failed. Tap retry to try again.'
+                    : 'Syncing changes...'}
               </p>
               <div className="mt-2 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => {
-                    triggerSync()
+                    void forceSync()
                     setOpen(false)
                   }}
                   className="text-xs text-neon-cyan hover:underline"
                 >
-                  Sync now
+                  {status === 'error' ? 'Retry' : 'Sync now'}
                 </button>
                 <button
                   type="button"

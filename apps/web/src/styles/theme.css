@@ -25,6 +25,7 @@
   --color-sync-synced: #00ffcc;
   --color-sync-pending: #fbbf24;
   --color-sync-offline: #555570;
+  --color-sync-error: #ef4444;
 
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;

@@ -8,7 +8,7 @@ import { reconcileAfterAuth } from '../sync/reconcile'
 export function AuthVerify() {
   const [searchParams] = useSearchParams()
   const db = useDatabase()
-  const { triggerSync } = useSync()
+  const { forceSync } = useSync()
   const [error, setError] = useState<string | null>(null)
   const [verifying, setVerifying] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -36,7 +36,7 @@ export function AuthVerify() {
 
       try {
         await reconcileAfterAuth(db, result.data.user)
-        await triggerSync()
+        await forceSync()
       } catch {
         setError('Failed to sync your data. Please refresh and try again.')
         setSyncing(false)
@@ -51,7 +51,7 @@ export function AuthVerify() {
       setVerifying(false)
       setSyncing(false)
     })
-  }, [searchParams, db, triggerSync])
+  }, [searchParams, db, forceSync])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-primary">

@@ -15,11 +15,11 @@ import {
   type SyncPullEntry,
 } from './api-client.js'
 
-export type SyncStatus = 'synced' | 'pending' | 'offline' | 'local'
+export type SyncStatus = 'synced' | 'pending' | 'offline' | 'local' | 'error'
 
 export interface SyncEngine {
   getStatus(): SyncStatus
-  sync(): Promise<void>
+  sync(force?: boolean): Promise<void>
   start(): void
   stop(): void
   onStatusChange(listener: (status: SyncStatus) => void): () => void
@@ -28,6 +28,9 @@ export interface SyncEngine {
 
 const PULL_BATCH_SIZE = 20
 const MAX_CONSECUTIVE_FAILURES = 3
+const SYNC_INTERVAL_MS = 60_000
+const SYNC_CATCHUP_MS = 2_000
+const BACKOFF_BASE_MS = 5_000
 
 function yieldToMain(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0))
@@ -48,6 +51,7 @@ export function createSyncEngine(db: Database): SyncEngine {
   let status: SyncStatus = !navigator.onLine ? 'offline' : getStoredToken() ? 'pending' : 'local'
   let syncing = false
   let consecutiveFailures = 0
+  let retryTimer: ReturnType<typeof setTimeout> | null = null
   const listeners = new Set<(status: SyncStatus) => void>()
   const dataListeners = new Set<(tables: Set<string>) => void>()
 
@@ -214,7 +218,22 @@ export function createSyncEngine(db: Database): SyncEngine {
     return true
   }
 
-  async function sync(): Promise<void> {
+  function clearRetryTimer(): void {
+    if (retryTimer !== null) {
+      clearTimeout(retryTimer)
+      retryTimer = null
+    }
+  }
+
+  function scheduleRetry(delayMs: number): void {
+    clearRetryTimer()
+    retryTimer = setTimeout(() => {
+      retryTimer = null
+      sync()
+    }, delayMs)
+  }
+
+  async function sync(force?: boolean): Promise<void> {
     if (syncing) return
     if (!navigator.onLine) {
       setStatus('offline')
@@ -224,11 +243,16 @@ export function createSyncEngine(db: Database): SyncEngine {
       setStatus('local')
       return
     }
+    if (force) {
+      consecutiveFailures = 0
+      clearRetryTimer()
+    }
     if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
       console.log(
         '[sync] circuit breaker open, skipping sync (%d consecutive failures)',
         consecutiveFailures,
       )
+      setStatus('error')
       return
     }
 
@@ -243,37 +267,60 @@ export function createSyncEngine(db: Database): SyncEngine {
       const remaining = await getUnsyncedEntries(db)
       if (!pushOk || !pullOk) {
         consecutiveFailures++
-        setStatus(navigator.onLine ? 'pending' : 'offline')
+        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          setStatus('error')
+        } else {
+          setStatus(navigator.onLine ? 'pending' : 'offline')
+          scheduleRetry(BACKOFF_BASE_MS * Math.pow(2, consecutiveFailures - 1))
+        }
       } else if (remaining.length > 0) {
         consecutiveFailures = 0
         setStatus('pending')
+        scheduleRetry(SYNC_CATCHUP_MS)
       } else {
         consecutiveFailures = 0
         setStatus('synced')
+        scheduleRetry(SYNC_INTERVAL_MS)
       }
     } catch {
       consecutiveFailures++
-      setStatus(navigator.onLine ? 'pending' : 'offline')
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        setStatus('error')
+      } else {
+        setStatus(navigator.onLine ? 'pending' : 'offline')
+        scheduleRetry(BACKOFF_BASE_MS * Math.pow(2, consecutiveFailures - 1))
+      }
     } finally {
       syncing = false
     }
   }
 
   function handleOffline(): void {
+    clearRetryTimer()
     setStatus('offline')
   }
 
   function handleOnline(): void {
-    if (status === 'offline') setStatus(getStoredToken() ? 'pending' : 'local')
+    if (status === 'offline') {
+      clearRetryTimer()
+      if (getStoredToken()) {
+        consecutiveFailures = 0
+        setStatus('pending')
+        void sync()
+      } else {
+        setStatus('local')
+      }
+    }
   }
 
   function start(): void {
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
-    if (getStoredToken() && navigator.onLine) sync()
+    if (getStoredToken() && navigator.onLine) void sync()
   }
 
   function stop(): void {
+    clearRetryTimer()
     window.removeEventListener('online', handleOnline)
     window.removeEventListener('offline', handleOffline)
   }

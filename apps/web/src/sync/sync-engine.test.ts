@@ -241,4 +241,145 @@ describe('createSyncEngine', () => {
     expect(statuses).toHaveLength(0)
     engine.stop()
   })
+
+  it('sets error status after 3 consecutive sync failures', async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ error: 'Server error' }), { status: 500 }),
+    )
+
+    const engine = createSyncEngine(db)
+    const statuses: SyncStatus[] = []
+    engine.onStatusChange((s) => statuses.push(s))
+
+    // #when
+    await engine.sync()
+    await engine.sync()
+    await engine.sync()
+
+    // #then
+    expect(engine.getStatus()).toBe('error')
+    engine.stop()
+  })
+
+  it('force sync resets circuit breaker and retries', async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+
+    const serverTs = new Date().toISOString()
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+
+    // fail 3 times to trip circuit breaker
+    fetchSpy.mockResolvedValue(
+      new Response(JSON.stringify({ error: 'Server error' }), { status: 500 }),
+    )
+    const engine = createSyncEngine(db)
+    await engine.sync()
+    await engine.sync()
+    await engine.sync()
+    expect(engine.getStatus()).toBe('error')
+
+    // now server recovers
+    fetchSpy.mockResolvedValue(
+      new Response(JSON.stringify({ entries: [], server_timestamp: serverTs, has_more: false }), {
+        status: 200,
+      }),
+    )
+
+    // #when — force sync bypasses circuit breaker
+    await engine.sync(true)
+
+    // #then
+    expect(engine.getStatus()).toBe('synced')
+    engine.stop()
+  })
+
+  it('schedules periodic retry after successful sync', async () => {
+    // #given
+    vi.useFakeTimers()
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+
+    const serverTs = new Date().toISOString()
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ entries: [], server_timestamp: serverTs, has_more: false }), {
+        status: 200,
+      }),
+    )
+
+    const engine = createSyncEngine(db)
+
+    // #when — initial sync
+    await engine.sync()
+    expect(engine.getStatus()).toBe('synced')
+    fetchSpy.mockClear()
+
+    // advance past the sync interval (60s)
+    await vi.advanceTimersByTimeAsync(61_000)
+
+    // #then — should have called fetch again (another sync cycle)
+    expect(fetchSpy).toHaveBeenCalled()
+
+    engine.stop()
+    vi.useRealTimers()
+  })
+
+  it('uses backoff for retry after failure', async () => {
+    // #given
+    vi.useFakeTimers()
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify({ error: 'Server error' }), { status: 500 }))
+
+    const engine = createSyncEngine(db)
+
+    // #when — first failure
+    await engine.sync()
+    fetchSpy.mockClear()
+
+    // advance 4s — not yet time for retry (backoff is 5s)
+    await vi.advanceTimersByTimeAsync(4_000)
+    expect(fetchSpy).not.toHaveBeenCalled()
+
+    // advance past 5s — should have retried
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(fetchSpy).toHaveBeenCalled()
+
+    engine.stop()
+    vi.useRealTimers()
+  })
+
+  it('stop cancels scheduled retry', async () => {
+    // #given
+    vi.useFakeTimers()
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+
+    const serverTs = new Date().toISOString()
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ entries: [], server_timestamp: serverTs, has_more: false }), {
+        status: 200,
+      }),
+    )
+
+    const engine = createSyncEngine(db)
+    await engine.sync()
+    fetchSpy.mockClear()
+
+    // #when
+    engine.stop()
+    await vi.advanceTimersByTimeAsync(120_000)
+
+    // #then — no fetch calls after stop
+    expect(fetchSpy).not.toHaveBeenCalled()
+
+    vi.useRealTimers()
+  })
 })

@@ -17,7 +17,7 @@ export function Login() {
   const [syncing, setSyncing] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const db = useDatabase()
-  const { triggerSync } = useSync()
+  const { forceSync } = useSync()
 
   async function handleSubmit(e: FormEvent): Promise<void> {
     e.preventDefault()
@@ -56,7 +56,7 @@ export function Login() {
 
     try {
       await reconcileAfterAuth(db, result.data.user)
-      await triggerSync()
+      await forceSync()
     } catch {
       setError('Failed to sync your data. Please refresh and try again.')
       setSyncing(false)

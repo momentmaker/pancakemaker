@@ -36,7 +36,7 @@ const PALETTE = [
 
 export function Settings() {
   const { userId, personalRouteId, businessRouteId, baseCurrency } = useAppState()
-  const { status: syncStatus, triggerSync } = useSync()
+  const { status: syncStatus, forceSync } = useSync()
   const personalCategories = useCategories(personalRouteId)
   const businessCategories = useCategories(businessRouteId)
 
@@ -197,13 +197,15 @@ export function Settings() {
               <p className="text-xs text-text-muted">
                 {syncStatus === 'offline'
                   ? 'No network connection.'
-                  : syncStatus === 'pending'
-                    ? 'Syncing changes...'
-                    : 'All changes synced.'}
+                  : syncStatus === 'error'
+                    ? 'Sync failed. Tap retry to try again.'
+                    : syncStatus === 'pending'
+                      ? 'Syncing changes...'
+                      : 'All changes synced.'}
               </p>
               <div className="flex gap-2">
-                <Button variant="ghost" onClick={triggerSync} disabled={syncStatus === 'offline'}>
-                  Sync now
+                <Button variant="ghost" onClick={forceSync} disabled={syncStatus === 'offline'}>
+                  {syncStatus === 'error' ? 'Retry' : 'Sync now'}
                 </Button>
                 <Button
                   variant="ghost"

@@ -13,6 +13,7 @@ import { createSyncEngine, type SyncStatus, type SyncEngine } from './sync-engin
 interface SyncState {
   status: SyncStatus
   triggerSync: () => Promise<void>
+  forceSync: () => Promise<void>
   markPending: () => void
   dataVersion: number
   tableVersions: Readonly<Record<string, number>>
@@ -55,12 +56,18 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     await engineRef.current?.sync()
   }, [])
 
+  const forceSync = useCallback(async () => {
+    await engineRef.current?.sync(true)
+  }, [])
+
   const markPending = useCallback(() => {
     if (status === 'synced') setStatus('pending')
   }, [status])
 
   return (
-    <SyncContext.Provider value={{ status, triggerSync, markPending, dataVersion, tableVersions }}>
+    <SyncContext.Provider
+      value={{ status, triggerSync, forceSync, markPending, dataVersion, tableVersions }}
+    >
       {children}
     </SyncContext.Provider>
   )

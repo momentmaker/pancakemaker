@@ -17,6 +17,7 @@ export function DemoSyncProvider({ children }: { children: ReactNode }) {
       value={{
         status: 'local',
         triggerSync: noopSync,
+        forceSync: noopSync,
         markPending: () => {},
         dataVersion: 0,
         tableVersions: {},
