@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.2] - 2026-04-27
+
+### Fixed
+
+- Cross-route expense orphans — Dashboard QuickAdd no longer lets you accidentally pair a Business category with a Personal panel (or vice versa); the panel now derives automatically from the selected category's route. Existing orphaned expenses (e.g. a Business → Travel expense that showed $0 on the category page but appeared in the detail view as "Unknown Panel") are healed automatically on app load. Subtle p/b markers in the Dashboard category dropdown disambiguate same-named categories across routes.
+
 ## [1.7.1] - 2026-03-31
 
 ### Fixed
