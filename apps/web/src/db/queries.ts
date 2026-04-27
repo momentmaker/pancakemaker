@@ -824,3 +824,66 @@ export async function getExportRows(db: Database, userId: string): Promise<Expor
     [userId],
   )
 }
+
+export async function getDefaultPanelByRoute(
+  db: Database,
+  routeId: string,
+): Promise<PanelRow | null> {
+  const rows = await db.query<PanelRow>(
+    `SELECT * FROM panels
+     WHERE route_id = ? AND is_archived = 0
+     ORDER BY is_default DESC, sort_order ASC
+     LIMIT 1`,
+    [routeId],
+  )
+  return rows[0] ?? null
+}
+
+export async function healOrphanedExpenses(db: Database, userId: string): Promise<number> {
+  const orphans = await db.query<{
+    id: string
+    panel_id: string
+    category_id: string
+    category_route_id: string
+    panel_route_id: string | null
+  }>(
+    `SELECT e.id, e.panel_id, e.category_id,
+            c.route_id AS category_route_id,
+            p.route_id AS panel_route_id
+     FROM expenses e
+     JOIN categories c ON e.category_id = c.id
+     LEFT JOIN panels p ON e.panel_id = p.id
+     WHERE e.deleted_at IS NULL
+       AND (p.id IS NULL OR p.route_id != c.route_id)`,
+  )
+
+  if (orphans.length === 0) return 0
+
+  const defaultPanelByRoute = new Map<string, PanelRow>()
+  let fixed = 0
+
+  for (const orphan of orphans) {
+    let target = defaultPanelByRoute.get(orphan.category_route_id)
+    if (!target) {
+      const found = await getDefaultPanelByRoute(db, orphan.category_route_id)
+      if (!found) continue
+      defaultPanelByRoute.set(orphan.category_route_id, found)
+      target = found
+    }
+
+    const timestamp = now()
+    await db.execute('UPDATE expenses SET panel_id = ?, updated_at = ? WHERE id = ?', [
+      target.id,
+      timestamp,
+      orphan.id,
+    ])
+    await logSyncEntry(db, userId, 'expenses', orphan.id, 'update', {
+      id: orphan.id,
+      panel_id: target.id,
+      updated_at: timestamp,
+    })
+    fixed++
+  }
+
+  return fixed
+}

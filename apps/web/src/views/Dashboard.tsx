@@ -776,6 +776,7 @@ export function Dashboard() {
         onClose={() => setShowQuickAdd(false)}
         categories={allCategories}
         panels={allPanels}
+        personalRouteId={personalRouteId}
         onAdd={handleAdd}
       />
     </div>

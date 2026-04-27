@@ -32,6 +32,8 @@ import {
   getExportRows,
   getExpensesByCategory,
   getCategoryTotals,
+  getDefaultPanelByRoute,
+  healOrphanedExpenses,
 } from './queries.js'
 import type { Database } from './interface.js'
 
@@ -694,5 +696,167 @@ describe('export', () => {
 
     // #then
     expect(rows).toHaveLength(0)
+  })
+})
+
+describe('getDefaultPanelByRoute', () => {
+  it('returns the panel flagged is_default=1', async () => {
+    // #given
+    await createPanel(db, routeId, 'Other', 'USD', 0)
+    const def = await createPanel(db, routeId, 'Daily', 'USD', 1, null, true)
+
+    // #when
+    const result = await getDefaultPanelByRoute(db, routeId)
+
+    // #then
+    expect(result?.id).toBe(def.id)
+  })
+
+  it('falls back to the lowest sort_order panel when none is flagged default', async () => {
+    // #given
+    const first = await createPanel(db, routeId, 'First', 'USD', 0)
+    await createPanel(db, routeId, 'Second', 'USD', 1)
+
+    // #when
+    const result = await getDefaultPanelByRoute(db, routeId)
+
+    // #then
+    expect(result?.id).toBe(first.id)
+  })
+
+  it('returns null when no panels exist for the route', async () => {
+    // #when
+    const result = await getDefaultPanelByRoute(db, routeId)
+
+    // #then
+    expect(result).toBeNull()
+  })
+})
+
+describe('healOrphanedExpenses', () => {
+  it('reassigns expenses whose panel route differs from the category route', async () => {
+    // #given
+    const businessRoute = await createRoute(db, userId, 'business')
+    const personalCat = await createCategory(db, routeId, 'Travel', '#fbbf24', 0)
+    const personalDefault = await createPanel(db, routeId, 'Daily', 'USD', 0, null, true)
+    const businessPanel = await createPanel(db, businessRoute.id, 'Daily', 'USD', 0, null, true)
+    const orphan = await createExpense(db, {
+      panelId: businessPanel.id,
+      categoryId: personalCat.id,
+      amount: 1100,
+      currency: 'USD',
+      date: '2026-04-15',
+    })
+
+    // #when
+    const fixed = await healOrphanedExpenses(db, userId)
+
+    // #then
+    expect(fixed).toBe(1)
+    const rows = await db.query<{ panel_id: string }>(
+      'SELECT panel_id FROM expenses WHERE id = ?',
+      [orphan.id],
+    )
+    expect(rows[0].panel_id).toBe(personalDefault.id)
+  })
+
+  it('reassigns expenses whose panel no longer exists', async () => {
+    // #given
+    const cat = await createCategory(db, routeId, 'Travel', '#fbbf24', 0)
+    const panelToDelete = await createPanel(db, routeId, 'Trip', 'USD', 0)
+    const defaultPanel = await createPanel(db, routeId, 'Daily', 'USD', 1, null, true)
+    const orphan = await createExpense(db, {
+      panelId: panelToDelete.id,
+      categoryId: cat.id,
+      amount: 800,
+      currency: 'USD',
+      date: '2026-04-15',
+    })
+    await db.execute('PRAGMA foreign_keys=OFF')
+    await db.execute('DELETE FROM panels WHERE id = ?', [panelToDelete.id])
+    await db.execute('PRAGMA foreign_keys=ON')
+
+    // #when
+    const fixed = await healOrphanedExpenses(db, userId)
+
+    // #then
+    expect(fixed).toBe(1)
+    const rows = await db.query<{ panel_id: string }>(
+      'SELECT panel_id FROM expenses WHERE id = ?',
+      [orphan.id],
+    )
+    expect(rows[0].panel_id).toBe(defaultPanel.id)
+  })
+
+  it('logs an update sync entry per fixed expense', async () => {
+    // #given
+    const businessRoute = await createRoute(db, userId, 'business')
+    const personalCat = await createCategory(db, routeId, 'Travel', '#fbbf24', 0)
+    await createPanel(db, routeId, 'Daily', 'USD', 0, null, true)
+    const businessPanel = await createPanel(db, businessRoute.id, 'Daily', 'USD', 0, null, true)
+    const orphan = await createExpense(db, {
+      panelId: businessPanel.id,
+      categoryId: personalCat.id,
+      amount: 1100,
+      currency: 'USD',
+      date: '2026-04-15',
+    })
+
+    // #when
+    await healOrphanedExpenses(db, userId)
+
+    // #then
+    const entries = await getUnsyncedEntries(db)
+    const heal = entries.find((e) => e.record_id === orphan.id && e.action === 'update')
+    expect(heal).toBeDefined()
+  })
+
+  it('leaves clean expenses untouched', async () => {
+    // #given
+    const cat = await createCategory(db, routeId, 'Travel', '#fbbf24', 0)
+    const panel = await createPanel(db, routeId, 'Daily', 'USD', 0, null, true)
+    const expense = await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 500,
+      currency: 'USD',
+      date: '2026-04-15',
+    })
+
+    // #when
+    const fixed = await healOrphanedExpenses(db, userId)
+
+    // #then
+    expect(fixed).toBe(0)
+    const rows = await db.query<{ panel_id: string }>(
+      'SELECT panel_id FROM expenses WHERE id = ?',
+      [expense.id],
+    )
+    expect(rows[0].panel_id).toBe(panel.id)
+  })
+
+  it('skips orphans when the category route has no panels to reassign to', async () => {
+    // #given
+    const businessRoute = await createRoute(db, userId, 'business')
+    const businessCat = await createCategory(db, businessRoute.id, 'Travel', '#fbbf24', 0)
+    const personalPanel = await createPanel(db, routeId, 'Daily', 'USD', 0, null, true)
+    const orphan = await createExpense(db, {
+      panelId: personalPanel.id,
+      categoryId: businessCat.id,
+      amount: 1100,
+      currency: 'USD',
+      date: '2026-04-15',
+    })
+
+    // #when
+    const fixed = await healOrphanedExpenses(db, userId)
+
+    // #then
+    expect(fixed).toBe(0)
+    const rows = await db.query<{ panel_id: string }>(
+      'SELECT panel_id FROM expenses WHERE id = ?',
+      [orphan.id],
+    )
+    expect(rows[0].panel_id).toBe(personalPanel.id)
   })
 })

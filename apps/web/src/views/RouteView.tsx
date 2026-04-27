@@ -128,8 +128,6 @@ export function RouteView({ type }: RouteViewProps) {
     [db, userId, routeId, month, markPending, triggerSync],
   )
 
-  const defaultPanel = allPanels.find((p) => p.is_default === 1) ?? allPanels[0]
-
   const handleAddPanel = useCallback(async () => {
     if (!newPanelName.trim()) return
     const recurrence = newPanelRecurrence === 'none' ? null : newPanelRecurrence
@@ -251,7 +249,6 @@ export function RouteView({ type }: RouteViewProps) {
         onClose={() => setShowQuickAdd(false)}
         categories={categories}
         panels={allPanels}
-        defaultPanelId={defaultPanel?.id}
         onAdd={handleAddExpense}
       />
 

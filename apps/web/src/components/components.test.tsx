@@ -6,6 +6,8 @@ import { Badge } from './Badge'
 import { AmountDisplay } from './AmountDisplay'
 import { SyncIndicator } from './SyncIndicator'
 import { EmptyState } from './EmptyState'
+import { QuickAdd } from './QuickAdd'
+import type { CategoryRow, PanelRow } from '../db/queries'
 import { setupTestDb, renderWithProviders } from '../test-utils'
 
 describe('Card', () => {
@@ -88,5 +90,174 @@ describe('EmptyState', () => {
     expect(screen.getByText('No expenses')).toBeInTheDocument()
     fireEvent.click(screen.getByText('Add one'))
     expect(onAction).toHaveBeenCalledOnce()
+  })
+})
+
+describe('QuickAdd', () => {
+  const personalRouteId = 'p-route'
+  const businessRouteId = 'b-route'
+  const personalDaily: PanelRow = {
+    id: 'p-daily',
+    route_id: personalRouteId,
+    name: 'Daily',
+    currency: 'USD',
+    sort_order: 0,
+    recurrence_type: null,
+    is_default: 1,
+    is_archived: 0,
+    created_at: '',
+    updated_at: '',
+  }
+  const businessDaily: PanelRow = {
+    id: 'b-daily',
+    route_id: businessRouteId,
+    name: 'Daily',
+    currency: 'AED',
+    sort_order: 0,
+    recurrence_type: null,
+    is_default: 1,
+    is_archived: 0,
+    created_at: '',
+    updated_at: '',
+  }
+  const personalHealth: CategoryRow = {
+    id: 'p-health',
+    route_id: personalRouteId,
+    name: 'Health',
+    color: '#00ffcc',
+    sort_order: 0,
+    created_at: '',
+    updated_at: '',
+  }
+  const businessTravel: CategoryRow = {
+    id: 'b-travel',
+    route_id: businessRouteId,
+    name: 'Travel',
+    color: '#fbbf24',
+    sort_order: 0,
+    created_at: '',
+    updated_at: '',
+  }
+
+  it('submits with the default panel of the picked category route', async () => {
+    // #given
+    const onAdd = vi.fn().mockResolvedValue(undefined)
+    render(
+      <QuickAdd
+        open
+        onClose={() => {}}
+        categories={[personalHealth, businessTravel]}
+        panels={[personalDaily, businessDaily]}
+        personalRouteId={personalRouteId}
+        onAdd={onAdd}
+      />,
+    )
+
+    // #when
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '12.34' } })
+    fireEvent.click(screen.getByRole('button', { hidden: true, name: 'Category' }))
+    fireEvent.click(screen.getByRole('option', { hidden: true, name: /Travel/ }))
+    fireEvent.click(screen.getByRole('button', { hidden: true, name: 'Add' }))
+
+    // #then
+    await vi.waitFor(() => expect(onAdd).toHaveBeenCalledOnce())
+    expect(onAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        panelId: businessDaily.id,
+        categoryId: businessTravel.id,
+        currency: 'AED',
+        amount: 1234,
+      }),
+    )
+  })
+
+  it('disables submit when no panel exists for the picked category route', () => {
+    // #given
+    const onAdd = vi.fn().mockResolvedValue(undefined)
+    render(
+      <QuickAdd
+        open
+        onClose={() => {}}
+        categories={[businessTravel]}
+        panels={[personalDaily]}
+        personalRouteId={personalRouteId}
+        onAdd={onAdd}
+      />,
+    )
+
+    // #when
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '5.00' } })
+
+    // #then
+    expect(screen.getByRole('button', { hidden: true, name: 'Add' })).toBeDisabled()
+  })
+
+  it('shows route markers when categories span both routes', () => {
+    // #given
+    render(
+      <QuickAdd
+        open
+        onClose={() => {}}
+        categories={[personalHealth, businessTravel]}
+        panels={[personalDaily, businessDaily]}
+        personalRouteId={personalRouteId}
+        onAdd={vi.fn()}
+      />,
+    )
+
+    // #when
+    fireEvent.click(screen.getByRole('button', { hidden: true, name: 'Category' }))
+
+    // #then
+    const options = screen.getAllByRole('option', { hidden: true })
+    expect(options.find((o) => o.textContent?.includes('Health'))?.textContent).toContain('p')
+    expect(options.find((o) => o.textContent?.includes('Travel'))?.textContent).toContain('b')
+  })
+
+  it('uses fixed panelId and currency when provided, ignoring panels prop', async () => {
+    // #given
+    const onAdd = vi.fn().mockResolvedValue(undefined)
+    render(
+      <QuickAdd
+        open
+        onClose={() => {}}
+        categories={[businessTravel]}
+        panelId="trip-panel"
+        currency="JPY"
+        onAdd={onAdd}
+      />,
+    )
+
+    // #when
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '7.50' } })
+    fireEvent.click(screen.getByRole('button', { hidden: true, name: 'Add' }))
+
+    // #then
+    await vi.waitFor(() => expect(onAdd).toHaveBeenCalledOnce())
+    expect(onAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ panelId: 'trip-panel', currency: 'JPY', amount: 750 }),
+    )
+  })
+
+  it('omits route markers when categories belong to a single route', () => {
+    // #given
+    render(
+      <QuickAdd
+        open
+        onClose={() => {}}
+        categories={[personalHealth]}
+        panels={[personalDaily]}
+        personalRouteId={personalRouteId}
+        onAdd={vi.fn()}
+      />,
+    )
+
+    // #when
+    fireEvent.click(screen.getByRole('button', { hidden: true, name: 'Category' }))
+
+    // #then
+    const options = screen.getAllByRole('option', { hidden: true })
+    const labelText = options[0].textContent ?? ''
+    expect(labelText.trim()).toBe('Health')
   })
 })

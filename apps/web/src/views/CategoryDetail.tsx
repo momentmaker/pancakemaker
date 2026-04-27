@@ -324,7 +324,6 @@ export function CategoryDetail() {
         lockedCategoryId={categoryId}
         categories={categories}
         panels={panels}
-        defaultPanelId={defaultPanel?.id}
         onAdd={handleAdd}
       />
     </div>

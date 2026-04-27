@@ -22,11 +22,17 @@ export function FormInput({ label, mono = false, className = '', id, ...props }:
   )
 }
 
+interface FormSelectOption {
+  value: string
+  label: string
+  meta?: string
+}
+
 interface FormSelectProps {
   label: string
   value: string
   onChange: (value: string) => void
-  options: { value: string; label: string }[]
+  options: FormSelectOption[]
   id?: string
 }
 
@@ -66,7 +72,14 @@ export function FormSelect({ label, value, onChange, options, id }: FormSelectPr
             : 'border-border-dim bg-bg-primary text-text-primary hover:border-border-glow'
         }`}
       >
-        <span>{selected?.label ?? ''}</span>
+        <span className="flex items-baseline gap-1.5">
+          <span>{selected?.label ?? ''}</span>
+          {selected?.meta && (
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-text-muted/70">
+              {selected.meta}
+            </span>
+          )}
+        </span>
         <svg
           width="12"
           height="12"
@@ -100,13 +113,22 @@ export function FormSelect({ label, value, onChange, options, id }: FormSelectPr
                   onChange(opt.value)
                   setOpen(false)
                 }}
-                className={`flex w-full items-center px-3 py-1.5 text-left text-sm transition-colors ${
+                className={`flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-sm transition-colors ${
                   isSelected
                     ? 'bg-neon-cyan/10 text-neon-cyan'
                     : 'text-text-secondary hover:bg-bg-elevated hover:text-text-primary'
                 }`}
               >
-                {opt.label}
+                <span>{opt.label}</span>
+                {opt.meta && (
+                  <span
+                    className={`font-mono text-[10px] uppercase tracking-[0.15em] ${
+                      isSelected ? 'text-neon-cyan/60' : 'text-text-muted/70'
+                    }`}
+                  >
+                    {opt.meta}
+                  </span>
+                )}
               </button>
             )
           })}

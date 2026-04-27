@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Modal } from './Modal'
 import { Button } from './Button'
 import { FormInput, FormSelect } from './FormInput'
@@ -19,8 +19,19 @@ interface QuickAddProps {
   panelId?: string
   currency?: string
   panels?: PanelRow[]
-  defaultPanelId?: string
   lockedCategoryId?: string
+  personalRouteId?: string
+}
+
+function pickDefaultPanel(panels: PanelRow[] | undefined, routeId: string): PanelRow | undefined {
+  if (!panels) return undefined
+  let fallback: PanelRow | undefined
+  for (const p of panels) {
+    if (p.route_id !== routeId || p.is_archived !== 0) continue
+    if (p.is_default === 1) return p
+    if (!fallback || p.sort_order < fallback.sort_order) fallback = p
+  }
+  return fallback
 }
 
 export function QuickAdd({
@@ -31,15 +42,13 @@ export function QuickAdd({
   panelId: fixedPanelId,
   currency: fixedCurrency,
   panels,
-  defaultPanelId,
   lockedCategoryId,
+  personalRouteId,
 }: QuickAddProps) {
-  const initialPanelId = fixedPanelId ?? defaultPanelId ?? panels?.[0]?.id ?? ''
   const initialCategoryId = lockedCategoryId ?? categories[0]?.id ?? ''
 
   const [amount, setAmount] = useState('')
   const [categoryId, setCategoryId] = useState(initialCategoryId)
-  const [selectedPanelId, setSelectedPanelId] = useState(initialPanelId)
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [description, setDescription] = useState('')
   const [showMore, setShowMore] = useState(false)
@@ -50,27 +59,40 @@ export function QuickAdd({
     if (open && !prevOpen.current) {
       setAmount('')
       setCategoryId(lockedCategoryId ?? categories[0]?.id ?? '')
-      setSelectedPanelId(fixedPanelId ?? defaultPanelId ?? panels?.[0]?.id ?? '')
       setDate(new Date().toISOString().slice(0, 10))
       setDescription('')
       setShowMore(false)
     }
     prevOpen.current = open
-  }, [open, categories, panels, fixedPanelId, defaultPanelId, lockedCategoryId])
+  }, [open, categories, lockedCategoryId])
 
-  const resolvedPanelId = fixedPanelId ?? selectedPanelId
-  const selectedPanel = panels?.find((p) => p.id === resolvedPanelId)
-  const resolvedCurrency = fixedCurrency ?? selectedPanel?.currency ?? 'USD'
-  const showPanelPicker = !fixedPanelId && panels && panels.length > 0
+  const selectedCategory = useMemo(
+    () => categories.find((c) => c.id === categoryId),
+    [categories, categoryId],
+  )
+
+  const derivedPanel = useMemo(() => {
+    if (fixedPanelId) return panels?.find((p) => p.id === fixedPanelId)
+    if (!selectedCategory) return undefined
+    return pickDefaultPanel(panels, selectedCategory.route_id)
+  }, [fixedPanelId, panels, selectedCategory])
+
+  const resolvedPanelId = fixedPanelId ?? derivedPanel?.id ?? ''
+  const resolvedCurrency = fixedCurrency ?? derivedPanel?.currency ?? 'USD'
+
+  const showRouteMarkers = useMemo(() => {
+    if (!personalRouteId) return false
+    const routeIds = new Set(categories.map((c) => c.route_id))
+    return routeIds.size > 1
+  }, [categories, personalRouteId])
 
   const reset = useCallback(() => {
     setAmount('')
     setCategoryId(lockedCategoryId ?? categories[0]?.id ?? '')
-    setSelectedPanelId(fixedPanelId ?? defaultPanelId ?? panels?.[0]?.id ?? '')
     setDate(new Date().toISOString().slice(0, 10))
     setDescription('')
     setShowMore(false)
-  }, [categories, fixedPanelId, defaultPanelId, panels, lockedCategoryId])
+  }, [categories, lockedCategoryId])
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -107,9 +129,11 @@ export function QuickAdd({
     ],
   )
 
-  const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }))
-  const panelOptions =
-    panels?.map((p) => ({ value: p.id, label: `${p.name} (${p.currency})` })) ?? []
+  const categoryOptions = categories.map((c) => ({
+    value: c.id,
+    label: c.name,
+    meta: showRouteMarkers ? (c.route_id === personalRouteId ? 'p' : 'b') : undefined,
+  }))
 
   return (
     <Modal open={open} onClose={onClose} title="Add Expense">
@@ -138,15 +162,6 @@ export function QuickAdd({
             value={categoryId}
             onChange={setCategoryId}
             options={categoryOptions}
-          />
-        )}
-
-        {showPanelPicker && (
-          <FormSelect
-            label="Panel"
-            value={selectedPanelId}
-            onChange={setSelectedPanelId}
-            options={panelOptions}
           />
         )}
 
@@ -180,7 +195,7 @@ export function QuickAdd({
           <Button variant="ghost" type="button" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" disabled={submitting || !amount || !categoryId}>
+          <Button type="submit" disabled={submitting || !amount || !categoryId || !resolvedPanelId}>
             {submitting ? 'Adding...' : 'Add'}
           </Button>
         </div>

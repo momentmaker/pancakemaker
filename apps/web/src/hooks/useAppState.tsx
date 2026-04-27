@@ -4,7 +4,12 @@ import { DatabaseProvider } from '../db/DatabaseContext.js'
 import { runMigrations } from '../db/migrations.js'
 import { seedDefaultData, seedRoutesForUser } from '../db/seed.js'
 import { clearSyncCursor } from '../sync/api-client.js'
-import { getRoutesByUser, getPanelsByRoute, createPanel } from '../db/queries.js'
+import {
+  getRoutesByUser,
+  getPanelsByRoute,
+  createPanel,
+  healOrphanedExpenses,
+} from '../db/queries.js'
 import { generateRecurringExpenses } from '../db/recurring-generator.js'
 
 export interface AppState {
@@ -41,7 +46,6 @@ export function AppProvider({ createDatabase, children }: AppProviderProps) {
           sharedDb = database
 
           await runMigrations(database)
-          await generateRecurringExpenses(database)
 
           const users = await database.query<{ id: string; base_currency: string }>(
             'SELECT id, base_currency FROM users LIMIT 1',
@@ -102,6 +106,13 @@ export function AppProvider({ createDatabase, children }: AppProviderProps) {
               await createPanel(database, route.id, 'Annual', baseCurrency, 2, 'annual')
             }
           }
+
+          const healed = await healOrphanedExpenses(database, userId)
+          if (healed > 0) {
+            console.log('[init] healed %d cross-route orphan expense(s)', healed)
+          }
+
+          await generateRecurringExpenses(database)
 
           return {
             db: database,
