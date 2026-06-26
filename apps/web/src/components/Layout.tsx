@@ -3,29 +3,7 @@ import { Outlet, NavLink } from 'react-router-dom'
 import { SyncIndicator } from './SyncIndicator'
 import { useSync } from '../sync/SyncContext'
 import { useInstallPrompt } from '../hooks/useInstallPrompt'
-
-const navItems = [
-  {
-    to: '/',
-    label: 'Dashboard',
-    icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4',
-  },
-  {
-    to: '/personal',
-    label: 'Personal',
-    icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-  },
-  {
-    to: '/business',
-    label: 'Business',
-    icon: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m8 0H8m8 0h2a2 2 0 012 2v6M8 6H6a2 2 0 00-2 2v6a2 2 0 002 2h12a2 2 0 002-2',
-  },
-  {
-    to: '/settings',
-    label: 'Settings',
-    icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z',
-  },
-]
+import { navItems } from './nav-items'
 
 function NavIcon({ d }: { d: string }) {
   return (
