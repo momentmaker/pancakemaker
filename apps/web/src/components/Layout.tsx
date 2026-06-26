@@ -3,7 +3,9 @@ import { Outlet, NavLink } from 'react-router-dom'
 import { SyncIndicator } from './SyncIndicator'
 import { useSync } from '../sync/SyncContext'
 import { useInstallPrompt } from '../hooks/useInstallPrompt'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { navItems } from './nav-items'
+import { KeyboardCheatsheet } from './KeyboardCheatsheet'
 
 function NavIcon({ d }: { d: string }) {
   return (
@@ -277,9 +279,13 @@ function InstallButton() {
 
 export function Layout() {
   const { status } = useSync()
+  const [showCheatsheet, setShowCheatsheet] = useState(false)
+
+  useKeyboardShortcuts({ onCheatsheet: () => setShowCheatsheet(true) })
 
   return (
     <div className="min-h-screen bg-bg-primary pb-16 sm:pb-0">
+      <KeyboardCheatsheet open={showCheatsheet} onClose={() => setShowCheatsheet(false)} />
       {/* Desktop top nav */}
       <nav className="border-b border-border-dim bg-bg-secondary">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
