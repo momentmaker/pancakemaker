@@ -1,5 +1,8 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { type RouteType, SUPPORTED_CURRENCIES } from '@pancakemaker/shared'
+import { useRoutePrefix } from '../demo/demo-context'
+import { useListCursor, type CursorItem } from '../hooks/useKeyboardCursor'
 import { useAppState } from '../hooks/useAppState'
 import { usePanels } from '../hooks/usePanels'
 import { useCategories } from '../hooks/useCategories'
@@ -138,6 +141,28 @@ export function RouteView({ type }: RouteViewProps) {
     setShowAdd(false)
   }, [addPanel, newPanelName, newPanelCurrency, newPanelRecurrence, baseCurrency, panels.length])
 
+  const navigate = useNavigate()
+  const prefix = useRoutePrefix()
+  const gridRef = useRef<HTMLDivElement>(null)
+  const getCardElement = useCallback(
+    (id: string) =>
+      gridRef.current?.querySelector<HTMLElement>(`[data-kbd-item-id="${id}"]`) ?? null,
+    [],
+  )
+  const cursorItems = useMemo<CursorItem[]>(() => {
+    if (activeTab === 'categories') {
+      return categories.map((cat) => ({
+        id: cat.id,
+        open: () => navigate(`${prefix}/${type}/category/${cat.id}`),
+      }))
+    }
+    return panels.map((panel) => ({
+      id: panel.id,
+      open: () => navigate(`${prefix}/${type}/panel/${panel.id}`),
+    }))
+  }, [activeTab, categories, panels, navigate, prefix, type])
+  const activeCardId = useListCursor(cursorItems, getCardElement)
+
   const loading = activeTab === 'categories' ? categoriesLoading : panelsLoading
 
   return (
@@ -185,7 +210,7 @@ export function RouteView({ type }: RouteViewProps) {
               <EmptyState message={`No ${type} categories yet`} />
             </div>
           ) : (
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div ref={gridRef} className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {categories.map((cat) => {
                 const rows = categoryTotals.filter((t) => t.category_id === cat.id)
                 const total = rows.reduce((sum, r) => sum + convert(r.total, r.currency), 0)
@@ -200,6 +225,7 @@ export function RouteView({ type }: RouteViewProps) {
                     count={count}
                     currency={baseCurrency}
                     routeType={type}
+                    cursored={activeCardId === cat.id}
                   />
                 )
               })}
@@ -224,7 +250,7 @@ export function RouteView({ type }: RouteViewProps) {
               />
             </div>
           ) : (
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div ref={gridRef} className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {panels.map((panel) => (
                 <PanelCard
                   key={panel.id}
@@ -237,6 +263,7 @@ export function RouteView({ type }: RouteViewProps) {
                   isDefault={panel.is_default === 1}
                   isArchived={panel.is_archived === 1}
                   recurrenceType={panel.recurrence_type}
+                  cursored={activeCardId === panel.id}
                 />
               ))}
             </div>

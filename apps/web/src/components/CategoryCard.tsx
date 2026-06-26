@@ -11,6 +11,7 @@ interface CategoryCardProps {
   count: number
   currency: string
   routeType: 'personal' | 'business'
+  cursored?: boolean
 }
 
 export function CategoryCard({
@@ -21,12 +22,17 @@ export function CategoryCard({
   count,
   currency,
   routeType,
+  cursored = false,
 }: CategoryCardProps) {
   const navigate = useNavigate()
   const prefix = useRoutePrefix()
 
   return (
-    <Card onClick={() => navigate(`${prefix}/${routeType}/category/${id}`)}>
+    <Card
+      onClick={() => navigate(`${prefix}/${routeType}/category/${id}`)}
+      cursorId={id}
+      cursored={cursored}
+    >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
           <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: color }} />

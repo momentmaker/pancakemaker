@@ -13,6 +13,7 @@ interface PanelCardProps {
   isDefault?: boolean
   isArchived?: boolean
   recurrenceType?: string | null
+  cursored?: boolean
 }
 
 export function PanelCard({
@@ -25,6 +26,7 @@ export function PanelCard({
   isDefault = false,
   isArchived = false,
   recurrenceType,
+  cursored = false,
 }: PanelCardProps) {
   const navigate = useNavigate()
   const prefix = useRoutePrefix()
@@ -33,6 +35,8 @@ export function PanelCard({
     <Card
       onClick={() => navigate(`${prefix}/${routeType}/panel/${id}`)}
       className={isArchived ? 'opacity-50' : ''}
+      cursorId={id}
+      cursored={cursored}
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
