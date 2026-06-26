@@ -6,6 +6,7 @@ import { useRoutePrefix } from '../demo/demo-context'
 import { useExpenses } from '../hooks/useExpenses'
 import { useCategories } from '../hooks/useCategories'
 import { useExchangeRates } from '../hooks/useExchangeRates'
+import { useExpenseListCursor } from '../hooks/useExpenseListCursor'
 import {
   getPanelsByRoute,
   getCategoryMonthlyTrend,
@@ -103,6 +104,15 @@ export function CategoryDetail() {
       return { panelId, panel, panelExpenses, subtotal, sortedDates }
     })
   }, [expenses, panelMap])
+
+  const orderedExpenseIds = useMemo(
+    () =>
+      panelGroups
+        .filter((group) => !collapsedPanels.has(group.panelId))
+        .flatMap((group) => group.sortedDates.flatMap(([, ex]) => ex.map((e) => e.id))),
+    [panelGroups, collapsedPanels],
+  )
+  const { containerRef, activeId, rowRef } = useExpenseListCursor(orderedExpenseIds)
 
   const convertedTotal = useMemo(
     () => expenses.reduce((sum, e) => sum + convert(e.amount, e.currency), 0),
@@ -244,7 +254,7 @@ export function CategoryDetail() {
             onAction={() => setShowQuickAdd(true)}
           />
         ) : (
-          <div className="flex flex-col gap-6">
+          <div ref={containerRef} className="flex flex-col gap-6">
             {panelGroups.map(({ panelId, panel, panelExpenses, subtotal, sortedDates }) => {
               const collapsed = collapsedPanels.has(panelId)
               return (
@@ -289,11 +299,13 @@ export function CategoryDetail() {
                             {dateExpenses.map((expense) => (
                               <ExpenseRow
                                 key={expense.id}
+                                ref={rowRef(expense.id)}
                                 expense={expense}
                                 onUpdateAmount={handleUpdateAmount}
                                 onUpdateDescription={handleUpdateDescription}
                                 onDuplicate={handleDuplicate}
                                 onDelete={handleRemove}
+                                cursored={activeId === expense.id}
                               />
                             ))}
                           </div>

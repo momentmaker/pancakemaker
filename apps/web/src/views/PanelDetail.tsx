@@ -5,6 +5,7 @@ import { useAppState } from '../hooks/useAppState'
 import { useRoutePrefix } from '../demo/demo-context'
 import { useExpenses } from '../hooks/useExpenses'
 import { useCategories } from '../hooks/useCategories'
+import { useExpenseListCursor } from '../hooks/useExpenseListCursor'
 import {
   updatePanel,
   deletePanel,
@@ -88,6 +89,12 @@ export function PanelDetail() {
     }
     return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
   }, [expenses])
+
+  const orderedExpenseIds = useMemo(
+    () => groupedByDate.flatMap(([, dateExpenses]) => dateExpenses.map((e) => e.id)),
+    [groupedByDate],
+  )
+  const { containerRef, activeId, rowRef } = useExpenseListCursor(orderedExpenseIds)
 
   const total = useMemo(() => expenses.reduce((sum, e) => sum + e.amount, 0), [expenses])
 
@@ -319,7 +326,7 @@ export function PanelDetail() {
             onAction={() => setShowQuickAdd(true)}
           />
         ) : (
-          <div className="flex flex-col gap-6">
+          <div ref={containerRef} className="flex flex-col gap-6">
             {groupedByDate.map(([date, dateExpenses]) => (
               <div key={date}>
                 <h3 className="mb-2 font-mono text-xs font-medium text-text-muted">
@@ -333,12 +340,14 @@ export function PanelDetail() {
                   {dateExpenses.map((expense) => (
                     <ExpenseRow
                       key={expense.id}
+                      ref={rowRef(expense.id)}
                       expense={expense}
                       category={categoryMap.get(expense.category_id)}
                       onUpdateAmount={handleUpdateAmount}
                       onUpdateDescription={handleUpdateDescription}
                       onDuplicate={handleDuplicate}
                       onDelete={handleRemove}
+                      cursored={activeId === expense.id}
                     />
                   ))}
                 </div>
@@ -437,7 +446,10 @@ function PanelActions({
         </svg>
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-10 mt-1 min-w-[160px] rounded-md border border-border-dim bg-bg-card py-1 shadow-lg">
+        <div
+          data-kbd-popover-open
+          className="absolute right-0 top-full z-10 mt-1 min-w-[160px] rounded-md border border-border-dim bg-bg-card py-1 shadow-lg"
+        >
           {!isDefault && (
             <button
               onClick={() => {
