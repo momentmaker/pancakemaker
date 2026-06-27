@@ -1,5 +1,5 @@
 ---
-title: "feat: Vim-style desktop keyboard shortcuts"
+title: 'feat: Vim-style desktop keyboard shortcuts'
 type: feat
 status: active
 date: 2026-06-26
@@ -23,6 +23,7 @@ Pancakemaker is a list-heavy, daily-use expense PWA where every desktop interact
 ## Requirements
 
 **Foundation (Phase 1 engine)**
+
 - R1. Shortcuts active only on desktop viewports; inert below the `sm`/640px breakpoint.
 - R2. Pure intent-mapper (key + context → action, no DOM) plus a thin React hook owning one global keydown listener; the mapper is the registration point Phases 2–4 extend.
 - R3. Never fire while typing in input/textarea/select/contenteditable; only `Esc` honored in that state.
@@ -31,25 +32,29 @@ Pancakemaker is a list-heavy, daily-use expense PWA where every desktop interact
 - R6. `?` opens a cheatsheet overlay of active shortcuts; `Esc` closes it with focus restored.
 
 **Phase 1 — Navigation & actions**
+
 - R7. `j`/`k` move a keyboard cursor through the current view's list (cards on route views, expense rows on detail views).
 - R8. Cursored item is highlighted and scrolled into view.
 - R9. `gg` → first item; `G` → last item.
 - R10. `Enter`/`o` opens or edits the cursored item via existing interactions.
 - R11. `d` deletes the cursored expense through the existing 2-tap confirm; no new destructive path.
 - R12. `yy` duplicates the cursored expense via the existing Duplicate action.
-- R13. `/` focuses the current view's filter/search field. *(No such field exists today — see Scope Boundaries → Deferred to Follow-Up Work.)*
+- R13. `/` focuses the current view's filter/search field. _(No such field exists today — see Scope Boundaries → Deferred to Follow-Up Work.)_
 - R14. `g`-prefixed route jumps: `gd` Dashboard, `gp` Personal, `gb` Business, `gs` Settings.
 - R15. `Esc` clears the keyboard cursor or blurs a focused field.
 
 **Phase 2 — Fast capture** (roadmap)
+
 - R16. `a` opens QuickAdd immediately with the amount autofocused.
 - R17. `:` opens a command-line capture bar that parses a short expression into a new expense.
 
 **Phase 3 — Command palette** (roadmap)
+
 - R18. `Cmd-K`/`Ctrl-K` opens a fuzzy command palette.
 - R19. Palette jumps to any category/panel/route and runs available actions.
 
 **Phase 4 — f-hints & month scrub** (roadmap)
+
 - R20. `f` enters f-hint mode: letter badges on visible targets; mistype exits silently.
 - R21. `[`/`]` move the active list to the previous/next month.
 
@@ -80,7 +85,7 @@ Pancakemaker is a list-heavy, daily-use expense PWA where every desktop interact
 - **Mount point:** `apps/web/src/components/Layout.tsx` (`Layout`) wraps all primary routes via `<Outlet/>` and is a route element with router context; mounting the hook here naturally excludes `/auth/*` and the demo tree. `navItems` lives here as a module-private const (only `Layout` is exported) and must be extracted into a shared exported table before the hook can consume it.
 - **Hook precedent:** `apps/web/src/hooks/useInstallPrompt.ts` — the existing `window`-listener-in-`useEffect`-with-cleanup pattern to mirror. Context-hook precedent: `apps/web/src/sync/SyncContext.tsx` (createContext + Provider + throwing `useX()`).
 - **Reuse — rows:** `apps/web/src/components/ExpenseRow.tsx` owns inline edit (Enter/Esc), 2-tap delete (`startConfirm` arms `confirming` + a 3s auto-cancel timer + click-outside cancel; `confirmDelete` commits; `cancelConfirm` cancels), and Duplicate. These are **private** today — no external handle. Parent handlers (`handleUpdateAmount`, `handleUpdateDescription`, `handleDuplicate`, `handleRemove`) exist in `apps/web/src/views/CategoryDetail.tsx` and `apps/web/src/views/PanelDetail.tsx`.
-- **Reuse — cards:** `apps/web/src/components/Card.tsx` is already `tabIndex=0`, `role="button"`, Enter-activatable. `CategoryCard.tsx`/`PanelCard.tsx` navigate via `navigate(\`${prefix}/${routeType}/(category|panel)/${id}\`)` through `useRoutePrefix()` (`apps/web/src/demo/demo-context.tsx`).
+- **Reuse — cards:** `apps/web/src/components/Card.tsx` is already `tabIndex=0`, `role="button"`, Enter-activatable. `CategoryCard.tsx`/`PanelCard.tsx` navigate via `navigate(\`${prefix}/${routeType}/(category|panel)/${id}\`)`through`useRoutePrefix()` (`apps/web/src/demo/demo-context.tsx`).
 - **Reuse — lists:** `apps/web/src/views/RouteView.tsx` renders `CategoryCard`/`PanelCard` grids with a `categories|panels` tab toggle and `MonthPicker`. No virtualization anywhere, so a DOM cursor can rely on all visible items being present. `CategoryDetail` has collapsible panels (`collapsedPanels`) that omit collapsed rows from the DOM.
 - **Modal & custom popovers:** `apps/web/src/components/Modal.tsx` is a native `<dialog>` using `showModal()`; Escape is native and sets `dialog[open]`. But `PanelActions` (the `…` menu), `FormSelect`, and the `ExpenseRow` delete-confirm are **custom popovers, not native dialogs** — they close on outside `mousedown` and keep focus on a trigger `<button>`, so `dialog[open]` is false and `activeElement` isn't editable. There is no global "is an overlay open" signal — one must be added.
 - **QuickAdd:** `apps/web/src/components/QuickAdd.tsx` already `autoFocus`es the amount and resets on the closed→open transition; open-state lives per-view (`showQuickAdd`).
@@ -112,12 +117,12 @@ Pancakemaker is a list-heavy, daily-use expense PWA where every desktop interact
 
 ### Resolved During Planning
 
-- *Where does the global handler mount?* → `Layout` (see Key Technical Decisions).
-- *How to detect blocking overlays?* → native `dialog[open]` plus a shared open marker on custom popovers (PanelActions/FormSelect/ExpenseRow confirm).
-- *Key-repeat guard ordering?* → resolve the action first, then drop repeats only for mutating actions.
-- *Esc with multiple consumers?* → the precedence ladder in Key Technical Decisions.
-- *Cursor behavior in `CategoryDetail` collapsed panels?* → cursor follows the visible (expanded) set only; collapsed groups are skipped (reversible; auto-expand can be revisited).
-- *Does `/` have a target?* → No; not registered in Phase 1 (deferred), so it never shows as a dead cheatsheet key.
+- _Where does the global handler mount?_ → `Layout` (see Key Technical Decisions).
+- _How to detect blocking overlays?_ → native `dialog[open]` plus a shared open marker on custom popovers (PanelActions/FormSelect/ExpenseRow confirm).
+- _Key-repeat guard ordering?_ → resolve the action first, then drop repeats only for mutating actions.
+- _Esc with multiple consumers?_ → the precedence ladder in Key Technical Decisions.
+- _Cursor behavior in `CategoryDetail` collapsed panels?_ → cursor follows the visible (expanded) set only; collapsed groups are skipped (reversible; auto-expand can be revisited).
+- _Does `/` have a target?_ → No; not registered in Phase 1 (deferred), so it never shows as a dead cheatsheet key.
 
 ### Deferred to Implementation
 
@@ -134,7 +139,7 @@ Pancakemaker is a list-heavy, daily-use expense PWA where every desktop interact
 
 ## High-Level Technical Design
 
-> *This illustrates the intended approach and is directional guidance for review, not implementation specification. The implementing agent should treat it as context, not code to reproduce.*
+> _This illustrates the intended approach and is directional guidance for review, not implementation specification. The implementing agent should treat it as context, not code to reproduce._
 
 ```
 document keydown
@@ -170,16 +175,19 @@ Pending-sequence sketch: a `g` keypress with no pending token sets `pending='g'`
 **Dependencies:** None
 
 **Files:**
+
 - Create: `apps/web/src/hooks/useIsDesktop.ts`
 - Test: `apps/web/src/hooks/useIsDesktop.test.tsx`
 
 **Approach:**
+
 - Mirror the `window`-listener-in-`useEffect`-with-cleanup pattern from `useInstallPrompt.ts`, querying `(min-width: 640px)` via `matchMedia` and subscribing to changes.
 - Centralize the `640` constant so it tracks Tailwind's `sm`.
 
 **Patterns to follow:** `apps/web/src/hooks/useInstallPrompt.ts`.
 
 **Test scenarios:**
+
 - Happy path: matchMedia matches → returns `true`; does not match → returns `false`.
 - Edge case: a `change` event flips the match → returned value updates.
 - Edge case: listener is removed on unmount (no leak).
@@ -198,10 +206,12 @@ Pending-sequence sketch: a `g` keypress with no pending token sets `pending='g'`
 **Dependencies:** None
 
 **Files:**
+
 - Create: `apps/web/src/lib/keyboard/intents.ts`
 - Test: `apps/web/src/lib/keyboard/intents.test.ts`
 
 **Approach:**
+
 - Single exported function taking the key and a context object (`{ pending, fieldFocused }`) returning an action name or `'none'`.
 - Encode Phase 1 bindings: `j/k`, `gg`/`G`, `o`/`Enter`, `d`, `yy`, `g`+`d/p/b/s`, `?`, `Esc`. `/` is NOT registered in Phase 1 (R13 deferred) so it never appears in the cheatsheet as a dead key; if reintroduced later it must `preventDefault` to avoid the browser's native quick-find.
 - When `fieldFocused`, return only `escape` for `Esc`, else `'none'`.
@@ -213,6 +223,7 @@ Pending-sequence sketch: a `g` keypress with no pending token sets `pending='g'`
 **Patterns to follow:** `ypuf` `extension/lib/boardkeys.js` (intent-mapper shape).
 
 **Test scenarios:**
+
 - Happy path: each Phase 1 key maps to its expected action with empty `pending`.
 - Happy path (chords): `g` then `g` → top; `g` then `d/p/b/s` → the four route actions.
 - Edge case: unknown key (including `/`) → `'none'`.
@@ -233,11 +244,13 @@ Pending-sequence sketch: a `g` keypress with no pending token sets `pending='g'`
 **Dependencies:** U1, U2
 
 **Files:**
+
 - Create: `apps/web/src/hooks/useKeyboardShortcuts.ts`
 - Create: `apps/web/src/hooks/useKeyboardShortcuts.test.tsx`
 - Modify: `apps/web/src/components/Layout.tsx` (call the hook; extract `navItems` into a shared exported table)
 
 **Approach:**
+
 - Attach one `document` keydown listener in `useEffect` with cleanup; keep the handler stable and read latest state via refs to avoid stale closures in the long-lived listener.
 - Guards in order: bail if `!isDesktop`; bail if a blocking overlay is open — native `dialog[open]` OR an open custom popover (PanelActions menu, FormSelect, ExpenseRow confirm), which are not native dialogs and keep focus on a button, so each must expose a shared open marker the guard can check; if `activeElement` is editable/inside a dropdown, only allow `Esc`.
 - Resolve the action via the mapper first, THEN drop the event if `e.repeat` and the resolved action is mutating (`d`/`yy`); non-mutating `j`/`k` continue to repeat so held-key scrolling works.
@@ -250,6 +263,7 @@ Pending-sequence sketch: a `g` keypress with no pending token sets `pending='g'`
 **Patterns to follow:** listener+cleanup convention in `ExpenseRow.tsx`/`SyncIndicator.tsx`; `navItems` + `useRoutePrefix()` in `Layout.tsx`.
 
 **Test scenarios:**
+
 - Covers AE3 / R1: mobile viewport (stubbed) → no action fires for any key.
 - Covers AE1 / R3: focus an input → `j` does not navigate; `Esc` blurs.
 - Covers AE2 / R4: a `dialog[open]` present → `d`/`j` suppressed.
@@ -272,17 +286,20 @@ Pending-sequence sketch: a `g` keypress with no pending token sets `pending='g'`
 **Dependencies:** U3
 
 **Files:**
+
 - Create: `apps/web/src/components/KeyboardCheatsheet.tsx`
 - Create: `apps/web/src/components/KeyboardCheatsheet.test.tsx`
 - Modify: `apps/web/src/components/Layout.tsx` (render overlay + open-state wiring)
 
 **Approach:**
+
 - Build on the existing native-`<dialog>` `Modal` so focus-trap, native Escape, and focus restoration come for free.
 - Source the binding list from a shared definition so it cannot drift from U2's mapper (and so deferred/unregistered keys like `/` never appear).
 
 **Patterns to follow:** `apps/web/src/components/Modal.tsx`.
 
 **Test scenarios:**
+
 - Covers AE5 / R6: pressing `?` shows the overlay; `Esc` closes it.
 - Happy path: the overlay lists the Phase 1 bindings and does not list `/`.
 - Note: jsdom lacks `<dialog>.showModal()` — assert on open-state/`dialog[open]` per the repo's existing Modal handling.
@@ -302,6 +319,7 @@ Pending-sequence sketch: a `g` keypress with no pending token sets `pending='g'`
 > **Design note:** the cursor's focus model, identity/anchoring model, and the listener↔view connective mechanism are open architectural decisions captured under **Deferred / Open Questions → From 2026-06-26 review**. Resolve those three together before building this unit — they define how the cursor system works.
 
 **Files:**
+
 - Create: `apps/web/src/hooks/useListCursor.ts`
 - Create: `apps/web/src/hooks/useListCursor.test.tsx`
 - Create/Modify: cursor highlight style (`apps/web/src/styles/` — `.kbd-cursor`)
@@ -309,6 +327,7 @@ Pending-sequence sketch: a `g` keypress with no pending token sets `pending='g'`
 - Modify: `apps/web/src/components/Card.tsx` if a cursor marker/attribute is needed
 
 **Approach:**
+
 - Cursor tracks the active list's items; `j/k` move it, `gg/G` jump to ends, applying `.kbd-cursor` and `scrollIntoView({ block: 'nearest' })`.
 - `Enter`/`o` triggers the cursored card's existing navigate target (respecting `useRoutePrefix()` and the active `categories|panels` tab).
 - Cursor reanchors when the list changes (tab switch, month change) — exact identity/anchoring rule per the deferred design decision.
@@ -316,6 +335,7 @@ Pending-sequence sketch: a `g` keypress with no pending token sets `pending='g'`
 **Patterns to follow:** card focusability in `Card.tsx`; `ypuf` cursor + `scrollIntoView` behavior.
 
 **Test scenarios:**
+
 - Happy path R7/R8: `j`/`k` move the cursor; highlight + scroll applied to the right item.
 - Happy path R9: `gg`/`G` jump to first/last.
 - Covers AE6 / R10: with a card cursored, `Enter` navigates to that category's detail.
@@ -335,12 +355,14 @@ Pending-sequence sketch: a `g` keypress with no pending token sets `pending='g'`
 **Dependencies:** U5
 
 **Files:**
+
 - Modify: `apps/web/src/components/ExpenseRow.tsx` (`forwardRef` + `useImperativeHandle`: `startEdit`, `startConfirmDelete`, `confirmDelete`, `cancelConfirm`, `duplicate`)
 - Modify: `apps/web/src/views/CategoryDetail.tsx` (cursor over rows; handle collapsed panels)
 - Modify: `apps/web/src/views/PanelDetail.tsx` (cursor over rows)
 - Modify/Create: `apps/web/src/components/ExpenseRow.test.tsx` (imperative-handle behavior)
 
 **Approach:**
+
 - Add an imperative handle to `ExpenseRow` that drives its existing internal state machines (inline edit, 2-tap confirm via `startConfirm`/`confirmDelete`/`cancelConfirm`, duplicate) — do not duplicate the UX.
 - Detail views collect row handles/positions and let the cursor target the active row; `Enter`/`o`→`startEdit`, `yy`→`duplicate`. Delete is a two-step armed flow: first `d`→`startConfirmDelete` (arms the row's existing confirm UI), second `d` on the same row→`confirmDelete`, `Esc`→`cancelConfirm`; moving the cursor or the existing 3s timer disarms, so the second `d` can never hit a different row.
 - In `CategoryDetail`, the cursor follows only visible (expanded) rows; collapsed panels are skipped.
@@ -350,6 +372,7 @@ Pending-sequence sketch: a `g` keypress with no pending token sets `pending='g'`
 **Patterns to follow:** existing `confirming`/`editing` state machines and parent handlers in `ExpenseRow.tsx`, `CategoryDetail.tsx`, `PanelDetail.tsx`.
 
 **Test scenarios:**
+
 - Happy path R10: `Enter`/`o` on a cursored row enters inline edit.
 - Covers AE4 / R11: `d` then `d` on the same row deletes via the existing confirm; `d` then `Esc` cancels.
 - Edge case: `d` (arm) then `j` (move cursor) then `d` does NOT delete the original row — moving the cursor disarms.
@@ -362,7 +385,7 @@ Pending-sequence sketch: a `g` keypress with no pending token sets `pending='g'`
 
 ---
 
-### U7. Phase 2 — Fast capture *(roadmap — blocked on origin open questions)*
+### U7. Phase 2 — Fast capture _(roadmap — blocked on origin open questions)_
 
 **Goal:** `a` opens QuickAdd globally; `:` opens a command-line capture bar (R16, R17).
 
@@ -371,6 +394,7 @@ Pending-sequence sketch: a `g` keypress with no pending token sets `pending='g'`
 **Dependencies:** U2, U3
 
 **Approach (sketch, not implementation-ready):**
+
 - `a` requires a global "open QuickAdd" mechanism — QuickAdd open-state is per-view today, so this needs lifting to the shell or a small context. Scope that lift carefully (it may touch multiple views). Register the action in the U2 mapper.
 - `:` capture parser is blocked on the origin questions: capture-target when no route context (Dashboard) and grammar depth (`#category`, dates, ordering). Resolve these (likely a short `ce-brainstorm`/`ce-plan` pass) before detailing this unit.
 
@@ -378,7 +402,7 @@ Pending-sequence sketch: a `g` keypress with no pending token sets `pending='g'`
 
 ---
 
-### U8. Phase 3 — Command palette *(roadmap — blocked on origin open questions)*
+### U8. Phase 3 — Command palette _(roadmap — blocked on origin open questions)_
 
 **Goal:** `Cmd-K`/`Ctrl-K` fuzzy palette to jump and run actions (R18, R19); also the natural home for `/` (R13).
 
@@ -392,7 +416,7 @@ Pending-sequence sketch: a `g` keypress with no pending token sets `pending='g'`
 
 ---
 
-### U9. Phase 4 — f-hints + month scrub *(roadmap — blocked on origin open questions)*
+### U9. Phase 4 — f-hints + month scrub _(roadmap — blocked on origin open questions)_
 
 **Goal:** `f` letter-jump hints; `[`/`]` month scrubbing (R20, R21).
 
@@ -417,23 +441,25 @@ Pending-sequence sketch: a `g` keypress with no pending token sets `pending='g'`
 
 ## Risks & Dependencies
 
-| Risk | Mitigation |
-|------|------------|
-| Stale-closure bug in the persistent keydown listener | Stable handler + refs for latest state; mirror existing listener convention; explicit test. |
-| Global handler collides with existing local handlers / custom popovers | Field + `dialog[open]` + custom-popover-marker guards (U3); test each suppression path. |
-| jsdom lacks `matchMedia` and `<dialog>.showModal()` | Stub `matchMedia`; assert modal/overlay state via `dialog[open]` and the popover marker rather than top-layer semantics. |
-| ExpenseRow imperative refactor regresses existing mouse UX | Handle is additive and drives the same internal state machines; keep existing tests green and add handle tests. |
-| Cursor desync after delete/duplicate or in collapsed panels | Anchor identity per the deferred cursor-model decision; reanchor on mutation; follow visible set only. |
-| Breakpoint constant drifts from Tailwind `sm` | Centralize `640` in `useIsDesktop`. |
+| Risk                                                                   | Mitigation                                                                                                               |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Stale-closure bug in the persistent keydown listener                   | Stable handler + refs for latest state; mirror existing listener convention; explicit test.                              |
+| Global handler collides with existing local handlers / custom popovers | Field + `dialog[open]` + custom-popover-marker guards (U3); test each suppression path.                                  |
+| jsdom lacks `matchMedia` and `<dialog>.showModal()`                    | Stub `matchMedia`; assert modal/overlay state via `dialog[open]` and the popover marker rather than top-layer semantics. |
+| ExpenseRow imperative refactor regresses existing mouse UX             | Handle is additive and drives the same internal state machines; keep existing tests green and add handle tests.          |
+| Cursor desync after delete/duplicate or in collapsed panels            | Anchor identity per the deferred cursor-model decision; reanchor on mutation; follow visible set only.                   |
+| Breakpoint constant drifts from Tailwind `sm`                          | Centralize `640` in `useIsDesktop`.                                                                                      |
 
 ---
 
 ## Phased Delivery
 
 ### Phase 1 (this plan, implementation-ready)
+
 - U1 → U2 → U3 → (U4, U5) → U6. Ships the engine, guards, route navigation, cheatsheet, and full list navigation + row actions. Independently valuable and de-risks all later phases via the shared intent-mapper. (U5/U6 depend on resolving the cursor-architecture open questions first.)
 
 ### Phases 2–4 (roadmap)
+
 - U7 (capture), U8 (palette + `/`), U9 (f-hints + month scrub). Each is gated on its origin open question and gets its own planning pass.
 
 ---
