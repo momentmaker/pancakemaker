@@ -99,6 +99,7 @@ export function FormSelect({ label, value, onChange, options, id }: FormSelectPr
       {open && (
         <div
           role="listbox"
+          data-kbd-popover-open
           className="relative z-20 -mt-0.5 max-h-48 overflow-y-auto rounded-md border border-border-dim bg-bg-card py-1 shadow-lg shadow-black/40"
         >
           {options.map((opt) => {
