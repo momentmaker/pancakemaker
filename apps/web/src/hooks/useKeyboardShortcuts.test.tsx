@@ -8,12 +8,18 @@ function LocationProbe() {
   return <div data-testid="path">{location.pathname}</div>
 }
 
-function Harness({ onCheatsheet = () => {} }: { onCheatsheet?: () => void }) {
+function Harness({
+  onCheatsheet = () => {},
+  onFieldBlur,
+}: {
+  onCheatsheet?: () => void
+  onFieldBlur?: () => void
+}) {
   useKeyboardShortcuts({ onCheatsheet })
   return (
     <>
       <LocationProbe />
-      <input data-testid="field" />
+      <input data-testid="field" onBlur={onFieldBlur} />
     </>
   )
 }
@@ -27,7 +33,10 @@ function setDesktop(matches: boolean) {
   })) as unknown as typeof window.matchMedia
 }
 
-function renderHarness(initialRoute = '/', props: { onCheatsheet?: () => void } = {}) {
+function renderHarness(
+  initialRoute = '/',
+  props: { onCheatsheet?: () => void; onFieldBlur?: () => void } = {},
+) {
   return render(
     <MemoryRouter initialEntries={[initialRoute]}>
       <Harness {...props} />
@@ -73,13 +82,31 @@ describe('useKeyboardShortcuts', () => {
     expect(path()).toBe('/')
   })
 
-  it('blurs a focused field on Escape (R15)', () => {
-    renderHarness('/')
+  it('stands down on Escape while a field is focused — does not blur or save it', () => {
+    // Regression: blurring a focused inline editor fires its save-on-blur, which
+    // commits the very edit the user pressed Esc to cancel. The field's own Esc
+    // handler owns cancellation; the global handler must leave it alone.
+    const onFieldBlur = vi.fn()
+    renderHarness('/', { onFieldBlur })
     const field = screen.getByTestId('field')
     field.focus()
-    expect(document.activeElement).toBe(field)
     fireEvent.keyDown(field, { key: 'Escape' })
-    expect(document.activeElement).not.toBe(field)
+    expect(document.activeElement).toBe(field)
+    expect(onFieldBlur).not.toHaveBeenCalled()
+  })
+
+  it('does not suppress Enter when no cursor item is active (focused buttons still activate)', () => {
+    renderHarness('/')
+    // fireEvent.keyDown returns false when the event's default was prevented.
+    const notPrevented = fireEvent.keyDown(document, { key: 'Enter' })
+    expect(notPrevented).toBe(true)
+  })
+
+  it('suppresses the browser default for a handled route chord', () => {
+    renderHarness('/')
+    fireEvent.keyDown(document, { key: 'g' })
+    const notPrevented = fireEvent.keyDown(document, { key: 'p' })
+    expect(notPrevented).toBe(false)
   })
 
   it('stands down while a native dialog owns the keyboard (R4 / AE2)', () => {

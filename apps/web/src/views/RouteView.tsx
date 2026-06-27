@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { type RouteType, SUPPORTED_CURRENCIES } from '@pancakemaker/shared'
 import { useRoutePrefix } from '../demo/demo-context'
 import { useListCursor, type CursorItem } from '../hooks/useKeyboardCursor'
+import { kbdItemSelector } from '../lib/keyboard/dom'
 import { useAppState } from '../hooks/useAppState'
 import { usePanels } from '../hooks/usePanels'
 import { useCategories } from '../hooks/useCategories'
@@ -145,8 +146,7 @@ export function RouteView({ type }: RouteViewProps) {
   const prefix = useRoutePrefix()
   const gridRef = useRef<HTMLDivElement>(null)
   const getCardElement = useCallback(
-    (id: string) =>
-      gridRef.current?.querySelector<HTMLElement>(`[data-kbd-item-id="${id}"]`) ?? null,
+    (id: string) => gridRef.current?.querySelector<HTMLElement>(kbdItemSelector(id)) ?? null,
     [],
   )
   const cursorItems = useMemo<CursorItem[]>(() => {

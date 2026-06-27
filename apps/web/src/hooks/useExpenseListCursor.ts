@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import type { ExpenseRowHandle } from '../components/ExpenseRow'
 import { useListCursor, type CursorItem } from './useKeyboardCursor.js'
+import { kbdItemSelector } from '../lib/keyboard/dom.js'
 
 interface ExpenseListCursor {
   containerRef: React.RefObject<HTMLDivElement | null>
@@ -30,8 +31,7 @@ export function useExpenseListCursor(orderedIds: string[]): ExpenseListCursor {
   }, [])
 
   const getElement = useCallback(
-    (id: string) =>
-      containerRef.current?.querySelector<HTMLElement>(`[data-kbd-item-id="${id}"]`) ?? null,
+    (id: string) => containerRef.current?.querySelector<HTMLElement>(kbdItemSelector(id)) ?? null,
     [],
   )
 

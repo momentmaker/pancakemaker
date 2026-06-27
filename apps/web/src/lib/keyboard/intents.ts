@@ -44,24 +44,26 @@ function intent(action: KeyAction, pending: PendingPrefix = null): Intent {
   return { action, pending, mutating: isMutating(action) }
 }
 
-const G_SEQUENCE: Record<string, KeyAction> = {
-  g: 'cursor-top',
-  d: 'go-dashboard',
-  p: 'go-personal',
-  b: 'go-business',
-  s: 'go-settings',
-}
+// Maps (not Records) so .get() is typed KeyAction | undefined — the unmapped-key
+// guard below is then verified by the type checker rather than looking like dead code.
+const G_SEQUENCE = new Map<string, KeyAction>([
+  ['g', 'cursor-top'],
+  ['d', 'go-dashboard'],
+  ['p', 'go-personal'],
+  ['b', 'go-business'],
+  ['s', 'go-settings'],
+])
 
-const SINGLE_KEYS: Record<string, KeyAction> = {
-  j: 'cursor-down',
-  k: 'cursor-up',
-  G: 'cursor-bottom',
-  o: 'open',
-  Enter: 'open',
-  d: 'delete',
-  '?': 'cheatsheet',
-  Escape: 'escape',
-}
+const SINGLE_KEYS = new Map<string, KeyAction>([
+  ['j', 'cursor-down'],
+  ['k', 'cursor-up'],
+  ['G', 'cursor-bottom'],
+  ['o', 'open'],
+  ['Enter', 'open'],
+  ['d', 'delete'],
+  ['?', 'cheatsheet'],
+  ['Escape', 'escape'],
+])
 
 export function resolveIntent(key: string, context: IntentContext = {}): Intent {
   const { pending = null, fieldFocused = false } = context
@@ -73,7 +75,7 @@ export function resolveIntent(key: string, context: IntentContext = {}): Intent 
   }
 
   if (pending === 'g') {
-    const action = G_SEQUENCE[key]
+    const action = G_SEQUENCE.get(key)
     return action ? intent(action) : intent('none')
   }
 
@@ -84,6 +86,6 @@ export function resolveIntent(key: string, context: IntentContext = {}): Intent 
   if (key === 'g') return intent('none', 'g')
   if (key === 'y') return intent('none', 'y')
 
-  const action = SINGLE_KEYS[key]
+  const action = SINGLE_KEYS.get(key)
   return action ? intent(action) : intent('none')
 }

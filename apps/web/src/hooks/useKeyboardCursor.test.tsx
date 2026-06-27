@@ -120,6 +120,18 @@ describe('keyboard cursor', () => {
     expect(active()).toBe('none')
   })
 
+  it('suppresses repeat-fire of mutating actions but keeps non-mutating nav repeating', () => {
+    const items = makeItems()
+    renderHarness(items)
+    fireEvent.keyDown(document, { key: 'j' }) // active: a
+    fireEvent.keyDown(document, { key: 'd', repeat: true }) // held d -> suppressed
+    expect(items[0].remove).not.toHaveBeenCalled()
+    fireEvent.keyDown(document, { key: 'd' }) // real press -> delete
+    expect(items[0].remove).toHaveBeenCalledOnce()
+    fireEvent.keyDown(document, { key: 'j', repeat: true }) // held j still advances
+    expect(active()).toBe('b')
+  })
+
   it('reanchors to the nearest surviving sibling after a delete', () => {
     function ReanchorHarness() {
       const [ids, setIds] = useState(['a', 'b', 'c'])
