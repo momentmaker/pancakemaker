@@ -2,6 +2,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts.js'
+import { CaptureContext } from './useCapture.js'
 
 function LocationProbe() {
   const location = useLocation()
@@ -134,6 +135,26 @@ describe('useKeyboardShortcuts', () => {
     renderHarness('/', { onCheatsheet })
     fireEvent.keyDown(document, { key: '?' })
     expect(onCheatsheet).toHaveBeenCalledOnce()
+  })
+
+  it('opens QuickAdd on `a` via the capture context', () => {
+    const openQuickAdd = vi.fn()
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <CaptureContext.Provider
+          value={{
+            targetRouteId: 'r1',
+            targetRouteLabel: 'Personal',
+            categories: [],
+            openQuickAdd,
+          }}
+        >
+          <Harness />
+        </CaptureContext.Provider>
+      </MemoryRouter>,
+    )
+    fireEvent.keyDown(document, { key: 'a' })
+    expect(openQuickAdd).toHaveBeenCalledOnce()
   })
 
   it('clears a pending chord after the timeout', () => {

@@ -15,6 +15,7 @@ export type KeyAction =
   | 'go-business'
   | 'go-settings'
   | 'cheatsheet'
+  | 'open-quick-add'
   | 'escape'
   | 'none'
 
@@ -61,6 +62,7 @@ const SINGLE_KEYS = new Map<string, KeyAction>([
   ['o', 'open'],
   ['Enter', 'open'],
   ['d', 'delete'],
+  ['a', 'open-quick-add'],
   ['?', 'cheatsheet'],
   ['Escape', 'escape'],
 ])

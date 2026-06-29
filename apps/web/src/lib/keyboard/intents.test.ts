@@ -20,6 +20,10 @@ describe('resolveIntent — single keys', () => {
     expect(resolveIntent('d').action).toBe('delete')
   })
 
+  it('maps a to open-quick-add', () => {
+    expect(resolveIntent('a').action).toBe('open-quick-add')
+  })
+
   it('maps ? to cheatsheet and Escape to escape', () => {
     expect(resolveIntent('?').action).toBe('cheatsheet')
     expect(resolveIntent('Escape').action).toBe('escape')

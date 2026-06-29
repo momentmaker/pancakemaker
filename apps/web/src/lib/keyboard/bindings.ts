@@ -18,6 +18,7 @@ export const KEYBOARD_BINDINGS: KeyBinding[] = [
   { keys: 'g p', description: 'Go to Personal' },
   { keys: 'g b', description: 'Go to Business' },
   { keys: 'g s', description: 'Go to Settings' },
+  { keys: 'a', description: 'Add an expense (Quick Add)' },
   { keys: '?', description: 'Show this cheatsheet' },
   { keys: 'Esc', description: 'Clear cursor / close' },
 ]

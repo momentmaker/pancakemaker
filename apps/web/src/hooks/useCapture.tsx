@@ -38,7 +38,8 @@ export interface CaptureContextValue {
   openQuickAdd: (prefill?: QuickAddPrefill) => void
 }
 
-const CaptureContext = createContext<CaptureContextValue | null>(null)
+// Exported so tests can provide a stub capture value without the full provider.
+export const CaptureContext = createContext<CaptureContextValue | null>(null)
 
 export function CaptureProvider({ children }: { children: ReactNode }) {
   const location = useLocation()

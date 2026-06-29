@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useIsDesktop } from './useIsDesktop.js'
 import { useKeyboardCursor } from './useKeyboardCursor.js'
+import { useCapture } from './useCapture.js'
 import { useRoutePrefix } from '../demo/demo-context.js'
 import { navItems } from '../components/nav-items.js'
 import { resolveIntent, type KeyAction, type PendingPrefix } from '../lib/keyboard/intents.js'
@@ -37,15 +38,18 @@ export function useKeyboardShortcuts({ onCheatsheet }: KeyboardShortcutsOptions)
   // Latest-value refs keep the long-lived listener from closing over stale
   // navigate/prefix/callback values without re-subscribing on every render.
   const cursor = useKeyboardCursor()
+  const capture = useCapture()
 
   const navigateRef = useRef(navigate)
   const prefixRef = useRef(routePrefix)
   const cheatsheetRef = useRef(onCheatsheet)
   const cursorRef = useRef(cursor)
+  const captureRef = useRef(capture)
   navigateRef.current = navigate
   prefixRef.current = routePrefix
   cheatsheetRef.current = onCheatsheet
   cursorRef.current = cursor
+  captureRef.current = capture
 
   const pendingRef = useRef<PendingPrefix>(null)
   const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -82,6 +86,9 @@ export function useKeyboardShortcuts({ onCheatsheet }: KeyboardShortcutsOptions)
         }
         case 'cheatsheet':
           cheatsheetRef.current()
+          return true
+        case 'open-quick-add':
+          captureRef.current?.openQuickAdd()
           return true
         case 'cursor-down':
           cursor?.move(1)
