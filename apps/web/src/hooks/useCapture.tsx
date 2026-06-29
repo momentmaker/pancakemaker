@@ -16,7 +16,16 @@ import { usePanels } from './usePanels'
 import { createExpense, logSyncEntry, type CategoryRow } from '../db/queries'
 import { QuickAdd } from '../components/QuickAdd'
 import { CaptureBar } from '../components/CaptureBar'
+import { CaptureToast, type CaptureToastSummary } from '../components/CaptureToast'
 import { decideCapture } from '../lib/keyboard/capture'
+
+function formatAmount(cents: number, currency: string): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+  }).format(cents / 100)
+}
 
 export interface QuickAddPrefill {
   amount?: string
@@ -76,6 +85,7 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
   const [prefill, setPrefill] = useState<QuickAddPrefill | undefined>(undefined)
   const [autoFocusField, setAutoFocusField] = useState<'amount' | 'category'>('amount')
   const [barOpen, setBarOpen] = useState(false)
+  const [toast, setToast] = useState<CaptureToastSummary | null>(null)
 
   const openQuickAdd = useCallback((next?: QuickAddPrefill) => {
     setPrefill(next)
@@ -107,15 +117,21 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
     async (input: string) => {
       const decision = decideCapture(input, categories, defaultPanel)
       if (decision.kind === 'create') {
+        const cents = Math.round(decision.amount * 100)
         await handleAdd({
           panelId: decision.panel.id,
           categoryId: decision.category.id,
-          amount: Math.round(decision.amount * 100),
+          amount: cents,
           currency: decision.panel.currency,
           date: new Date().toISOString().slice(0, 10),
           description: decision.note || undefined,
         })
         setBarOpen(false)
+        setToast({
+          route: targetRouteLabel,
+          category: decision.category.name,
+          amount: formatAmount(cents, decision.panel.currency),
+        })
         return
       }
       openQuickAdd({
@@ -125,7 +141,7 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
       })
       setBarOpen(false)
     },
-    [categories, defaultPanel, handleAdd, openQuickAdd],
+    [categories, defaultPanel, handleAdd, openQuickAdd, targetRouteLabel],
   )
 
   const value = useMemo<CaptureContextValue>(
@@ -153,6 +169,7 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
         onSubmit={submitCapture}
         onClose={() => setBarOpen(false)}
       />
+      <CaptureToast summary={toast} onDismiss={() => setToast(null)} />
     </CaptureContext.Provider>
   )
 }

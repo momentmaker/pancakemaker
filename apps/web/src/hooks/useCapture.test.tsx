@@ -86,6 +86,11 @@ describe('CaptureProvider', () => {
     )
     expect(rows[0].amount).toBe(1250)
     expect(rows[0].description).toBe('coffee')
+
+    const status = await screen.findByRole('status')
+    expect(status.textContent).toContain('Personal')
+    expect(status.textContent).toContain('Meals')
+    expect(status.textContent).toContain('$12.50')
   })
 
   it('opens a pre-filled QuickAdd and creates nothing when no category is given (AE2)', async () => {
@@ -101,5 +106,6 @@ describe('CaptureProvider', () => {
       expect((screen.getByLabelText('Amount') as HTMLInputElement).value).toBe('12.5'),
     )
     expect(await countExpenses()).toBe(0)
+    expect(screen.queryByRole('status')).toBeNull()
   })
 })
