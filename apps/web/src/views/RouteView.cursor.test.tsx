@@ -29,23 +29,8 @@ function Harness() {
 
 describe('RouteView keyboard cursor', () => {
   const originalMatchMedia = window.matchMedia
-  const originalLocalStorage = Object.getOwnPropertyDescriptor(window, 'localStorage')
 
   beforeEach(async () => {
-    const store = new Map<string, string>()
-    Object.defineProperty(window, 'localStorage', {
-      configurable: true,
-      value: {
-        getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
-        setItem: (k: string, v: string) => void store.set(k, String(v)),
-        removeItem: (k: string) => void store.delete(k),
-        clear: () => store.clear(),
-        key: (i: number) => Array.from(store.keys())[i] ?? null,
-        get length() {
-          return store.size
-        },
-      },
-    })
     await setupTestDb()
     window.matchMedia = vi.fn().mockImplementation(() => ({
       matches: true,
@@ -57,7 +42,6 @@ describe('RouteView keyboard cursor', () => {
 
   afterEach(() => {
     window.matchMedia = originalMatchMedia
-    if (originalLocalStorage) Object.defineProperty(window, 'localStorage', originalLocalStorage)
   })
 
   it('j focuses the first category card and Enter opens it', async () => {

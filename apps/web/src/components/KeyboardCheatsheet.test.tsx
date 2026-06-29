@@ -38,26 +38,8 @@ describe('KeyboardCheatsheet', () => {
 
 describe('Layout keyboard wiring', () => {
   const originalMatchMedia = window.matchMedia
-  const originalLocalStorage = Object.getOwnPropertyDescriptor(window, 'localStorage')
 
   beforeEach(async () => {
-    // This jsdom environment ships a non-functional localStorage; provide a
-    // working in-memory stand-in so SyncProvider (mounted by the Layout) works.
-    const store = new Map<string, string>()
-    Object.defineProperty(window, 'localStorage', {
-      configurable: true,
-      value: {
-        getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
-        setItem: (k: string, v: string) => void store.set(k, String(v)),
-        removeItem: (k: string) => void store.delete(k),
-        clear: () => store.clear(),
-        key: (i: number) => Array.from(store.keys())[i] ?? null,
-        get length() {
-          return store.size
-        },
-      },
-    })
-
     await setupTestDb()
     window.matchMedia = vi.fn().mockImplementation(() => ({
       matches: true,
@@ -69,9 +51,6 @@ describe('Layout keyboard wiring', () => {
 
   afterEach(() => {
     window.matchMedia = originalMatchMedia
-    if (originalLocalStorage) {
-      Object.defineProperty(window, 'localStorage', originalLocalStorage)
-    }
   })
 
   it('opens the cheatsheet when ? is pressed (AE5)', () => {
