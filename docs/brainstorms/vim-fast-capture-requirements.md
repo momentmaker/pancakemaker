@@ -38,22 +38,26 @@ This resolves the Phase 2 open questions deferred by the Phase 1 plan (see origi
 ## Requirements
 
 **Capture entry**
+
 - R1. `a` opens QuickAdd immediately with the amount autofocused, from anywhere shortcuts are active (including the Dashboard).
 - R2. `:` opens a single-line command-line capture bar, from anywhere shortcuts are active.
 - R3. Both bindings are desktop-only and stand down while a modal/dialog owns the keyboard (inherit the Phase 1 guards), and both register into the Phase 1 intent-mapper.
 
 **Capture target**
+
 - R4. On a Personal/Business route or its detail views, captures target that route. With no route context (Dashboard/Settings), captures target the **Personal** route.
 - R5. The resolved target route is visible in the capture UI (QuickAdd and the `:` bar).
 - R6. Captures use the target route's default panel (`is_default`) and that panel's currency; the date is today.
 
 **`:` grammar and resolution**
+
 - R7. The `:` bar parses `:<amount> <note...> [#category]` — a leading decimal amount, free-text note, and an optional trailing `#category` token.
 - R8. `#category` matches case-insensitively by prefix against the target route's categories: exactly one match resolves; zero or multiple is unresolved.
 - R9. When the amount is valid AND a category resolves AND a default panel exists, the `:` bar creates the expense in one shot (target route, default panel, matched category, parsed note, today).
 - R10. Otherwise — invalid/missing amount, missing/ambiguous/unmatched category, or no default panel — the `:` bar opens QuickAdd pre-filled with whatever parsed cleanly (amount, note), focused on the Category picker. Nothing is created until the user confirms.
 
 **Confirmation**
+
 - R11. After a one-shot `:` create, a confirmation surfaces showing where it landed (route · category · amount).
 
 ---
