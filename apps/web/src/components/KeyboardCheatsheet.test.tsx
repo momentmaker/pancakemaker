@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { KeyboardCheatsheet } from './KeyboardCheatsheet.js'
 import { Layout } from './Layout.js'
@@ -63,8 +63,9 @@ describe('Layout keyboard wiring', () => {
   it('closes the cheatsheet via the close button', () => {
     renderWithProviders(<Layout />, '/')
     fireEvent.keyDown(document, { key: '?' })
-    expect(screen.getByText('Go to Dashboard')).toBeTruthy()
-    fireEvent.click(screen.getByLabelText('Close'))
+    // Layout also renders the capture QuickAdd (its own Close), so scope to the cheatsheet dialog.
+    const sheet = screen.getByText('Go to Dashboard').closest('dialog') as HTMLElement
+    fireEvent.click(within(sheet).getByLabelText('Close'))
     expect(screen.queryByText('Go to Dashboard')).toBeNull()
   })
 })
