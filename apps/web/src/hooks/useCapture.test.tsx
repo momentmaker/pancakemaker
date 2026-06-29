@@ -1,7 +1,7 @@
-import { screen, fireEvent, cleanup } from '@testing-library/react'
+import { screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { CaptureProvider, useCapture } from './useCapture.js'
-import { renderWithProviders, setupTestDb } from '../test-utils.js'
+import { renderWithProviders, setupTestDb, getTestDb } from '../test-utils.js'
 
 afterEach(cleanup)
 
@@ -11,6 +11,7 @@ function Consumer() {
   return (
     <>
       <div data-testid="route">{capture.targetRouteLabel}</div>
+      <div data-testid="cat-count">{capture.categories.length}</div>
       <button onClick={() => capture.openQuickAdd()}>open-blank</button>
       <button
         onClick={() =>
@@ -19,8 +20,15 @@ function Consumer() {
       >
         open-prefill
       </button>
+      <button onClick={() => capture.openCaptureBar()}>open-bar</button>
     </>
   )
+}
+
+async function countExpenses(): Promise<number> {
+  const { db } = getTestDb()
+  const rows = await db.query<{ n: number }>('SELECT COUNT(*) as n FROM expenses')
+  return rows[0].n
 }
 
 function renderCapture(route: string) {
@@ -60,5 +68,38 @@ describe('CaptureProvider', () => {
     renderCapture('/business')
     fireEvent.click(screen.getByText('open-blank'))
     expect(screen.getByText('Add Expense · Business')).toBeTruthy()
+  })
+
+  it('creates exactly one expense from the capture bar when everything resolves (AE1)', async () => {
+    renderCapture('/personal')
+    await waitFor(() => expect(screen.getByTestId('cat-count').textContent).not.toBe('0'))
+
+    fireEvent.click(screen.getByText('open-bar'))
+    const input = screen.getByLabelText(/Quick capture/) as HTMLInputElement
+    fireEvent.change(input, { target: { value: '12.50 coffee #meals' } })
+    fireEvent.submit(input.closest('form')!)
+
+    await waitFor(async () => expect(await countExpenses()).toBe(1))
+    const { db } = getTestDb()
+    const rows = await db.query<{ amount: number; description: string }>(
+      'SELECT amount, description FROM expenses',
+    )
+    expect(rows[0].amount).toBe(1250)
+    expect(rows[0].description).toBe('coffee')
+  })
+
+  it('opens a pre-filled QuickAdd and creates nothing when no category is given (AE2)', async () => {
+    renderCapture('/personal')
+    await waitFor(() => expect(screen.getByTestId('cat-count').textContent).not.toBe('0'))
+
+    fireEvent.click(screen.getByText('open-bar'))
+    const input = screen.getByLabelText(/Quick capture/) as HTMLInputElement
+    fireEvent.change(input, { target: { value: '12.50 coffee' } })
+    fireEvent.submit(input.closest('form')!)
+
+    await waitFor(() =>
+      expect((screen.getByLabelText('Amount') as HTMLInputElement).value).toBe('12.5'),
+    )
+    expect(await countExpenses()).toBe(0)
   })
 })

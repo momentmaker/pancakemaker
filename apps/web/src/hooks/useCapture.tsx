@@ -15,6 +15,8 @@ import { useCategories } from './useCategories'
 import { usePanels } from './usePanels'
 import { createExpense, logSyncEntry, type CategoryRow } from '../db/queries'
 import { QuickAdd } from '../components/QuickAdd'
+import { CaptureBar } from '../components/CaptureBar'
+import { decideCapture } from '../lib/keyboard/capture'
 
 export interface QuickAddPrefill {
   amount?: string
@@ -36,6 +38,7 @@ export interface CaptureContextValue {
   targetRouteLabel: string
   categories: CategoryRow[]
   openQuickAdd: (prefill?: QuickAddPrefill) => void
+  openCaptureBar: () => void
 }
 
 // Exported so tests can provide a stub capture value without the full provider.
@@ -61,9 +64,18 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
     loadPanels()
   }, [loadCategories, loadPanels])
 
+  const defaultPanel = useMemo(() => {
+    if (panels.length === 0) return undefined
+    return (
+      panels.find((p) => p.is_default === 1) ??
+      [...panels].sort((a, b) => a.sort_order - b.sort_order)[0]
+    )
+  }, [panels])
+
   const [open, setOpen] = useState(false)
   const [prefill, setPrefill] = useState<QuickAddPrefill | undefined>(undefined)
   const [autoFocusField, setAutoFocusField] = useState<'amount' | 'category'>('amount')
+  const [barOpen, setBarOpen] = useState(false)
 
   const openQuickAdd = useCallback((next?: QuickAddPrefill) => {
     setPrefill(next)
@@ -71,6 +83,8 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
     setAutoFocusField(next ? 'category' : 'amount')
     setOpen(true)
   }, [])
+
+  const openCaptureBar = useCallback(() => setBarOpen(true), [])
 
   const handleAdd = useCallback(
     async (data: ExpenseInput) => {
@@ -89,9 +103,34 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
     [db, userId, markPending, triggerSync],
   )
 
+  const submitCapture = useCallback(
+    async (input: string) => {
+      const decision = decideCapture(input, categories, defaultPanel)
+      if (decision.kind === 'create') {
+        await handleAdd({
+          panelId: decision.panel.id,
+          categoryId: decision.category.id,
+          amount: Math.round(decision.amount * 100),
+          currency: decision.panel.currency,
+          date: new Date().toISOString().slice(0, 10),
+          description: decision.note || undefined,
+        })
+        setBarOpen(false)
+        return
+      }
+      openQuickAdd({
+        amount: decision.amount !== null ? String(decision.amount) : undefined,
+        description: decision.note || undefined,
+        categoryHint: decision.categoryToken ?? undefined,
+      })
+      setBarOpen(false)
+    },
+    [categories, defaultPanel, handleAdd, openQuickAdd],
+  )
+
   const value = useMemo<CaptureContextValue>(
-    () => ({ targetRouteId, targetRouteLabel, categories, openQuickAdd }),
-    [targetRouteId, targetRouteLabel, categories, openQuickAdd],
+    () => ({ targetRouteId, targetRouteLabel, categories, openQuickAdd, openCaptureBar }),
+    [targetRouteId, targetRouteLabel, categories, openQuickAdd, openCaptureBar],
   )
 
   return (
@@ -107,6 +146,12 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
         routeLabel={targetRouteLabel}
         autoFocusField={autoFocusField}
         prefill={prefill}
+      />
+      <CaptureBar
+        open={barOpen}
+        routeLabel={targetRouteLabel}
+        onSubmit={submitCapture}
+        onClose={() => setBarOpen(false)}
       />
     </CaptureContext.Provider>
   )

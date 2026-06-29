@@ -1,9 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { parseCaptureLine, resolveCategory } from './capture.js'
-import type { CategoryRow } from '../../db/queries'
+import { parseCaptureLine, resolveCategory, decideCapture } from './capture.js'
+import type { CategoryRow, PanelRow } from '../../db/queries'
 
 function cat(id: string, name: string): CategoryRow {
   return { id, name } as unknown as CategoryRow
+}
+
+function panel(id: string): PanelRow {
+  return { id, currency: 'USD' } as unknown as PanelRow
 }
 
 describe('parseCaptureLine', () => {
@@ -44,7 +48,11 @@ describe('parseCaptureLine', () => {
   })
 
   it('keeps the whole text as the note when there is no valid amount (AE5)', () => {
-    expect(parseCaptureLine('coffee')).toEqual({ amount: null, note: 'coffee', categoryToken: null })
+    expect(parseCaptureLine('coffee')).toEqual({
+      amount: null,
+      note: 'coffee',
+      categoryToken: null,
+    })
   })
 
   it('treats invalid/zero/negative leading tokens as no amount', () => {
@@ -85,5 +93,54 @@ describe('resolveCategory', () => {
 
   it('reports none when nothing matches', () => {
     expect(resolveCategory('zzz', categories).status).toBe('none')
+  })
+})
+
+describe('decideCapture', () => {
+  const categories = [cat('c1', 'Meals'), cat('c2', 'Health'), cat('c3', 'Housing')]
+  const defaultPanel = panel('p1')
+
+  it('creates when amount, a uniquely-resolved category, and a default panel all exist (AE1)', () => {
+    expect(decideCapture('12.50 coffee #meals', categories, defaultPanel)).toEqual({
+      kind: 'create',
+      panel: defaultPanel,
+      category: categories[0],
+      amount: 12.5,
+      note: 'coffee',
+    })
+  })
+
+  it('prefills (creates nothing) when there is no #category (AE2)', () => {
+    expect(decideCapture('12.50 coffee', categories, defaultPanel)).toEqual({
+      kind: 'prefill',
+      amount: 12.5,
+      note: 'coffee',
+      categoryToken: null,
+    })
+  })
+
+  it('prefills and carries the token when the category is ambiguous (AE3)', () => {
+    const d = decideCapture('12.50 gym #h', categories, defaultPanel)
+    expect(d.kind).toBe('prefill')
+    expect(d.kind === 'prefill' && d.categoryToken).toBe('h')
+  })
+
+  it('prefills, carrying the token, when the category matches nothing', () => {
+    const d = decideCapture('12 lunch #zzz', categories, defaultPanel)
+    expect(d.kind).toBe('prefill')
+    expect(d.kind === 'prefill' && d.categoryToken).toBe('zzz')
+  })
+
+  it('prefills when there is no amount (AE5)', () => {
+    expect(decideCapture('coffee', categories, defaultPanel)).toEqual({
+      kind: 'prefill',
+      amount: null,
+      note: 'coffee',
+      categoryToken: null,
+    })
+  })
+
+  it('prefills even on a full match when the route has no default panel', () => {
+    expect(decideCapture('12.50 coffee #meals', categories, undefined).kind).toBe('prefill')
   })
 })

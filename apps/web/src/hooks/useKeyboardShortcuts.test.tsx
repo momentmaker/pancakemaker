@@ -2,7 +2,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts.js'
-import { CaptureContext } from './useCapture.js'
+import { CaptureContext, type CaptureContextValue } from './useCapture.js'
 
 function LocationProbe() {
   const location = useLocation()
@@ -137,24 +137,35 @@ describe('useKeyboardShortcuts', () => {
     expect(onCheatsheet).toHaveBeenCalledOnce()
   })
 
-  it('opens QuickAdd on `a` via the capture context', () => {
-    const openQuickAdd = vi.fn()
+  function renderWithCapture(overrides: Partial<CaptureContextValue> = {}) {
+    const value: CaptureContextValue = {
+      targetRouteId: 'r1',
+      targetRouteLabel: 'Personal',
+      categories: [],
+      openQuickAdd: vi.fn(),
+      openCaptureBar: vi.fn(),
+      ...overrides,
+    }
     render(
       <MemoryRouter initialEntries={['/']}>
-        <CaptureContext.Provider
-          value={{
-            targetRouteId: 'r1',
-            targetRouteLabel: 'Personal',
-            categories: [],
-            openQuickAdd,
-          }}
-        >
+        <CaptureContext.Provider value={value}>
           <Harness />
         </CaptureContext.Provider>
       </MemoryRouter>,
     )
+    return value
+  }
+
+  it('opens QuickAdd on `a` via the capture context', () => {
+    const { openQuickAdd } = renderWithCapture()
     fireEvent.keyDown(document, { key: 'a' })
     expect(openQuickAdd).toHaveBeenCalledOnce()
+  })
+
+  it('opens the capture bar on `:` via the capture context', () => {
+    const { openCaptureBar } = renderWithCapture()
+    fireEvent.keyDown(document, { key: ':' })
+    expect(openCaptureBar).toHaveBeenCalledOnce()
   })
 
   it('clears a pending chord after the timeout', () => {

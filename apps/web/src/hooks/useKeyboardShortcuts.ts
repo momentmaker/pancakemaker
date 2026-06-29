@@ -90,6 +90,9 @@ export function useKeyboardShortcuts({ onCheatsheet }: KeyboardShortcutsOptions)
         case 'open-quick-add':
           captureRef.current?.openQuickAdd()
           return true
+        case 'open-capture':
+          captureRef.current?.openCaptureBar()
+          return true
         case 'cursor-down':
           cursor?.move(1)
           return true

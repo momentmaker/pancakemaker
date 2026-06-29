@@ -1,4 +1,4 @@
-import type { CategoryRow } from '../../db/queries'
+import type { CategoryRow, PanelRow } from '../../db/queries'
 
 // Pure parser + resolver for the `:` command-line capture. No DOM/state — the
 // testable contract the capture bar builds on.
@@ -51,4 +51,39 @@ export function resolveCategory(token: string, categories: CategoryRow[]): Categ
   if (matches.length === 1) return { status: 'resolved', category: matches[0] }
   if (matches.length === 0) return { status: 'none' }
   return { status: 'ambiguous' }
+}
+
+export type CaptureDecision =
+  | { kind: 'create'; panel: PanelRow; category: CategoryRow; amount: number; note: string }
+  | { kind: 'prefill'; amount: number | null; note: string; categoryToken: string | null }
+
+// One-shot create fires only when the line gives an amount, a uniquely-resolved
+// category, and the route has a default panel to land in. Every uncertain case
+// falls back to a pre-filled QuickAdd, carrying the unresolved token so the user
+// sees why it didn't one-shot rather than facing a silent empty picker.
+export function decideCapture(
+  input: string,
+  categories: CategoryRow[],
+  defaultPanel: PanelRow | undefined,
+): CaptureDecision {
+  const parsed = parseCaptureLine(input)
+  const prefill: CaptureDecision = {
+    kind: 'prefill',
+    amount: parsed.amount,
+    note: parsed.note,
+    categoryToken: parsed.categoryToken,
+  }
+
+  if (parsed.amount === null || parsed.categoryToken === null || !defaultPanel) return prefill
+
+  const resolution = resolveCategory(parsed.categoryToken, categories)
+  if (resolution.status !== 'resolved') return prefill
+
+  return {
+    kind: 'create',
+    panel: defaultPanel,
+    category: resolution.category,
+    amount: parsed.amount,
+    note: parsed.note,
+  }
 }
