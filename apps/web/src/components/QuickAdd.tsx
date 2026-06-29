@@ -4,6 +4,12 @@ import { Button } from './Button'
 import { FormInput, FormSelect } from './FormInput'
 import type { CategoryRow, PanelRow } from '../db/queries'
 
+export interface QuickAddPrefill {
+  amount?: string
+  description?: string
+  categoryHint?: string
+}
+
 interface QuickAddProps {
   open: boolean
   onClose: () => void
@@ -22,7 +28,7 @@ interface QuickAddProps {
   lockedCategoryId?: string
   personalRouteId?: string
   autoFocusField?: 'amount' | 'category'
-  prefill?: { amount?: string; description?: string; categoryHint?: string }
+  prefill?: QuickAddPrefill
   routeLabel?: string
 }
 
@@ -163,7 +169,9 @@ export function QuickAdd({
         />
 
         {categoryHint && (
-          <p className="text-xs text-neon-amber">No match for #{categoryHint} — pick a category.</p>
+          <p className="text-xs text-neon-amber">
+            Couldn't pick a category from #{categoryHint} — choose one below.
+          </p>
         )}
         {lockedCategoryId ? (
           <div>

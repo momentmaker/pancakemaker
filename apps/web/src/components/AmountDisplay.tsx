@@ -1,3 +1,5 @@
+import { formatCurrency } from '../lib/format'
+
 interface AmountDisplayProps {
   amount: number
   currency: string
@@ -11,11 +13,9 @@ const sizeStyles = {
 }
 
 export function AmountDisplay({ amount, currency, size = 'md' }: AmountDisplayProps) {
-  const formatted = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-  }).format(amount / 100)
-
-  return <span className={`font-mono font-semibold ${sizeStyles[size]}`}>{formatted}</span>
+  return (
+    <span className={`font-mono font-semibold ${sizeStyles[size]}`}>
+      {formatCurrency(amount, currency)}
+    </span>
+  )
 }

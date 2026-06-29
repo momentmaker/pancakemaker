@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 interface CaptureBarProps {
   open: boolean
   routeLabel: string
-  onSubmit: (input: string) => void
+  onSubmit: (input: string) => void | Promise<void>
   onClose: () => void
 }
 
@@ -20,9 +20,9 @@ export function CaptureBar({ open, routeLabel, onSubmit, onClose }: CaptureBarPr
 
   if (!open) return null
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit(value)
+    await onSubmit(value)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

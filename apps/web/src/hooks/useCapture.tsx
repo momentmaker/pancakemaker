@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -13,34 +14,24 @@ import { useDatabase } from '../db/DatabaseContext'
 import { useSync } from '../sync/SyncContext'
 import { useCategories } from './useCategories'
 import { usePanels } from './usePanels'
-import { createExpense, logSyncEntry, type CategoryRow } from '../db/queries'
-import { QuickAdd } from '../components/QuickAdd'
+import {
+  createExpense,
+  logSyncEntry,
+  type CategoryRow,
+  type CreateExpenseInput,
+} from '../db/queries'
+import { QuickAdd, type QuickAddPrefill } from '../components/QuickAdd'
 import { CaptureBar } from '../components/CaptureBar'
 import { CaptureToast, type CaptureToastSummary } from '../components/CaptureToast'
 import { decideCapture } from '../lib/keyboard/capture'
+import { formatCurrency } from '../lib/format'
 
-function formatAmount(cents: number, currency: string): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-  }).format(cents / 100)
-}
+export type { QuickAddPrefill }
 
-export interface QuickAddPrefill {
-  amount?: string
-  description?: string
-  categoryHint?: string
-}
-
-interface ExpenseInput {
-  panelId: string
-  categoryId: string
-  amount: number
-  currency: string
-  date: string
-  description?: string
-}
+type ExpenseInput = Pick<
+  CreateExpenseInput,
+  'panelId' | 'categoryId' | 'amount' | 'currency' | 'date' | 'description'
+>
 
 export interface CaptureContextValue {
   targetRouteId: string
@@ -83,18 +74,20 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
 
   const [open, setOpen] = useState(false)
   const [prefill, setPrefill] = useState<QuickAddPrefill | undefined>(undefined)
-  const [autoFocusField, setAutoFocusField] = useState<'amount' | 'category'>('amount')
   const [barOpen, setBarOpen] = useState(false)
   const [toast, setToast] = useState<CaptureToastSummary | null>(null)
 
+  // A prefilled open (`:` hand-off) lands on the category; a blank `a` lands on amount.
+  const autoFocusField: 'amount' | 'category' = prefill ? 'category' : 'amount'
+
   const openQuickAdd = useCallback((next?: QuickAddPrefill) => {
     setPrefill(next)
-    // A prefilled open (`:` hand-off) lands on the category; a blank `a` lands on amount.
-    setAutoFocusField(next ? 'category' : 'amount')
     setOpen(true)
   }, [])
 
   const openCaptureBar = useCallback(() => setBarOpen(true), [])
+  const dismissToast = useCallback(() => setToast(null), [])
+  const submittingRef = useRef(false)
 
   const handleAdd = useCallback(
     async (data: ExpenseInput) => {
@@ -115,25 +108,43 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
 
   const submitCapture = useCallback(
     async (input: string) => {
+      // Guard against a second Enter landing while the first create is in flight —
+      // without it a fast double-press writes the expense twice.
+      if (submittingRef.current) return
       const decision = decideCapture(input, categories, defaultPanel)
+
       if (decision.kind === 'create') {
         const cents = Math.round(decision.amount * 100)
-        await handleAdd({
-          panelId: decision.panel.id,
-          categoryId: decision.category.id,
-          amount: cents,
-          currency: decision.panel.currency,
-          date: new Date().toISOString().slice(0, 10),
-          description: decision.note || undefined,
-        })
+        submittingRef.current = true
         setBarOpen(false)
-        setToast({
-          route: targetRouteLabel,
-          category: decision.category.name,
-          amount: formatAmount(cents, decision.panel.currency),
-        })
+        try {
+          await handleAdd({
+            panelId: decision.panel.id,
+            categoryId: decision.category.id,
+            amount: cents,
+            currency: decision.panel.currency,
+            date: new Date().toISOString().slice(0, 10),
+            description: decision.note || undefined,
+          })
+          setToast({
+            route: targetRouteLabel,
+            category: decision.category.name,
+            amount: formatCurrency(cents, decision.panel.currency),
+          })
+        } catch (err) {
+          // The one-shot write failed — fall back to the full form so the user can
+          // retry rather than losing the capture to an unhandled rejection.
+          console.error('Quick capture failed; opening the form to retry', err)
+          openQuickAdd({
+            amount: String(decision.amount),
+            description: decision.note || undefined,
+          })
+        } finally {
+          submittingRef.current = false
+        }
         return
       }
+
       openQuickAdd({
         amount: decision.amount !== null ? String(decision.amount) : undefined,
         description: decision.note || undefined,
@@ -169,7 +180,7 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
         onSubmit={submitCapture}
         onClose={() => setBarOpen(false)}
       />
-      <CaptureToast summary={toast} onDismiss={() => setToast(null)} />
+      <CaptureToast summary={toast} onDismiss={dismissToast} />
     </CaptureContext.Provider>
   )
 }

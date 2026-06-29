@@ -143,4 +143,8 @@ describe('decideCapture', () => {
   it('prefills even on a full match when the route has no default panel', () => {
     expect(decideCapture('12.50 coffee #meals', categories, undefined).kind).toBe('prefill')
   })
+
+  it('prefills when a positive sub-cent amount would round to $0.00', () => {
+    expect(decideCapture('0.004 tip #meals', categories, defaultPanel).kind).toBe('prefill')
+  })
 })

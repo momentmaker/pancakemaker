@@ -57,10 +57,11 @@ export type CaptureDecision =
   | { kind: 'create'; panel: PanelRow; category: CategoryRow; amount: number; note: string }
   | { kind: 'prefill'; amount: number | null; note: string; categoryToken: string | null }
 
-// One-shot create fires only when the line gives an amount, a uniquely-resolved
-// category, and the route has a default panel to land in. Every uncertain case
-// falls back to a pre-filled QuickAdd, carrying the unresolved token so the user
-// sees why it didn't one-shot rather than facing a silent empty picker.
+// One-shot create fires only when the line gives an amount worth at least one
+// cent, a uniquely-resolved category, and the route has a default panel to land
+// in. Every uncertain case falls back to a pre-filled QuickAdd, carrying the
+// unresolved token so the user sees why it didn't one-shot rather than facing a
+// silent empty picker.
 export function decideCapture(
   input: string,
   categories: CategoryRow[],
@@ -75,6 +76,8 @@ export function decideCapture(
   }
 
   if (parsed.amount === null || parsed.categoryToken === null || !defaultPanel) return prefill
+  // A positive sub-cent amount (e.g. 0.004) would round to a $0.00 expense.
+  if (Math.round(parsed.amount * 100) <= 0) return prefill
 
   const resolution = resolveCategory(parsed.categoryToken, categories)
   if (resolution.status !== 'resolved') return prefill

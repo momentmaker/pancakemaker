@@ -61,7 +61,7 @@ describe('CaptureProvider', () => {
     fireEvent.click(screen.getByText('open-prefill'))
     const amount = screen.getByLabelText('Amount') as HTMLInputElement
     expect(amount.value).toBe('12.50')
-    expect(screen.getByText(/No match for #foo/)).toBeTruthy()
+    expect(screen.getByText(/Couldn't pick a category from #foo/)).toBeTruthy()
   })
 
   it('shows the target route in the QuickAdd title', () => {
@@ -107,5 +107,21 @@ describe('CaptureProvider', () => {
     )
     expect(await countExpenses()).toBe(0)
     expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('creates only one expense when the capture bar is submitted twice rapidly', async () => {
+    renderCapture('/personal')
+    await waitFor(() => expect(screen.getByTestId('cat-count').textContent).not.toBe('0'))
+
+    fireEvent.click(screen.getByText('open-bar'))
+    const input = screen.getByLabelText(/Quick capture/) as HTMLInputElement
+    fireEvent.change(input, { target: { value: '12.50 coffee #meals' } })
+    const form = input.closest('form')!
+    fireEvent.submit(form)
+    fireEvent.submit(form)
+
+    await waitFor(async () => expect(await countExpenses()).toBe(1))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(await countExpenses()).toBe(1)
   })
 })

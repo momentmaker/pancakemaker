@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { formatCurrency } from '../lib/format'
 
 interface PancakeLayer {
   name: string
@@ -18,14 +19,6 @@ const RY = 28
 const LAYER_SPACING = 42
 const PADDING_TOP = 70
 const PADDING_BOTTOM = 50
-
-function formatAmount(cents: number, currency: string): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-  }).format(cents / 100)
-}
 
 export function PancakeStack({ layers, currency }: PancakeStackProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
@@ -205,7 +198,7 @@ export function PancakeStack({ layers, currency }: PancakeStackProps) {
         (() => {
           const p = pancakes.find((pk) => pk.i === hoveredIndex)!
           const tooltipY = p.y - RY - 22
-          const text = `${p.name}: ${formatAmount(p.amount, currency)}`
+          const text = `${p.name}: ${formatCurrency(p.amount, currency)}`
           const textWidth = text.length * 7.5
           const boxWidth = textWidth + 20
           return (
