@@ -4,8 +4,7 @@ import { SUPPORTED_CURRENCIES } from '@pancakemaker/shared'
 import { useAppState } from '../hooks/useAppState'
 import { useCategories } from '../hooks/useCategories'
 import { useDatabase } from '../db/DatabaseContext'
-import { getExportRows } from '../db/queries'
-import { formatCSV, formatJSON, downloadFile } from '../lib/export'
+import { exportData } from '../lib/export'
 import { Card } from '../components/Card'
 import { Button } from '../components/Button'
 import { Badge } from '../components/Badge'
@@ -137,13 +136,7 @@ export function Settings() {
     async (format: 'csv' | 'json') => {
       setExporting(true)
       try {
-        const rows = await getExportRows(db, userId)
-        const date = new Date().toISOString().slice(0, 10)
-        if (format === 'csv') {
-          downloadFile(formatCSV(rows), `pancakemaker-${date}.csv`, 'text/csv')
-        } else {
-          downloadFile(formatJSON(rows), `pancakemaker-${date}.json`, 'application/json')
-        }
+        await exportData(db, userId, format)
       } finally {
         setExporting(false)
       }
