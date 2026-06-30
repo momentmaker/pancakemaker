@@ -2,7 +2,7 @@
 date: 2026-06-30
 title: 'feat: Vim f-hints + month scrub (Phase 4)'
 type: feat
-status: active
+status: completed
 origin: docs/brainstorms/vim-fhints-month-scrub-requirements.md
 ---
 
