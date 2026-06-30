@@ -120,8 +120,14 @@ describe('CommandPalette', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
-  it('marks itself a keyboard popover so global shortcuts stand down', () => {
-    const { container } = render(<CommandPalette open items={makeItems()} onClose={vi.fn()} />)
+  it('marks itself a keyboard popover only while open so global shortcuts stand down', () => {
+    const { container, rerender } = render(
+      <CommandPalette open items={makeItems()} onClose={vi.fn()} />,
+    )
     expect(container.querySelector('[data-kbd-popover-open]')).not.toBeNull()
+    // Closed: the marker must be gone, or the always-mounted dialog would stand
+    // the global shortcut layer down forever.
+    rerender(<CommandPalette open={false} items={makeItems()} onClose={vi.fn()} />)
+    expect(container.querySelector('[data-kbd-popover-open]')).toBeNull()
   })
 })

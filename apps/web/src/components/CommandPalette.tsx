@@ -114,7 +114,10 @@ export function CommandPalette({ open, items, onClose }: CommandPaletteProps) {
   return (
     <dialog
       ref={dialogRef}
-      data-kbd-popover-open
+      // Only mark the popover while open — the dialog stays mounted (for native
+      // focus return), and a permanent marker would make isBlockingOverlayOpen()
+      // stand the global shortcut layer down forever.
+      data-kbd-popover-open={open ? '' : undefined}
       onCancel={(e) => {
         e.preventDefault()
         onClose()
