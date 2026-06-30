@@ -40,7 +40,11 @@ export function CategoryDetail() {
   const routeId = routeType === 'personal' ? personalRouteId : businessRouteId
   const db = useDatabase()
 
-  const [month, setMonth] = useState(currentMonth)
+  // A command-palette jump to a recent expense passes the expense's month so the
+  // target row is rendered (the cursor then lands on it); otherwise current month.
+  const [month, setMonth] = useState<string>(
+    () => (location.state as { month?: string } | null)?.month ?? currentMonth(),
+  )
   const [trend, setTrend] = useState<MonthlyTotal[]>([])
   const [panels, setPanels] = useState<PanelRow[]>([])
   const [allPanels, setAllPanels] = useState<PanelRow[]>([])

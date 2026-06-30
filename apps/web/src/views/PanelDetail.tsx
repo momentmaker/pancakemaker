@@ -47,7 +47,10 @@ export function PanelDetail() {
   const db = useDatabase()
 
   const [panel, setPanel] = useState<PanelRow | null>(null)
-  const [month, setMonth] = useState(currentMonth)
+  // A command-palette jump may pass the target expense's month via router state.
+  const [month, setMonth] = useState<string>(
+    () => (location.state as { month?: string } | null)?.month ?? currentMonth(),
+  )
   const [trend, setTrend] = useState<MonthlyTotal[]>([])
   const { expenses, loading, load, add, update, remove } = useExpenses({ panelId: panelId!, month })
   const { categories, load: loadCategories } = useCategories(routeId)
