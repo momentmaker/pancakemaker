@@ -45,6 +45,12 @@ export function CategoryDetail() {
   const [month, setMonth] = useState<string>(
     () => (location.state as { month?: string } | null)?.month ?? currentMonth(),
   )
+  // React Router reuses this instance across category→category navigation, so the
+  // lazy initializer above won't re-run — re-seed the month on each navigation.
+  useEffect(() => {
+    const stateMonth = (location.state as { month?: string } | null)?.month
+    if (stateMonth) setMonth(stateMonth)
+  }, [location.key])
   const [trend, setTrend] = useState<MonthlyTotal[]>([])
   const [panels, setPanels] = useState<PanelRow[]>([])
   const [allPanels, setAllPanels] = useState<PanelRow[]>([])

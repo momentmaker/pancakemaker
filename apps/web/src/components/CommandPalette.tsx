@@ -50,7 +50,6 @@ export function CommandPalette({ open, items, onClose }: CommandPaletteProps) {
     [query, items],
   )
 
-  // Reset the highlight to the first row whenever the query changes the result set.
   useEffect(() => {
     setHighlight(0)
   }, [query])
@@ -58,7 +57,6 @@ export function CommandPalette({ open, items, onClose }: CommandPaletteProps) {
   const activeIndex = visible.length === 0 ? -1 : Math.min(highlight, visible.length - 1)
   const activeId = activeIndex >= 0 ? visible[activeIndex]?.id : undefined
 
-  // Keep the highlighted row in view as the cursor moves.
   useEffect(() => {
     if (!open || activeIndex < 0) return
     const row = listRef.current?.querySelector(`[data-cmd-index="${activeIndex}"]`)
@@ -76,7 +74,7 @@ export function CommandPalette({ open, items, onClose }: CommandPaletteProps) {
     })
     return COMMAND_GROUP_ORDER.filter((group) => byGroup.has(group)).map((group) => ({
       group,
-      entries: byGroup.get(group)!,
+      entries: byGroup.get(group) ?? [],
     }))
   }, [visible])
 
@@ -119,8 +117,9 @@ export function CommandPalette({ open, items, onClose }: CommandPaletteProps) {
       // stand the global shortcut layer down forever.
       data-kbd-popover-open={open ? '' : undefined}
       onCancel={(e) => {
+        // Stop the native auto-close so React owns the close; the Esc keydown
+        // handler (below) drives onClose, avoiding a double call.
         e.preventDefault()
-        onClose()
       }}
       className="m-auto w-full max-w-lg rounded-lg border border-border-dim bg-bg-secondary p-0 text-text-primary backdrop:bg-black/60 backdrop:backdrop-blur-sm"
     >

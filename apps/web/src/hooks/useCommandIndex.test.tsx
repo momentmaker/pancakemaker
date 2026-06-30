@@ -81,14 +81,14 @@ describe('useCommandIndex', () => {
     expect(actions.navigate).toHaveBeenCalledWith(`/personal/category/${healthCategoryId}`)
   })
 
-  it('a recent-expense run focuses the expense and navigates with month + focusId state', async () => {
+  it('a recent-expense run focuses the expense and navigates with the month in router state', async () => {
     renderWithProviders(<Probe />, '/personal')
     await waitFor(() => expect(items.some((i) => i.group === 'Recent expenses')).toBe(true))
 
     find('flat white').run()
     expect(actions.focusExpense).toHaveBeenCalledWith(expenseId)
     expect(actions.navigate).toHaveBeenCalledWith(`/personal/category/${expenseCategoryId}`, {
-      state: { month: '2026-04', focusId: expenseId },
+      state: { month: '2026-04' },
     })
   })
 

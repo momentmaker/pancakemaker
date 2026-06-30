@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { NavigateOptions } from 'react-router-dom'
 import { useAppState } from './useAppState'
 import { useDatabase } from '../db/DatabaseContext'
 import { useSync } from '../sync/SyncContext'
@@ -14,7 +15,7 @@ const RECENT_LIMIT = 50
 // The effects the palette can run, injected by the provider so this hook stays
 // about data assembly (and is testable with spies).
 export interface CommandActions {
-  navigate: (to: string, options?: { state?: unknown }) => void
+  navigate: (to: string, options?: NavigateOptions) => void
   openQuickAdd: () => void
   openCheatsheet: () => void
   syncNow: () => void
@@ -50,9 +51,12 @@ export function useCommandIndex(actions: CommandActions): CommandItem[] {
   const [recent, setRecent] = useState<RecentExpenseRow[]>([])
   useEffect(() => {
     let cancelled = false
-    getRecentExpenses(db, userId, RECENT_LIMIT).then((rows) => {
-      if (!cancelled) setRecent(rows)
-    })
+    getRecentExpenses(db, userId, RECENT_LIMIT)
+      .then((rows) => {
+        if (!cancelled) setRecent(rows)
+      })
+      // A failed load leaves the recent group empty; the palette stays usable.
+      .catch(() => {})
     return () => {
       cancelled = true
     }
@@ -116,9 +120,11 @@ export function useCommandIndex(actions: CommandActions): CommandItem[] {
         sublabel: `${e.category_name} · ${formatCurrency(e.amount, e.currency)}`,
         matchText: `${e.description} ${e.category_name} ${(e.amount / 100).toFixed(2)}`,
         run: () => {
+          // requestFocus lands the cursor once the detail view's rows register;
+          // the month seeds the detail view so the target row is rendered.
           actions.focusExpense(e.id)
           actions.navigate(`/${e.route_type}/category/${e.category_id}`, {
-            state: { month, focusId: e.id },
+            state: { month },
           })
         },
       })

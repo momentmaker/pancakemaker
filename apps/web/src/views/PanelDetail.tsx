@@ -51,6 +51,12 @@ export function PanelDetail() {
   const [month, setMonth] = useState<string>(
     () => (location.state as { month?: string } | null)?.month ?? currentMonth(),
   )
+  // The instance is reused across panel→panel navigation, so re-seed the month
+  // from router state on each navigation (the lazy initializer runs only once).
+  useEffect(() => {
+    const stateMonth = (location.state as { month?: string } | null)?.month
+    if (stateMonth) setMonth(stateMonth)
+  }, [location.key])
   const [trend, setTrend] = useState<MonthlyTotal[]>([])
   const { expenses, loading, load, add, update, remove } = useExpenses({ panelId: panelId!, month })
   const { categories, load: loadCategories } = useCategories(routeId)

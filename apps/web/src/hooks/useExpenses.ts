@@ -31,6 +31,17 @@ export function useExpenses(params: UseExpensesParams | string) {
   const queryKey = `${normalized.panelId}-${normalized.categoryId}-${normalized.month}`
   const lastQueryKeyRef = useRef('')
 
+  // Clear stale rows the instant the query changes (category/panel/month) so
+  // consumers — notably the keyboard cursor via useExpenseListCursor — never
+  // register the previous query's expense ids while the reload is in flight.
+  // Without this, a cross-view cursor jump's pending target is consumed and
+  // expired against the old list before the new rows arrive.
+  const [seenQueryKey, setSeenQueryKey] = useState(queryKey)
+  if (queryKey !== seenQueryKey) {
+    setSeenQueryKey(queryKey)
+    setExpenses([])
+  }
+
   const load = useCallback(async () => {
     const isNewQuery = queryKey !== lastQueryKeyRef.current
     if (isNewQuery) setLoading(true)

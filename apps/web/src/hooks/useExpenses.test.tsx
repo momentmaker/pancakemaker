@@ -172,4 +172,29 @@ describe('useExpenses', () => {
     expect(result.current.expenses).toHaveLength(1)
     expect(result.current.expenses[0].amount).toBe(1500)
   })
+
+  it('clears stale rows immediately when the query changes (before the reload resolves)', async () => {
+    // #given a hook showing one category's expenses
+    const { result, rerender } = renderHook(({ catId }) => useExpenses({ categoryId: catId }), {
+      wrapper,
+      initialProps: { catId: categoryId },
+    })
+    await act(async () => {
+      await result.current.add({
+        panelId,
+        categoryId,
+        amount: 1500,
+        currency: 'USD',
+        date: '2026-01-15',
+      })
+    })
+    expect(result.current.expenses).toHaveLength(1)
+
+    // #when the query switches to a different category
+    rerender({ catId: 'a-different-category-id' })
+
+    // #then the stale rows are gone synchronously — consumers (the keyboard cursor)
+    // never register the previous category's ids while the reload is in flight.
+    expect(result.current.expenses).toHaveLength(0)
+  })
 })

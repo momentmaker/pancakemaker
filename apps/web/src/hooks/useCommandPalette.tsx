@@ -33,17 +33,29 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
   const openPalette = useCallback(() => setPaletteOpen(true), [])
   const openCheatsheet = useCallback(() => setCheatsheetOpen(true), [])
 
+  // Depend on the stable openQuickAdd / requestFocus callbacks, not the whole
+  // capture / cursor context values — those change identity on unrelated state
+  // (e.g. every cursor move), which would otherwise rebuild the entire index.
+  const openQuickAdd = capture?.openQuickAdd
+  const requestFocus = cursor?.requestFocus
+
   const actions = useMemo<CommandActions>(
     () => ({
       navigate: (to, options) => navigate(to, options),
-      openQuickAdd: () => capture?.openQuickAdd(),
-      openCheatsheet: () => setCheatsheetOpen(true),
-      syncNow: () => void forceSync(),
-      focusExpense: (id) => cursor?.requestFocus(id),
-      exportCsv: () => void exportData(db, userId, 'csv'),
-      exportJson: () => void exportData(db, userId, 'json'),
+      openQuickAdd: () => openQuickAdd?.(),
+      openCheatsheet,
+      syncNow: () => {
+        forceSync().catch((err) => console.error('Sync failed', err))
+      },
+      focusExpense: (id) => requestFocus?.(id),
+      exportCsv: () => {
+        exportData(db, userId, 'csv').catch((err) => console.error('Export failed', err))
+      },
+      exportJson: () => {
+        exportData(db, userId, 'json').catch((err) => console.error('Export failed', err))
+      },
     }),
-    [navigate, capture, forceSync, cursor, db, userId],
+    [navigate, openQuickAdd, openCheatsheet, forceSync, requestFocus, db, userId],
   )
 
   const items = useCommandIndex(actions)

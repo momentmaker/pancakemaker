@@ -144,6 +144,7 @@ export function useKeyboardShortcuts({ onCheatsheet }: KeyboardShortcutsOptions)
       // fires even while a field is focused (handled before the bare-key path);
       // the stand-down above already cedes it to whatever overlay owns the screen.
       if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        clearPending()
         paletteRef.current?.openPalette()
         e.preventDefault()
         return

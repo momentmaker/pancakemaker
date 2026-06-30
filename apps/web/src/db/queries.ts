@@ -768,41 +768,6 @@ export async function getDashboardExpenses(
   )
 }
 
-export interface DashboardRecentExpenseRow {
-  id: string
-  amount: number
-  currency: string
-  date: string
-  description: string | null
-  panel_id: string
-  panel_name: string
-  category_name: string
-  category_color: string
-  route_id: string
-}
-
-export async function getDashboardRecentExpenses(
-  db: Database,
-  personalRouteId: string,
-  businessRouteId: string,
-  limit = 10,
-): Promise<DashboardRecentExpenseRow[]> {
-  return db.query<DashboardRecentExpenseRow>(
-    `SELECT e.id, e.amount, e.currency, e.date, e.description,
-            e.panel_id, p.name AS panel_name,
-            c.name AS category_name, c.color AS category_color,
-            p.route_id
-     FROM expenses e
-     JOIN panels p ON e.panel_id = p.id
-     JOIN categories c ON e.category_id = c.id
-     WHERE p.route_id IN (?, ?)
-       AND e.deleted_at IS NULL
-     ORDER BY e.date DESC, e.created_at DESC
-     LIMIT ?`,
-    [personalRouteId, businessRouteId, limit],
-  )
-}
-
 // --- Export ---
 
 export async function getExportRows(db: Database, userId: string): Promise<ExportRow[]> {
@@ -835,7 +800,7 @@ export interface RecentExpenseRow {
   date: string
   category_id: string
   category_name: string
-  route_type: string
+  route_type: 'personal' | 'business'
 }
 
 // Recent expenses across both routes for the command palette's index, newest

@@ -78,6 +78,13 @@ describe('CommandPalette', () => {
     expect(input().getAttribute('aria-activedescendant')).toBe('a:sync')
   })
 
+  it('wraps the highlight back to the first item when arrowing down from the last', () => {
+    render(<CommandPalette open items={makeItems()} onClose={vi.fn()} />)
+    fireEvent.keyDown(input(), { key: 'ArrowUp' }) // 0 -> last
+    fireEvent.keyDown(input(), { key: 'ArrowDown' }) // last -> 0 (wrap)
+    expect(input().getAttribute('aria-activedescendant')).toBe('r:dash')
+  })
+
   it('tracks the highlighted row via aria-activedescendant and ARIA roles', () => {
     render(<CommandPalette open items={makeItems()} onClose={vi.fn()} />)
     expect(input().getAttribute('role')).toBe('combobox')
