@@ -4,6 +4,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts.js'
 import { CaptureContext, type CaptureContextValue } from './useCapture.js'
 import { CommandPaletteContext, type CommandPaletteContextValue } from './useCommandPalette.js'
+import { FHintContext, type FHintContextValue } from './useFHints.js'
+import { MonthScrubContext, type MonthScrubContextValue } from './useMonthScrub.js'
 
 function LocationProbe() {
   const location = useLocation()
@@ -225,6 +227,108 @@ describe('useKeyboardShortcuts', () => {
     const { openPalette } = renderWithPalette()
     fireEvent.keyDown(document, { key: 'k' })
     expect(openPalette).not.toHaveBeenCalled()
+  })
+
+  function renderWithFHints(overrides: Partial<FHintContextValue> = {}) {
+    const value: FHintContextValue = { openFHints: vi.fn(), ...overrides }
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <FHintContext.Provider value={value}>
+          <Harness />
+        </FHintContext.Provider>
+      </MemoryRouter>,
+    )
+    return value
+  }
+
+  function renderWithMonthScrub(overrides: Partial<MonthScrubContextValue> = {}) {
+    const value: MonthScrubContextValue = { register: vi.fn(), scrub: vi.fn(), ...overrides }
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <MonthScrubContext.Provider value={value}>
+          <Harness />
+        </MonthScrubContext.Provider>
+      </MemoryRouter>,
+    )
+    return value
+  }
+
+  it('opens f-hint mode on `f` via the f-hint context (R7)', () => {
+    const { openFHints } = renderWithFHints()
+    fireEvent.keyDown(document, { key: 'f' })
+    expect(openFHints).toHaveBeenCalledOnce()
+  })
+
+  it('scrubs the month back / forward on `[` / `]` (R8)', () => {
+    const { scrub } = renderWithMonthScrub()
+    fireEvent.keyDown(document, { key: '[' })
+    fireEvent.keyDown(document, { key: ']' })
+    expect(scrub).toHaveBeenNthCalledWith(1, -1)
+    expect(scrub).toHaveBeenNthCalledWith(2, 1)
+  })
+
+  it('does not open f-hint mode on mobile viewports', () => {
+    setDesktop(false)
+    const { openFHints } = renderWithFHints()
+    fireEvent.keyDown(document, { key: 'f' })
+    expect(openFHints).not.toHaveBeenCalled()
+  })
+
+  it('does not scrub the month on mobile viewports', () => {
+    setDesktop(false)
+    const { scrub } = renderWithMonthScrub()
+    fireEvent.keyDown(document, { key: '[' })
+    expect(scrub).not.toHaveBeenCalled()
+  })
+
+  it('stands `f` down while an overlay owns the keyboard (AE8)', () => {
+    const { openFHints } = renderWithFHints()
+    const popover = document.createElement('div')
+    popover.setAttribute('data-kbd-popover-open', '')
+    document.body.appendChild(popover)
+    fireEvent.keyDown(document, { key: 'f' })
+    expect(openFHints).not.toHaveBeenCalled()
+  })
+
+  it('stands `[` / `]` down while an overlay owns the keyboard', () => {
+    const { scrub } = renderWithMonthScrub()
+    const dialog = document.createElement('dialog')
+    dialog.setAttribute('open', '')
+    document.body.appendChild(dialog)
+    fireEvent.keyDown(document, { key: '[' })
+    fireEvent.keyDown(document, { key: ']' })
+    expect(scrub).not.toHaveBeenCalled()
+  })
+
+  it('suppresses f / [ / ] while a field is focused (R6 / R9)', () => {
+    const fhints = renderWithFHints()
+    const field = screen.getByTestId('field')
+    field.focus()
+    fireEvent.keyDown(field, { key: 'f' })
+    fireEvent.keyDown(field, { key: '[' })
+    expect(fhints.openFHints).not.toHaveBeenCalled()
+  })
+
+  it('swallows f / [ / ] under a pending g prefix and clears it', () => {
+    const scrub = vi.fn()
+    const openFHints = vi.fn()
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <FHintContext.Provider value={{ openFHints }}>
+          <MonthScrubContext.Provider value={{ register: vi.fn(), scrub }}>
+            <Harness />
+          </MonthScrubContext.Provider>
+        </FHintContext.Provider>
+      </MemoryRouter>,
+    )
+    fireEvent.keyDown(document, { key: 'g' })
+    fireEvent.keyDown(document, { key: '[' })
+    expect(scrub).not.toHaveBeenCalled()
+    // Pending prefix is cleared, so a following g b navigates normally.
+    fireEvent.keyDown(document, { key: 'g' })
+    fireEvent.keyDown(document, { key: 'b' })
+    expect(path()).toBe('/business')
+    expect(openFHints).not.toHaveBeenCalled()
   })
 
   it('clears a pending chord after the timeout', () => {

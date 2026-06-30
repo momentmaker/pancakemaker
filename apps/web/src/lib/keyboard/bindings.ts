@@ -20,6 +20,8 @@ export const KEYBOARD_BINDINGS: KeyBinding[] = [
   { keys: 'g s', description: 'Go to Settings' },
   { keys: 'a', description: 'Add an expense (Quick Add)' },
   { keys: ':', description: 'Quick capture — type an expense' },
+  { keys: 'f', description: 'Hint mode — jump to a visible target' },
+  { keys: '[ / ]', description: 'Previous / next month' },
   { keys: '⌘K / Ctrl-K', description: 'Open the command palette' },
   { keys: '?', description: 'Show this cheatsheet' },
   { keys: 'Esc', description: 'Clear cursor / close' },

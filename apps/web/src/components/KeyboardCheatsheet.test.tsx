@@ -28,6 +28,13 @@ describe('KeyboardCheatsheet', () => {
     expect(keys).not.toContain('/')
   })
 
+  it('advertises the Phase 4 f-hint and month-scrub keys', () => {
+    const { container } = render(<KeyboardCheatsheet open onClose={() => {}} />)
+    const keys = Array.from(container.querySelectorAll('kbd')).map((el) => el.textContent)
+    expect(keys).toContain('f')
+    expect(keys).toContain('[ / ]')
+  })
+
   it('calls onClose when the close button is clicked', () => {
     const onClose = vi.fn()
     render(<KeyboardCheatsheet open onClose={onClose} />)

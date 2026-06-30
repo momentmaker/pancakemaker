@@ -4,6 +4,8 @@ import { useIsDesktop } from './useIsDesktop.js'
 import { useKeyboardCursor } from './useKeyboardCursor.js'
 import { useCapture } from './useCapture.js'
 import { useCommandPalette } from './useCommandPalette.js'
+import { useFHints } from './useFHints.js'
+import { useMonthScrubControls } from './useMonthScrub.js'
 import { useRoutePrefix } from '../demo/demo-context.js'
 import { navItems } from '../components/nav-items.js'
 import { resolveIntent, type KeyAction, type PendingPrefix } from '../lib/keyboard/intents.js'
@@ -41,6 +43,8 @@ export function useKeyboardShortcuts({ onCheatsheet }: KeyboardShortcutsOptions)
   const cursor = useKeyboardCursor()
   const capture = useCapture()
   const palette = useCommandPalette()
+  const fhints = useFHints()
+  const monthScrub = useMonthScrubControls()
 
   const navigateRef = useRef(navigate)
   const prefixRef = useRef(routePrefix)
@@ -48,12 +52,16 @@ export function useKeyboardShortcuts({ onCheatsheet }: KeyboardShortcutsOptions)
   const cursorRef = useRef(cursor)
   const captureRef = useRef(capture)
   const paletteRef = useRef(palette)
+  const fhintsRef = useRef(fhints)
+  const monthScrubRef = useRef(monthScrub)
   navigateRef.current = navigate
   prefixRef.current = routePrefix
   cheatsheetRef.current = onCheatsheet
   cursorRef.current = cursor
   captureRef.current = capture
   paletteRef.current = palette
+  fhintsRef.current = fhints
+  monthScrubRef.current = monthScrub
 
   const pendingRef = useRef<PendingPrefix>(null)
   const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -96,6 +104,15 @@ export function useKeyboardShortcuts({ onCheatsheet }: KeyboardShortcutsOptions)
           return true
         case 'open-capture':
           captureRef.current?.openCaptureBar()
+          return true
+        case 'open-fhints':
+          fhintsRef.current?.openFHints()
+          return true
+        case 'month-prev':
+          monthScrubRef.current?.scrub(-1)
+          return true
+        case 'month-next':
+          monthScrubRef.current?.scrub(1)
           return true
         case 'cursor-down':
           cursor?.move(1)

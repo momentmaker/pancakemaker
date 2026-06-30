@@ -33,6 +33,15 @@ describe('resolveIntent — single keys', () => {
     expect(resolveIntent('Escape').action).toBe('escape')
   })
 
+  it('maps f to open-fhints', () => {
+    expect(resolveIntent('f').action).toBe('open-fhints')
+  })
+
+  it('maps [ and ] to month scrub', () => {
+    expect(resolveIntent('[').action).toBe('month-prev')
+    expect(resolveIntent(']').action).toBe('month-next')
+  })
+
   it('returns none for unmapped keys, including the deferred /', () => {
     expect(resolveIntent('/').action).toBe('none')
     expect(resolveIntent('x').action).toBe('none')
@@ -79,6 +88,12 @@ describe('resolveIntent — field focus (R3 / AE1)', () => {
     expect(resolveIntent('j', { fieldFocused: true }).action).toBe('none')
     expect(resolveIntent('d', { fieldFocused: true }).action).toBe('none')
     expect(resolveIntent('g', { fieldFocused: true }).action).toBe('none')
+  })
+
+  it('suppresses f / [ / ] while a field is focused (R6 / R9)', () => {
+    expect(resolveIntent('f', { fieldFocused: true }).action).toBe('none')
+    expect(resolveIntent('[', { fieldFocused: true }).action).toBe('none')
+    expect(resolveIntent(']', { fieldFocused: true }).action).toBe('none')
   })
 
   it('still honors Escape while a field is focused', () => {

@@ -17,6 +17,9 @@ export type KeyAction =
   | 'cheatsheet'
   | 'open-quick-add'
   | 'open-capture'
+  | 'open-fhints'
+  | 'month-prev'
+  | 'month-next'
   | 'escape'
   | 'none'
 
@@ -65,6 +68,9 @@ const SINGLE_KEYS = new Map<string, KeyAction>([
   ['d', 'delete'],
   ['a', 'open-quick-add'],
   [':', 'open-capture'],
+  ['f', 'open-fhints'],
+  ['[', 'month-prev'],
+  [']', 'month-next'],
   ['?', 'cheatsheet'],
   ['Escape', 'escape'],
 ])
