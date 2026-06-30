@@ -3,6 +3,7 @@ import { MemoryRouter, useLocation } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts.js'
 import { CaptureContext, type CaptureContextValue } from './useCapture.js'
+import { CommandPaletteContext, type CommandPaletteContextValue } from './useCommandPalette.js'
 
 function LocationProbe() {
   const location = useLocation()
@@ -166,6 +167,64 @@ describe('useKeyboardShortcuts', () => {
     const { openCaptureBar } = renderWithCapture()
     fireEvent.keyDown(document, { key: ':' })
     expect(openCaptureBar).toHaveBeenCalledOnce()
+  })
+
+  function renderWithPalette(overrides: Partial<CommandPaletteContextValue> = {}) {
+    const value: CommandPaletteContextValue = {
+      openPalette: vi.fn(),
+      openCheatsheet: vi.fn(),
+      ...overrides,
+    }
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <CommandPaletteContext.Provider value={value}>
+          <Harness />
+        </CommandPaletteContext.Provider>
+      </MemoryRouter>,
+    )
+    return value
+  }
+
+  it('opens the command palette on Cmd-K (R1)', () => {
+    const { openPalette } = renderWithPalette()
+    fireEvent.keyDown(document, { key: 'k', metaKey: true })
+    expect(openPalette).toHaveBeenCalledOnce()
+  })
+
+  it('opens the command palette on Ctrl-K', () => {
+    const { openPalette } = renderWithPalette()
+    fireEvent.keyDown(document, { key: 'k', ctrlKey: true })
+    expect(openPalette).toHaveBeenCalledOnce()
+  })
+
+  it('opens the palette on Cmd-K even while a field is focused (AE8)', () => {
+    const { openPalette } = renderWithPalette()
+    const field = screen.getByTestId('field')
+    field.focus()
+    fireEvent.keyDown(field, { key: 'k', metaKey: true })
+    expect(openPalette).toHaveBeenCalledOnce()
+  })
+
+  it('does not open the palette on Cmd-K while another overlay owns the keyboard (AE6 / R2)', () => {
+    const { openPalette } = renderWithPalette()
+    const dialog = document.createElement('dialog')
+    dialog.setAttribute('open', '')
+    document.body.appendChild(dialog)
+    fireEvent.keyDown(document, { key: 'k', metaKey: true })
+    expect(openPalette).not.toHaveBeenCalled()
+  })
+
+  it('does not open the palette on Cmd-K on mobile viewports', () => {
+    setDesktop(false)
+    const { openPalette } = renderWithPalette()
+    fireEvent.keyDown(document, { key: 'k', metaKey: true })
+    expect(openPalette).not.toHaveBeenCalled()
+  })
+
+  it('does not open the palette on a bare k', () => {
+    const { openPalette } = renderWithPalette()
+    fireEvent.keyDown(document, { key: 'k' })
+    expect(openPalette).not.toHaveBeenCalled()
   })
 
   it('clears a pending chord after the timeout', () => {

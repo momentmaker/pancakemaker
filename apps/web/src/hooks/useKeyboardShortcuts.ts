@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useIsDesktop } from './useIsDesktop.js'
 import { useKeyboardCursor } from './useKeyboardCursor.js'
 import { useCapture } from './useCapture.js'
+import { useCommandPalette } from './useCommandPalette.js'
 import { useRoutePrefix } from '../demo/demo-context.js'
 import { navItems } from '../components/nav-items.js'
 import { resolveIntent, type KeyAction, type PendingPrefix } from '../lib/keyboard/intents.js'
@@ -39,17 +40,20 @@ export function useKeyboardShortcuts({ onCheatsheet }: KeyboardShortcutsOptions)
   // navigate/prefix/callback values without re-subscribing on every render.
   const cursor = useKeyboardCursor()
   const capture = useCapture()
+  const palette = useCommandPalette()
 
   const navigateRef = useRef(navigate)
   const prefixRef = useRef(routePrefix)
   const cheatsheetRef = useRef(onCheatsheet)
   const cursorRef = useRef(cursor)
   const captureRef = useRef(capture)
+  const paletteRef = useRef(palette)
   navigateRef.current = navigate
   prefixRef.current = routePrefix
   cheatsheetRef.current = onCheatsheet
   cursorRef.current = cursor
   captureRef.current = capture
+  paletteRef.current = palette
 
   const pendingRef = useRef<PendingPrefix>(null)
   const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -135,6 +139,15 @@ export function useKeyboardShortcuts({ onCheatsheet }: KeyboardShortcutsOptions)
 
     function handleKeyDown(e: KeyboardEvent): void {
       if (isBlockingOverlayOpen()) return
+
+      // Cmd-K / Ctrl-K opens the command palette. It is a modifier chord, so it
+      // fires even while a field is focused (handled before the bare-key path);
+      // the stand-down above already cedes it to whatever overlay owns the screen.
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        paletteRef.current?.openPalette()
+        e.preventDefault()
+        return
+      }
 
       const fieldFocused = isEditableTarget(e.target)
       const { action, pending, mutating } = resolveIntent(e.key, {
