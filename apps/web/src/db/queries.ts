@@ -825,6 +825,47 @@ export async function getExportRows(db: Database, userId: string): Promise<Expor
   )
 }
 
+// --- Command palette ---
+
+export interface RecentExpenseRow {
+  id: string
+  description: string
+  amount: number
+  currency: string
+  date: string
+  category_id: string
+  category_name: string
+  route_type: string
+}
+
+// Recent expenses across both routes for the command palette's index, newest
+// first. route_type comes from the category's route — the palette's jump target
+// is the category detail view (/[route_type]/category/[category_id]).
+export async function getRecentExpenses(
+  db: Database,
+  userId: string,
+  limit = 50,
+): Promise<RecentExpenseRow[]> {
+  return db.query<RecentExpenseRow>(
+    `SELECT
+       e.id,
+       COALESCE(e.description, '') AS description,
+       e.amount,
+       e.currency,
+       e.date,
+       e.category_id,
+       c.name AS category_name,
+       r.type AS route_type
+     FROM expenses e
+     JOIN categories c ON e.category_id = c.id
+     JOIN routes r ON c.route_id = r.id
+     WHERE r.user_id = ? AND e.deleted_at IS NULL
+     ORDER BY e.date DESC, e.created_at DESC
+     LIMIT ?`,
+    [userId, limit],
+  )
+}
+
 export async function getDefaultPanelByRoute(
   db: Database,
   routeId: string,
