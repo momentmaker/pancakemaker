@@ -5,6 +5,8 @@ import { useDatabase } from '../db/DatabaseContext'
 import { useSync } from '../sync/SyncContext'
 import { useRoutePrefix } from '../demo/demo-context'
 import { useDashboardStats, type BurnRate } from '../hooks/useDashboardStats'
+import { useMonthScrub } from '../hooks/useMonthScrub'
+import { addMonths } from '../lib/month'
 import {
   getPanelsByRoute,
   getCategoriesByRoute,
@@ -395,6 +397,7 @@ export function Dashboard() {
   const { triggerSync, markPending } = useSync()
   const prefix = useRoutePrefix()
   const [month, setMonth] = useState(currentMonth)
+  useMonthScrub((delta) => setMonth((m) => addMonths(m, delta)))
   const { stats, loading, error, reload } = useDashboardStats(month)
 
   const [allPanels, setAllPanels] = useState<PanelRow[]>([])

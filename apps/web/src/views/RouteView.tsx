@@ -7,6 +7,8 @@ import { kbdItemSelector } from '../lib/keyboard/dom'
 import { useAppState } from '../hooks/useAppState'
 import { usePanels } from '../hooks/usePanels'
 import { useCategories } from '../hooks/useCategories'
+import { useMonthScrub } from '../hooks/useMonthScrub'
+import { addMonths } from '../lib/month'
 import { useExchangeRates } from '../hooks/useExchangeRates'
 import { useDatabase } from '../db/DatabaseContext'
 import { useSync } from '../sync/SyncContext'
@@ -49,6 +51,10 @@ export function RouteView({ type }: RouteViewProps) {
   const [activeTab, setActiveTab] = useState<'categories' | 'panels'>('categories')
   const [month, setMonth] = useState(currentMonth)
   const [showArchived, setShowArchived] = useState(false)
+  // Month scrub only applies to the Categories tab (the only one with a picker).
+  useMonthScrub((delta) => {
+    if (activeTab === 'categories') setMonth((m) => addMonths(m, delta))
+  })
 
   const {
     panels,

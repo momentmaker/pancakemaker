@@ -6,6 +6,8 @@ import { useRoutePrefix } from '../demo/demo-context'
 import { useExpenses } from '../hooks/useExpenses'
 import { useCategories } from '../hooks/useCategories'
 import { useExpenseListCursor } from '../hooks/useExpenseListCursor'
+import { useMonthScrub } from '../hooks/useMonthScrub'
+import { addMonths } from '../lib/month'
 import {
   updatePanel,
   deletePanel,
@@ -57,6 +59,7 @@ export function PanelDetail() {
     const stateMonth = (location.state as { month?: string } | null)?.month
     if (stateMonth) setMonth(stateMonth)
   }, [location.key])
+  useMonthScrub((delta) => setMonth((m) => addMonths(m, delta)))
   const [trend, setTrend] = useState<MonthlyTotal[]>([])
   const { expenses, loading, load, add, update, remove } = useExpenses({ panelId: panelId!, month })
   const { categories, load: loadCategories } = useCategories(routeId)

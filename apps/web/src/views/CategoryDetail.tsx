@@ -7,6 +7,8 @@ import { useExpenses } from '../hooks/useExpenses'
 import { useCategories } from '../hooks/useCategories'
 import { useExchangeRates } from '../hooks/useExchangeRates'
 import { useExpenseListCursor } from '../hooks/useExpenseListCursor'
+import { useMonthScrub } from '../hooks/useMonthScrub'
+import { addMonths } from '../lib/month'
 import {
   getPanelsByRoute,
   getCategoryMonthlyTrend,
@@ -51,6 +53,7 @@ export function CategoryDetail() {
     const stateMonth = (location.state as { month?: string } | null)?.month
     if (stateMonth) setMonth(stateMonth)
   }, [location.key])
+  useMonthScrub((delta) => setMonth((m) => addMonths(m, delta)))
   const [trend, setTrend] = useState<MonthlyTotal[]>([])
   const [panels, setPanels] = useState<PanelRow[]>([])
   const [allPanels, setAllPanels] = useState<PanelRow[]>([])
