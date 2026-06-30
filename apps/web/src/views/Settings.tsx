@@ -229,10 +229,20 @@ export function Settings() {
         <h2 className="font-mono text-sm font-semibold text-text-secondary">Export Data</h2>
         <p className="mt-1 text-xs text-text-muted">Download all your expenses.</p>
         <div className="mt-3 flex gap-2">
-          <Button variant="secondary" onClick={() => handleExport('csv')} disabled={exporting}>
+          <Button
+            variant="secondary"
+            data-fhint
+            onClick={() => handleExport('csv')}
+            disabled={exporting}
+          >
             {exporting ? 'Exporting...' : 'Download CSV'}
           </Button>
-          <Button variant="secondary" onClick={() => handleExport('json')} disabled={exporting}>
+          <Button
+            variant="secondary"
+            data-fhint
+            onClick={() => handleExport('json')}
+            disabled={exporting}
+          >
             {exporting ? 'Exporting...' : 'Download JSON'}
           </Button>
         </div>

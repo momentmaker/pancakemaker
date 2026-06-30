@@ -206,7 +206,7 @@ export function RouteView({ type }: RouteViewProps) {
         <div className="mt-4">
           <div className="flex items-center justify-between">
             <MonthPicker month={month} onChange={setMonth} />
-            <Button variant="secondary" onClick={() => setShowQuickAdd(true)}>
+            <Button variant="secondary" data-fhint onClick={() => setShowQuickAdd(true)}>
               +<span className="hidden sm:inline"> Add Expense</span>
             </Button>
           </div>
@@ -242,7 +242,7 @@ export function RouteView({ type }: RouteViewProps) {
         <div className="mt-4">
           <div className="flex items-center justify-between">
             <Toggle checked={showArchived} onChange={setShowArchived} label="Show archived" />
-            <Button variant="secondary" onClick={() => setShowAdd(true)}>
+            <Button variant="secondary" data-fhint onClick={() => setShowAdd(true)}>
               + New Panel
             </Button>
           </div>

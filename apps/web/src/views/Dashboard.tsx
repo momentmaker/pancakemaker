@@ -473,7 +473,7 @@ export function Dashboard() {
           <h1 className="font-mono text-2xl font-bold text-neon-cyan">{greeting.line1}</h1>
           <p className="mt-0.5 text-sm text-text-secondary">{greeting.line2}</p>
         </div>
-        <Button onClick={() => setShowQuickAdd(true)} className="hidden sm:flex">
+        <Button onClick={() => setShowQuickAdd(true)} className="hidden sm:flex" data-fhint>
           + Add
         </Button>
       </div>

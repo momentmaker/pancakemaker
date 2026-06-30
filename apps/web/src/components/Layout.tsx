@@ -314,6 +314,7 @@ export function Layout() {
                         key={item.to}
                         to={item.to}
                         end={item.to === '/'}
+                        data-fhint
                         className={({ isActive }) =>
                           `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                             isActive

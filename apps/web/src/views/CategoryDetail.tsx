@@ -239,7 +239,7 @@ export function CategoryDetail() {
             <MonthPicker month={month} onChange={setMonth} />
           </div>
         </div>
-        <Button onClick={() => setShowQuickAdd(true)}>
+        <Button data-fhint onClick={() => setShowQuickAdd(true)}>
           +<span className="hidden sm:inline"> Add Expense</span>
         </Button>
       </div>
