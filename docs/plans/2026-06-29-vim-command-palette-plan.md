@@ -2,7 +2,7 @@
 date: 2026-06-29
 title: 'feat: Vim command palette (Phase 3)'
 type: feat
-status: active
+status: completed
 origin: docs/brainstorms/vim-command-palette-requirements.md
 ---
 
