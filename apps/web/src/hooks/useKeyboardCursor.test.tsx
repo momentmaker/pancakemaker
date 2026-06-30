@@ -1,8 +1,14 @@
 import { useMemo, useState } from 'react'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { KeyboardCursorProvider, useListCursor, type CursorItem } from './useKeyboardCursor.js'
+import {
+  KeyboardCursorProvider,
+  useListCursor,
+  useKeyboardCursor,
+  type CursorItem,
+  type KeyboardCursor,
+} from './useKeyboardCursor.js'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts.js'
 
 afterEach(cleanup)
@@ -156,5 +162,52 @@ describe('keyboard cursor', () => {
     fireEvent.keyDown(document, { key: 'd' }) // delete b -> reanchor to its slot (c)
     expect(screen.queryByText('b')).toBeNull()
     expect(active()).toBe('c')
+  })
+})
+
+describe('requestFocus (cross-view targeting)', () => {
+  let cursor: KeyboardCursor | null = null
+
+  function Capture() {
+    cursor = useKeyboardCursor()
+    return <div data-testid="active">{cursor?.activeId ?? 'none'}</div>
+  }
+
+  function renderCursor() {
+    cursor = null
+    render(
+      <KeyboardCursorProvider>
+        <Capture />
+      </KeyboardCursorProvider>,
+    )
+  }
+
+  const item = (id: string): CursorItem => ({ id })
+
+  it('lands on the requested id when its list registers with prevId already null', () => {
+    renderCursor()
+    act(() => {
+      cursor!.requestFocus('x')
+      cursor!.registerList([item('a'), item('x'), item('b')], () => null)
+    })
+    expect(active()).toBe('x')
+  })
+
+  it('survives an empty (loading) registration, then lands when the real list arrives', () => {
+    renderCursor()
+    act(() => cursor!.requestFocus('x'))
+    act(() => cursor!.registerList([], () => null)) // unmount cleanup / loading
+    expect(active()).toBe('none')
+    act(() => cursor!.registerList([item('x')], () => null)) // data resolves
+    expect(active()).toBe('x')
+  })
+
+  it('expires the pending target on the first non-matching list — no stale hijack', () => {
+    renderCursor()
+    act(() => cursor!.requestFocus('x'))
+    act(() => cursor!.registerList([item('other')], () => null)) // x not present -> expire
+    expect(active()).toBe('none')
+    act(() => cursor!.registerList([item('x')], () => null)) // x now present, but pending was cleared
+    expect(active()).toBe('none')
   })
 })

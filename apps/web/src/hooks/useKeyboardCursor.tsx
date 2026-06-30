@@ -22,6 +22,9 @@ export interface CursorItem {
 export interface KeyboardCursor {
   activeId: string | null
   registerList: (items: CursorItem[], getElement: (id: string) => HTMLElement | null) => void
+  // Ask the cursor to land on an item id once a list containing it registers —
+  // used for cross-view jumps (e.g. the command palette navigating to an expense).
+  requestFocus: (id: string) => void
   move: (delta: number) => void
   moveToEdge: (edge: 'top' | 'bottom') => void
   open: () => void
@@ -36,6 +39,7 @@ export function KeyboardCursorProvider({ children }: { children: ReactNode }) {
   const itemsRef = useRef<CursorItem[]>([])
   const getElementRef = useRef<(id: string) => HTMLElement | null>(() => null)
   const activeIdRef = useRef<string | null>(null)
+  const pendingTargetRef = useRef<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
 
   const setActive = useCallback((id: string | null) => {
@@ -50,6 +54,21 @@ export function KeyboardCursorProvider({ children }: { children: ReactNode }) {
       const prevId = activeIdRef.current
       itemsRef.current = items
       getElementRef.current = getElement
+
+      // Cross-view targeting: the first non-empty registration after requestFocus
+      // consumes the pending target — landing on it when present, else expiring it
+      // so a stale id can't hijack a later unrelated list. Empty registrations (the
+      // unmount cleanup) do not consume it, so navigate -> loading([]) -> loaded([id])
+      // still lands. This must run before the prevId guard below: on cross-view
+      // navigation prevId is already null (the prior view's cleanup cleared it).
+      const pendingTarget = pendingTargetRef.current
+      if (pendingTarget !== null && items.length > 0) {
+        pendingTargetRef.current = null
+        if (items.some((item) => item.id === pendingTarget)) {
+          setActive(pendingTarget)
+          return
+        }
+      }
 
       if (!prevId || items.some((item) => item.id === prevId)) return
 
@@ -108,9 +127,23 @@ export function KeyboardCursorProvider({ children }: { children: ReactNode }) {
     setActive(null)
   }, [setActive])
 
+  const requestFocus = useCallback((id: string) => {
+    pendingTargetRef.current = id
+  }, [])
+
   const value = useMemo<KeyboardCursor>(
-    () => ({ activeId, registerList, move, moveToEdge, open, remove, duplicate, clear }),
-    [activeId, registerList, move, moveToEdge, open, remove, duplicate, clear],
+    () => ({
+      activeId,
+      registerList,
+      requestFocus,
+      move,
+      moveToEdge,
+      open,
+      remove,
+      duplicate,
+      clear,
+    }),
+    [activeId, registerList, requestFocus, move, moveToEdge, open, remove, duplicate, clear],
   )
 
   return <KeyboardCursorContext.Provider value={value}>{children}</KeyboardCursorContext.Provider>
