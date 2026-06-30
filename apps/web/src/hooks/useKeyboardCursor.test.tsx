@@ -211,3 +211,58 @@ describe('requestFocus (cross-view targeting)', () => {
     expect(active()).toBe('none')
   })
 })
+
+describe('activateItem', () => {
+  let cursor: KeyboardCursor | null = null
+
+  function Capture() {
+    cursor = useKeyboardCursor()
+    return <div data-testid="active">{cursor?.activeId ?? 'none'}</div>
+  }
+
+  function renderCursor() {
+    cursor = null
+    render(
+      <KeyboardCursorProvider>
+        <Capture />
+      </KeyboardCursorProvider>,
+    )
+  }
+
+  it("invokes a registered item's open by id without moving the cursor", () => {
+    renderCursor()
+    const openA = vi.fn()
+    const openB = vi.fn()
+    act(() =>
+      cursor!.registerList(
+        [
+          { id: 'a', open: openA },
+          { id: 'b', open: openB },
+        ],
+        () => null,
+      ),
+    )
+    act(() => cursor!.activateItem('b'))
+    expect(openB).toHaveBeenCalledOnce()
+    expect(openA).not.toHaveBeenCalled()
+    expect(screen.getByTestId('active').textContent).toBe('none') // cursor not moved
+  })
+
+  it('is a no-op when the id is not registered', () => {
+    renderCursor()
+    act(() => cursor!.registerList([{ id: 'a', open: vi.fn() }], () => null))
+    expect(() => act(() => cursor!.activateItem('missing'))).not.toThrow()
+  })
+
+  it('warns in dev when a marked DOM element exists but is not registered', () => {
+    renderCursor()
+    const ghost = document.createElement('div')
+    ghost.setAttribute('data-kbd-item-id', 'ghost')
+    document.body.appendChild(ghost)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    act(() => cursor!.activateItem('ghost'))
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+    ghost.remove()
+  })
+})

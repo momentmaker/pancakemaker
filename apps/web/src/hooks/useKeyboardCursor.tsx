@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { kbdItemSelector } from '../lib/keyboard/dom.js'
 
 // A view registers its ordered, visible items (identified by stable id) plus
 // the per-item actions the keyboard cursor can invoke. The active item is
@@ -25,6 +26,9 @@ export interface KeyboardCursor {
   // Ask the cursor to land on an item id once a list containing it registers —
   // used for cross-view jumps (e.g. the command palette navigating to an expense).
   requestFocus: (id: string) => void
+  // Invoke a registered item's open action by id without moving the cursor —
+  // used by f-hints to "open" a card/row (navigate / startEdit) directly.
+  activateItem: (id: string) => void
   move: (delta: number) => void
   moveToEdge: (edge: 'top' | 'bottom') => void
   open: () => void
@@ -131,11 +135,26 @@ export function KeyboardCursorProvider({ children }: { children: ReactNode }) {
     pendingTargetRef.current = id
   }, [])
 
+  const activateItem = useCallback((id: string) => {
+    const item = itemsRef.current.find((candidate) => candidate.id === id)
+    if (item) {
+      item.open?.()
+      return
+    }
+    // No registered item — surface the divergence in dev when a marked DOM
+    // element exists but was never registered with the cursor (a silent f-hint
+    // no-op otherwise).
+    if (import.meta.env.DEV && document.querySelector(kbdItemSelector(id))) {
+      console.warn(`[cursor] activateItem('${id}'): element is marked but not registered`)
+    }
+  }, [])
+
   const value = useMemo<KeyboardCursor>(
     () => ({
       activeId,
       registerList,
       requestFocus,
+      activateItem,
       move,
       moveToEdge,
       open,
@@ -143,7 +162,18 @@ export function KeyboardCursorProvider({ children }: { children: ReactNode }) {
       duplicate,
       clear,
     }),
-    [activeId, registerList, requestFocus, move, moveToEdge, open, remove, duplicate, clear],
+    [
+      activeId,
+      registerList,
+      requestFocus,
+      activateItem,
+      move,
+      moveToEdge,
+      open,
+      remove,
+      duplicate,
+      clear,
+    ],
   )
 
   return <KeyboardCursorContext.Provider value={value}>{children}</KeyboardCursorContext.Provider>
