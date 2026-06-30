@@ -55,6 +55,7 @@ Acceptance Examples AE1–AE8 are carried into unit test scenarios (`Covers AE<N
 - **Recent = last 50 by recency, no time filter.** A new `getRecentExpenses(db, limit = 50)` ordered by `date` then `created_at` descending, returning display + navigation fields. Bounded and cheap; `limit` is tunable.
 - **Export is two palette entries** ("Export CSV", "Export JSON") rather than one entry with a format sub-choice — simpler palette interaction; both call the shared `exportData(db, userId, format)`.
 - **Recent-expense jump target = the expense's category detail view** (`/[routeType]/category/[categoryId]`), which renders the expense rows and registers them with the cursor. (Panel detail is the alternative; category detail chosen as canonical.)
+- **The jump must carry the expense's month.** `CategoryDetail` and `PanelDetail` both default their `month` state to the _current_ month and load month-filtered (`useExpenses({ ..., month })` → `getExpensesByCategory` filters `date LIKE 'YYYY-MM%'`). Since the recent list is time-unfiltered, a recent expense from another month would otherwise navigate to a detail view that does not render it — the cursor never lands and the user lands on the wrong month (common near month boundaries). So the recent-expense `run` navigates with router state `navigate(path, { state: { month: <expense's YYYY-MM>, focusId: <expense id> } })`, and the detail view seeds its `month` from `location.state` so the target row is rendered before `registerList` runs. This makes the headline jump correct, not a "benign no-op."
 - **Palette selection uses its own local highlight index**, not the global cursor. The global cursor is for in-view list navigation; the palette manages its own up/down/Enter over the flattened grouped results and sets `data-kbd-popover-open` so the global layer stands down while it is open.
 
 ---
@@ -102,7 +103,7 @@ if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')):
 ### U1. Pure fuzzy matcher + grouped ranker
 
 **Goal:** A pure, DOM-free fuzzy match + rank module the palette filters with.
-**Requirements:** R12, R13
+**Requirements:** R12
 **Dependencies:** none
 **Files:**
 
@@ -124,7 +125,7 @@ if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')):
 ### U2. Recent-expenses query
 
 **Goal:** Load a bounded set of recent expenses with the fields needed to display and navigate to them.
-**Requirements:** R7, R14
+**Requirements:** R7
 **Dependencies:** none
 **Files:**
 
@@ -136,7 +137,7 @@ if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')):
 **Test scenarios:**
 
 - Returns expenses newest-first, capped at `limit`.
-- Each row carries the category_id, route_type, description, and amount needed for navigation + display.
+- Each row carries the category_id, route_type, description, amount, and `date` needed for navigation + display (the `date`'s `YYYY-MM` seeds the destination view's month on jump — see U7).
 - Empty DB returns `[]`.
 - An expense with a null/empty description is returned (display falls back at the UI layer).
 
@@ -152,14 +153,14 @@ if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')):
 - Modify: `apps/web/src/hooks/useKeyboardCursor.tsx` (add `requestFocus` + pending-target consumption in `registerList`)
 - Modify: `apps/web/src/hooks/useKeyboardCursor.test.tsx` (or create if absent)
 
-**Approach:** Add `requestFocus(id: string)` to `KeyboardCursor`; it stores the id in a `pendingTargetRef`. In `registerList`, after updating the items, if a pending target is set and the new `items` contain it, `setActive(pendingTarget)` and clear the pending ref (this branch takes priority over the existing deletion/overlap anchoring). If the pending target never appears (e.g., the destination view does not render that row), it stays pending until cleared or superseded — a benign no-op. Keep `requestFocus` stable (in the memoized value).
+**Approach:** Add `requestFocus(id: string)` to `KeyboardCursor`; it stores the id in a `pendingTargetRef`. **The pending-target check must run at the very top of `registerList`, before the existing `if (!prevId || items.some(...)) return` guard.** On cross-view navigation the unmounting view's cleanup calls `registerList([], …)`, which sets `activeId` to `null` — so by the time the destination view registers its rows, `prevId` is `null` and that guard returns immediately. If the pending check sat after the guard it would never fire in the primary flow (a silent no-op). So: at the top of `registerList`, if a pending target is set, consume it — when the new `items` contain it, `setActive(pendingTarget)`; in either case clear `pendingTargetRef` (expire-on-first-register). **No long-lived pending target:** clearing it after the first `registerList` following `requestFocus`, match or not, prevents a stale id from lurking and hijacking an unrelated later registration (e.g., the user later opening that category). Empty-list registrations (the unmount cleanup, `[]`) do not count as the consuming register — only the next non-empty register expires it, so navigate → loading (`[]`) → loaded (`[id]`) still lands. Keep `requestFocus` stable (in the memoized value).
 **Patterns to follow:** the existing `registerList` / `setActive` / `activeIdRef` logic in the same file; the stable-callback discipline noted in `useListCursor`.
 **Test scenarios:**
 
-- `requestFocus(id)` then `registerList` with a list containing `id` → `activeId === id`.
-- `requestFocus(id)` then `registerList` with a list NOT containing `id` → `activeId` unchanged; later registering a list that DOES contain `id` activates it.
+- `requestFocus(id)` then `registerList([id])` with `prevId === null` (simulating post-navigation) → `activeId === id` (the pending branch runs before the `!prevId` guard).
+- `requestFocus(id)` then `registerList([])` (loading) then `registerList([id])` → `activeId === id` (empty register does not expire the pending target).
+- `requestFocus(id)` then `registerList` with a list NOT containing `id` → `activeId` unchanged AND the pending target is cleared, so a later `registerList([id])` does NOT activate it (expire-on-first-non-empty-register; no stale hijack).
 - A normal `registerList` with no pending target preserves the existing deletion-anchor / context-switch behavior (regression).
-- Pending target is consumed once (a subsequent unrelated `registerList` does not re-activate it).
 
 **Verification:** Cursor lands on the requested id exactly when its list registers; existing cursor behavior is unregressed.
 
@@ -195,62 +196,77 @@ if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')):
 - Create: `apps/web/src/hooks/useCommandIndex.ts` (builds the index from live data)
 - Create: `apps/web/src/hooks/useCommandIndex.test.tsx`
 
-**Approach:** Define a `CommandItem` shape `{ id, group: 'Routes'|'Categories'|'Panels'|'Recent expenses'|'Actions', label, sublabel?, matchText, run: () => void }`. `useCommandIndex` loads categories + panels for both routes (via `useCategories`/`usePanels` for personal and business, as `CaptureProvider` does for one route) and recent expenses (U2), and returns the grouped items plus the static action list. The `run` closures are injected by the provider (U7) so this hook stays about data assembly; alternatively the hook takes the action callbacks as args. Routes come from `navItems`. Empty-query default set = routes + the top few recent expenses + all actions (R14).
-**Patterns to follow:** `apps/web/src/hooks/useCapture.tsx` (loading categories/panels per route, `useMemo` assembly).
+**Approach:** Define a `CommandItem` shape `{ id, group: 'Routes'|'Categories'|'Panels'|'Recent expenses'|'Actions', label, sublabel?, matchText, run: () => void }`. `useCommandIndex` loads categories + panels for both routes (via `useCategories`/`usePanels` for personal and business, as `CaptureProvider` does for one route) and recent expenses (U2), and returns the grouped items plus the static action list. The `run` closures are injected by the provider (U7) so this hook stays about data assembly; alternatively the hook takes the action callbacks as args. Routes come from `navItems`. Empty-query default set = routes + the top few recent expenses + all actions (R14). **Keep the recent-expenses load fresh:** key the `getRecentExpenses` reload to `tableVersions['expenses']` from `useSync` (mirror how `useExpenses` keys its reload), so the index reflects add/edit/delete — including the palette's own "Add expense" and `:`/QuickAdd captures — rather than serving a one-shot snapshot. Categories/panels inherit the same freshness via their hooks.
+**Patterns to follow:** `apps/web/src/hooks/useCapture.tsx` (loading categories/panels per route, `useMemo` assembly); `apps/web/src/hooks/useExpenses.ts` (`tableVersions['expenses']` reload keying).
 **Test scenarios:**
 
 - Index includes the four routes, every category and panel across both routes, and recent expenses, each under the right group. (Covers AE2 category presence, AE7 default set.)
 - Actions group includes Add expense, Export CSV, Export JSON, Open cheatsheet, Sync now. (Covers AE7.)
-- A recent-expense item's `run` requests focus on the expense id and navigates to its category detail route. (Covers AE3 — assert the navigate target + `requestFocus` call via injected spies.)
+- A recent-expense item's `run` requests focus on the expense id and navigates to its category detail route **with router state carrying the expense's month (`YYYY-MM`) and focusId**. (Covers AE3 — assert the navigate target, the `{ state: { month, focusId } }`, and the `requestFocus` call via injected spies.)
 - Each entity item's `run` navigates to the correct route/detail path. (Covers AE1, AE2.)
+- After a new expense is created (bump `tableVersions['expenses']`), the recent-expenses group reflects it (the index is not a stale snapshot).
 
 **Verification:** The index reflects live categories/panels/expenses and each item runs the correct effect (spied).
 
 ### U6. CommandPalette overlay component
 
 **Goal:** The centered palette UI — input, grouped results, local keyboard selection — filtered by U1.
-**Requirements:** R1, R2, R12, R13, R15
+**Requirements:** R2, R12, R13, R14, R15
 **Dependencies:** U1
 **Files:**
 
 - Create: `apps/web/src/components/CommandPalette.tsx`
 - Create: `apps/web/src/components/CommandPalette.test.tsx`
 
-**Approach:** A centered overlay (a `<dialog>`-based Modal-style surface, or a fixed centered panel) that renders only when `open`. A text input (autofocused) at top; below it, results from `useCommandIndex` filtered/ranked by U1 and rendered in group sections with headers (R13). A local `highlightIndex` over the flattened visible results: ArrowUp/ArrowDown move it, Enter runs the highlighted item's `run()` and closes, Esc closes, mouse click runs. Empty query shows the default set (R14). The root carries `data-kbd-popover-open` so the global shortcut layer stands down (R2), and the input owning focus means bare keys never leak to the global hook. Props: `{ open, items, onClose }` (items already carry `run`), keeping the component presentation-focused and testable without the providers.
-**Patterns to follow:** `apps/web/src/components/CaptureBar.tsx` (focus-on-open effect, Esc handling, `data-kbd-popover-open`); `apps/web/src/components/Modal.tsx` / `FormSelect`'s listbox for option-row styling and the `data-kbd-popover-open` listbox marker.
+**Approach:** Build on a native `<dialog>` opened via `showModal()` (top-layer rendering, native Esc, and — decisively for this keyboard-first feature — **native focus return to the triggering element on close**, so no bespoke `savedFocusRef` is needed). Render a custom body (not the `Modal` title-bar wrapper, since the palette has no title): an autofocused text input at top and the grouped results below. Results come from `useCommandIndex` filtered/ranked by U1 and rendered in group sections with headers (R13).
+
+- **Highlight:** a local `highlightIndex` over the flattened visible results. ArrowUp/ArrowDown move it with **wrap-around** (Down past the last item → first; Up past the first → last). On every query change that alters the result set, **reset `highlightIndex` to 0**. Enter runs the highlighted item's `run()` then closes; Esc closes; click runs.
+- **Empty / no-results states:** an empty query shows the default set (R14). A non-empty query with zero matches shows a single non-interactive "No results for '<query>'" row — the default set is _not_ a fallback for a non-empty query.
+- **Loading:** the palette opens immediately with the statically-available groups (Routes, Actions) and adds the data-dependent groups (Categories, Panels, Recent expenses) as the provider's index resolves; no blocking spinner.
+- **Scroll:** the results area has a fixed max-height (~60vh) with `overflow-y: auto`, and the highlighted row is kept visible via `scrollIntoView` on highlight change.
+- **Accessibility (keyboard-first → required):** the input is `role="combobox"` with `aria-expanded`, `aria-controls`, and `aria-activedescendant={highlightedItemId}`; the results container is `role="listbox"`; each row is `role="option"` with a stable `id` and `aria-selected`; group headers are `role="presentation"`.
+- **Stand-down:** the root carries `data-kbd-popover-open` (and is a `<dialog open>`), so `isBlockingOverlayOpen()` sees it and the global shortcut layer stands down (R2); the focused input also keeps bare keys from leaking to the global hook.
+
+Props: `{ open, items, onClose }` (items already carry `run` and grow as the provider's data resolves), keeping the component presentation-focused and testable without the providers.
+**Patterns to follow:** `apps/web/src/components/Modal.tsx` (native `<dialog>` + `showModal()`/`close()` lifecycle and `onClose`); `apps/web/src/components/CaptureBar.tsx` (focus-on-open effect, Esc handling, `data-kbd-popover-open`); `FormSelect`'s listbox for option-row styling.
 **Test scenarios:**
 
 - Renders nothing when `open` is false; autofocuses the input when opened. (Covers AE8 mechanics at the component level.)
 - Typing filters results and groups them under headers; a query like `bus` highlights the matching route first. (Covers AE1.)
-- ArrowDown/ArrowUp move the highlight across the flattened grouped list; Enter calls the highlighted item's `run` and then `onClose`. (Covers R13, R15.)
+- ArrowDown/ArrowUp move the highlight across the flattened grouped list and **wrap at both ends**; Enter calls the highlighted item's `run` and then `onClose`. (Covers R13, R15.)
+- Changing the query so the result set shrinks resets the highlight to the first item (no out-of-bounds highlight).
+- A query matching nothing shows the "No results" row and not the default set; an empty query shows the default set under group headers. (Covers AE7.)
+- `aria-activedescendant` on the input tracks the highlighted row's id; input is `role="combobox"`, container `role="listbox"`, rows `role="option"`.
 - Esc calls `onClose`; clicking a result runs it and closes. (Covers R15.)
-- Empty query shows the provided default set under their group headers. (Covers AE7.)
+- After close (via Esc and via selection), focus returns to the element focused before open (native `<dialog>` behavior).
 - Root carries `data-kbd-popover-open`. (Covers R2 stand-down mechanics.)
 
-**Verification:** The overlay filters, groups, navigates by keyboard, runs selections, and marks itself a popover.
+**Verification:** The overlay filters, groups, navigates by keyboard (with wrap + scroll-into-view), exposes correct ARIA, returns focus on close, shows distinct empty/no-results states, and marks itself a popover.
 
 ### U7. CommandPaletteProvider + Layout mount
 
 **Goal:** Wire open-state, the index, the action `run`s, cheatsheet ownership, and render the overlay globally.
-**Requirements:** R1, R3, R7, R8, R10, R11, R14, R15
+**Requirements:** R3, R4, R7, R8, R10, R11, R15
 **Dependencies:** U3, U4, U5, U6
 **Files:**
 
 - Create: `apps/web/src/hooks/useCommandPalette.tsx` (`CommandPaletteProvider`, `useCommandPalette`, exported `CommandPaletteContext` for tests)
 - Modify: `apps/web/src/components/Layout.tsx` (mount the provider; move `KeyboardCheatsheet` into it; `KeyboardLayer` passes `palette.openCheatsheet` as `onCheatsheet`)
+- Modify: `apps/web/src/views/CategoryDetail.tsx` and `apps/web/src/views/PanelDetail.tsx` (seed `month` state from `location.state?.month` so a jumped-to expense's month is rendered)
 - Create: `apps/web/src/hooks/useCommandPalette.test.tsx`
 
-**Approach:** Mirror `CaptureProvider`. The provider owns `paletteOpen` + `cheatsheetOpen` state, builds the index via `useCommandIndex` injecting the action `run`s: add expense → `useCapture().openQuickAdd()`; export CSV/JSON → `exportData(db, userId, format)`; open cheatsheet → `setCheatsheetOpen(true)`; sync now → `useSync().forceSync()`; recent-expense/entity navigation → `useNavigate()` (+ `useKeyboardCursor().requestFocus(id)` for expenses). It renders `<CommandPalette open=… items=… onClose=…/>` and `<KeyboardCheatsheet open=… onClose=…/>`. Exposes `{ openPalette, openCheatsheet }` (plus whatever the hook needs). Mount inside `CaptureProvider` + `KeyboardCursorProvider` in `Layout`; remove the cheatsheet from `KeyboardLayer`.
-**Patterns to follow:** `apps/web/src/hooks/useCapture.tsx` (provider shape, context export for tests, rendering its own overlay); the current `KeyboardLayer` in `apps/web/src/components/Layout.tsx`.
+**Approach:** Mirror `CaptureProvider`. The provider owns `paletteOpen` + `cheatsheetOpen` state, builds the index via `useCommandIndex` injecting the action `run`s: add expense → `useCapture().openQuickAdd()`; export CSV/JSON → `exportData(db, userId, format)`; open cheatsheet → `setCheatsheetOpen(true)`; sync now → `useSync().forceSync()`; entity navigation → `useNavigate()`; **recent-expense navigation → `useKeyboardCursor().requestFocus(id)` then `navigate('/[routeType]/category/[categoryId]', { state: { month: expense.date.slice(0,7), focusId: id } })`**. The detail views seed their `month` from `location.state?.month` (falling back to the current month) so the target row is rendered before `registerList` fires the pending-target landing (see the month-threading decision in Key Technical Decisions; this closes the headline feasibility gap). It renders `<CommandPalette open=… items=… onClose=…/>` and `<KeyboardCheatsheet open=… onClose=…/>`. Exposes `{ openPalette, openCheatsheet }` (plus whatever the hook needs). Mount inside `CaptureProvider` + `KeyboardCursorProvider` in `Layout`; remove the cheatsheet from `KeyboardLayer`.
+**Patterns to follow:** `apps/web/src/hooks/useCapture.tsx` (provider shape, context export for tests, rendering its own overlay); the current `KeyboardLayer` in `apps/web/src/components/Layout.tsx`; the existing `month` state in `apps/web/src/views/CategoryDetail.tsx` / `PanelDetail.tsx`.
 **Test scenarios:**
 
 - `openPalette()` opens the overlay; selecting "Add expense" opens QuickAdd and closes the palette. (Covers AE4, R15.)
 - Selecting "Sync now" calls `forceSync` and closes. (Covers AE5.)
 - Selecting "Open cheatsheet" opens the cheatsheet. (Covers R10.)
-- Selecting a recent expense calls `requestFocus(id)` and navigates to its category detail route. (Covers AE3.)
+- Selecting a recent expense calls `requestFocus(id)` and navigates to its category detail route with `{ state: { month, focusId } }` carrying the expense's `YYYY-MM`. (Covers AE3.)
+- `CategoryDetail` seeds its `month` from `location.state.month` when present, so a jumped-to expense from a non-current month is rendered (and the cursor can land). (Covers the headline cross-view flow end to end.)
 - `openCheatsheet()` (the `?` path, via the provider) still opens the cheatsheet — regression for the moved overlay.
 
-**Verification:** The provider opens/closes the palette, runs every action against the real contexts, and the cheatsheet still works after the move.
+**Verification:** The provider opens/closes the palette, runs every action against the real contexts, the recent-expense jump renders the target month and lands the cursor, and the cheatsheet still works after the move.
 
 ### U8. Cmd-K modifier-chord wiring
 
@@ -285,6 +301,7 @@ if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')):
 - **Cursor contract:** `KeyboardCursor` gains `requestFocus`; existing consumers are unaffected (additive). The pending-target branch in `registerList` must not regress the deletion-anchor / context-switch logic.
 - **Keyboard hook:** gains a modifier-chord branch and a second consumed context (`useCommandPalette`) alongside `useKeyboardCursor` and `useCapture`. The pure intent-mapper is unchanged (chord handled outside it).
 - **Settings:** `handleExport` is routed through the new `exportData`; no user-visible change.
+- **Detail views:** `CategoryDetail` / `PanelDetail` gain month-seeding from `location.state` so a recent-expense jump renders the target month; default behavior (current month) is unchanged when no state is passed.
 - **Overlay coexistence:** three centered/anchored overlays now exist (QuickAdd dialog, `:` bar, palette) plus the cheatsheet; `isBlockingOverlayOpen()` keeps only one keyboard owner at a time.
 - **Unchanged invariants:** data model (no schema change, no migration), mouse flows, Phase 1 navigation/cursor, Phase 2 capture, demo layout (palette mounts in `Layout`, not `demo-layout`).
 
@@ -292,13 +309,14 @@ if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')):
 
 ## Risks & Dependencies
 
-| Risk                                                                                                                                      | Mitigation                                                                                                                                                                                                                                                                                                           |
-| ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cross-view targeting misses when the destination view does not render the target row (e.g., a detail view filtered by month or paginated) | Verify during U7 whether category detail renders recent expenses unconditionally; if it filters, the cursor simply does not land (benign no-op). If recent expenses are routinely filtered out, fall back to navigation-only for those, or set the relevant filter — decide at implementation against the real view. |
-| `Cmd-K` collides with a browser/OS shortcut                                                                                               | `Cmd-K`/`Ctrl-K` is not a critical browser binding in the target desktop browsers; `preventDefault` on handling. Verify in-browser per CLAUDE.md.                                                                                                                                                                    |
-| Loading both routes' categories + panels + recent expenses adds provider work                                                             | Data is small (a personal expense app); load lazily/once like `CaptureProvider`; recent expenses are capped at 50.                                                                                                                                                                                                   |
-| Modifier-chord branch firing inside fields could swallow a real `Cmd-K` text affordance                                                   | There is no app text affordance on `Cmd-K`; the branch only triggers the palette and stands down when another overlay owns input.                                                                                                                                                                                    |
-| Depends on Phase 1 (intent-mapper, gate, cursor, `isBlockingOverlayOpen`) and Phase 2 (CaptureProvider, QuickAdd)                         | All on `feat/vim-keyboard-shortcuts`; build Phase 3 on that branch.                                                                                                                                                                                                                                                  |
+| Risk                                                                                                                                                                                                             | Mitigation                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cross-view targeting misses because `CategoryDetail`/`PanelDetail` default to the current month and load month-filtered, so a recent expense from another month is never rendered (common near month boundaries) | **Addressed in the plan:** the recent-expense `run` threads the expense's month via router state and the detail view seeds `month` from it (U5, U7), so the target row is rendered before `registerList` lands the cursor. Residual: if an expense is edited to a different month between index load and the jump, the jump lands as a no-op — rare and benign (the index reloads on the next `tableVersions['expenses']` bump). |
+| `Cmd-K` / `Ctrl-K` is a real browser default (Firefox focuses search; Chrome focuses the omnibox in search mode)                                                                                                 | The handled path calls `preventDefault`, suppressing the browser affordance — **verify in-browser per CLAUDE.md** (Chrome + Firefox). When an overlay already owns input the branch stands down and the chord intentionally cedes to the browser; this is acceptable since the palette is already unavailable in that state.                                                                                                     |
+| Recent-expenses index could serve a stale snapshot after add/edit/delete (including the palette's own "Add expense")                                                                                             | **Addressed in the plan:** key the `getRecentExpenses` reload to `tableVersions['expenses']` (U5), mirroring `useExpenses`, so the index reloads on any expense mutation.                                                                                                                                                                                                                                                        |
+| Loading both routes' categories + panels + recent expenses adds provider work                                                                                                                                    | Data is small (a personal expense app); load lazily/once like `CaptureProvider`; recent expenses are capped at 50.                                                                                                                                                                                                                                                                                                               |
+| Modifier-chord branch firing inside fields could swallow a real `Cmd-K` text affordance                                                                                                                          | There is no app text affordance on `Cmd-K`; the branch only triggers the palette and stands down when another overlay owns input.                                                                                                                                                                                                                                                                                                |
+| Depends on Phase 1 (intent-mapper, gate, cursor, `isBlockingOverlayOpen`) and Phase 2 (CaptureProvider, QuickAdd)                                                                                                | All on `feat/vim-keyboard-shortcuts`; build Phase 3 on that branch.                                                                                                                                                                                                                                                                                                                                                              |
 
 ---
 
@@ -335,5 +353,5 @@ if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')):
 
 - Exact fuzzy scoring weights (contiguity vs word-start bonuses) — tune against real category/panel/expense names during U1.
 - The precise `getRecentExpenses` join columns and whether `category_name` is needed for display vs derivable — settle against the real schema in U2.
-- Whether `CommandPalette` is best built on the existing `Modal` (`<dialog>`) or a bespoke centered panel — decide in U6 against focus-trap/scroll behavior.
-- The recent-expense filtered-view edge (see Risks) — verify the category detail view's rendering in U7.
+
+_(Resolved during doc review: the palette is built on a native `<dialog>` for native focus return — U6; the recent-expense month-filter edge is closed by threading the month through navigation — U5/U7.)_
