@@ -143,6 +143,62 @@ describe('FHintProvider / useFHints', () => {
     expect(container.querySelector('[role="dialog"]')).toBeNull()
   })
 
+  it('exits without activating on a modifier chord, leaving the chord to the browser', () => {
+    const { container } = render(
+      <FHintProvider>
+        <div data-kbd-item-id="card-k" data-testid="card">
+          card
+        </div>
+        <Capture />
+      </FHintProvider>,
+    )
+    stubRect(container.querySelector('[data-testid="card"]')!, 10, 10)
+    open()
+
+    // The single target is labeled 'a'; Cmd+A must not activate it.
+    const notPrevented = fireEvent.keyDown(document, { key: 'a', metaKey: true })
+
+    expect(activateItem).not.toHaveBeenCalled()
+    expect(container.querySelector('[role="dialog"]')).toBeNull()
+    expect(notPrevented).toBe(true) // default left intact for the browser/global layer
+  })
+
+  it('ignores key auto-repeat so a held key does not self-activate a hint', () => {
+    const { container } = render(
+      <FHintProvider>
+        <div data-kbd-item-id="card-1" data-testid="card">
+          card
+        </div>
+        <Capture />
+      </FHintProvider>,
+    )
+    stubRect(container.querySelector('[data-testid="card"]')!, 10, 10)
+    open()
+
+    fireEvent.keyDown(document, { key: 'a', repeat: true })
+
+    expect(activateItem).not.toHaveBeenCalled()
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull() // stays open
+  })
+
+  it('matches labels case-insensitively so Shift/CapsLock still activate', () => {
+    const { container } = render(
+      <FHintProvider>
+        <div data-kbd-item-id="card-1" data-testid="card">
+          card
+        </div>
+        <Capture />
+      </FHintProvider>,
+    )
+    stubRect(container.querySelector('[data-testid="card"]')!, 10, 10)
+    open()
+
+    fireEvent.keyDown(document, { key: 'A' })
+
+    expect(activateItem).toHaveBeenCalledWith('card-1')
+    expect(container.querySelector('[role="dialog"]')).toBeNull()
+  })
+
   it('exits on Escape, activating nothing', () => {
     const { container } = render(
       <FHintProvider>

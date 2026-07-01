@@ -19,9 +19,8 @@ export interface FHintContextValue {
 // Exported so tests can provide a stub value (e.g. for the keyboard hook).
 export const FHintContext = createContext<FHintContextValue | null>(null)
 
-// Collect the fully-in-viewport, marked targets, ordered top-to-bottom and
-// left-to-right, and label them home-row-first. Overflow beyond the label pool
-// is dropped (unbadged). A live snapshot — whatever is on screen right now.
+// A live snapshot of the on-screen marked targets, valid only until the layout
+// moves — which is why f-mode exits on scroll rather than re-tracking.
 function collectTargets(): HintTarget[] {
   const elements = Array.from(
     document.querySelectorAll<HTMLElement>('[data-kbd-item-id], [data-fhint]'),
@@ -59,11 +58,12 @@ export function FHintProvider({ children }: { children: ReactNode }) {
   const close = useCallback(() => setTargets(null), [])
 
   const openFHints = useCallback(() => {
+    // Blur first so a focused element's own handlers (e.g. a cursor-focused
+    // card's Enter) can't fire under f-mode, and so the snapshot below measures
+    // post-blur geometry rather than positions shifted by focus styles.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     const found = collectTargets()
     if (found.length === 0) return // empty view — do not enter f-mode
-    // Blur the active element so a focused element's own handlers (e.g. a
-    // cursor-focused card's Enter) can't fire while f-mode owns the keyboard.
-    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     setTargets(found)
   }, [])
 
@@ -72,25 +72,34 @@ export function FHintProvider({ children }: { children: ReactNode }) {
     const activeTargets = targets
 
     function onKeyDown(e: KeyboardEvent) {
+      if (e.repeat) return // a held key never repeat-activates a hint
+      // A modifier chord (Cmd/Ctrl/Alt) is never a hint label — exit and let the
+      // browser or the global layer own the chord on the next press.
+      if (e.metaKey || e.ctrlKey || e.altKey) {
+        close()
+        return
+      }
       e.preventDefault()
       if (e.key === 'Escape') {
         close()
         return
       }
-      const target = activeTargets.find((t) => t.label === e.key)
+      // Labels are lowercase; match case-insensitively so Shift/CapsLock still hit.
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key
+      const target = activeTargets.find((t) => t.label === key)
       if (target) {
         if (target.id) cursorRef.current?.activateItem(target.id)
         else target.element.click()
       }
-      close() // match → activate + exit; mistype → exit silently
+      close()
     }
 
     function onScroll() {
-      close() // snapshot is stale once the layout moves; re-press f to re-snapshot
+      close()
     }
 
     document.addEventListener('keydown', onKeyDown, true)
-    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true })
     return () => {
       document.removeEventListener('keydown', onKeyDown, true)
       window.removeEventListener('scroll', onScroll, true)

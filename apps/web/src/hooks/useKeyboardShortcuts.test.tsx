@@ -253,13 +253,13 @@ describe('useKeyboardShortcuts', () => {
     return value
   }
 
-  it('opens f-hint mode on `f` via the f-hint context (R7)', () => {
+  it('opens f-hint mode on `f` via the f-hint context (R1)', () => {
     const { openFHints } = renderWithFHints()
     fireEvent.keyDown(document, { key: 'f' })
     expect(openFHints).toHaveBeenCalledOnce()
   })
 
-  it('scrubs the month back / forward on `[` / `]` (R8)', () => {
+  it('scrubs the month back / forward on `[` / `]` (R7)', () => {
     const { scrub } = renderWithMonthScrub()
     fireEvent.keyDown(document, { key: '[' })
     fireEvent.keyDown(document, { key: ']' })
@@ -324,11 +324,15 @@ describe('useKeyboardShortcuts', () => {
     fireEvent.keyDown(document, { key: 'g' })
     fireEvent.keyDown(document, { key: '[' })
     expect(scrub).not.toHaveBeenCalled()
-    // Pending prefix is cleared, so a following g b navigates normally.
+
+    fireEvent.keyDown(document, { key: 'g' })
+    fireEvent.keyDown(document, { key: 'f' })
+    expect(openFHints).not.toHaveBeenCalled()
+
+    // Pending prefix is cleared each time, so a following g b navigates normally.
     fireEvent.keyDown(document, { key: 'g' })
     fireEvent.keyDown(document, { key: 'b' })
     expect(path()).toBe('/business')
-    expect(openFHints).not.toHaveBeenCalled()
   })
 
   it('clears a pending chord after the timeout', () => {

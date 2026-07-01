@@ -72,6 +72,14 @@ describe('resolveIntent — chords', () => {
     expect(r.pending).toBeNull()
   })
 
+  it('swallows f / [ / ] after a pending g prefix and clears it', () => {
+    for (const key of ['f', '[', ']']) {
+      const r = resolveIntent(key, { pending: 'g' })
+      expect(r.action).toBe('none')
+      expect(r.pending).toBeNull()
+    }
+  })
+
   it('sets pending on y and resolves yy to duplicate', () => {
     const first = resolveIntent('y')
     expect(first.action).toBe('none')
