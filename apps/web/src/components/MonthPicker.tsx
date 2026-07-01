@@ -1,3 +1,5 @@
+import { addMonths } from '../lib/month'
+
 interface MonthPickerProps {
   month: string
   onChange: (month: string) => void
@@ -7,14 +9,6 @@ function formatMonth(month: string): string {
   const [year, m] = month.split('-')
   const date = new Date(parseInt(year), parseInt(m) - 1)
   return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-}
-
-function addMonths(month: string, delta: number): string {
-  const [year, m] = month.split('-')
-  const date = new Date(parseInt(year), parseInt(m) - 1 + delta)
-  const y = date.getFullYear()
-  const mo = String(date.getMonth() + 1).padStart(2, '0')
-  return `${y}-${mo}`
 }
 
 export function MonthPicker({ month, onChange }: MonthPickerProps) {

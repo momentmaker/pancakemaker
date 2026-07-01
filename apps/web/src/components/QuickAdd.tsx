@@ -4,6 +4,12 @@ import { Button } from './Button'
 import { FormInput, FormSelect } from './FormInput'
 import type { CategoryRow, PanelRow } from '../db/queries'
 
+export interface QuickAddPrefill {
+  amount?: string
+  description?: string
+  categoryHint?: string
+}
+
 interface QuickAddProps {
   open: boolean
   onClose: () => void
@@ -21,6 +27,9 @@ interface QuickAddProps {
   panels?: PanelRow[]
   lockedCategoryId?: string
   personalRouteId?: string
+  autoFocusField?: 'amount' | 'category'
+  prefill?: QuickAddPrefill
+  routeLabel?: string
 }
 
 function pickDefaultPanel(panels: PanelRow[] | undefined, routeId: string): PanelRow | undefined {
@@ -44,8 +53,14 @@ export function QuickAdd({
   panels,
   lockedCategoryId,
   personalRouteId,
+  autoFocusField = 'amount',
+  prefill,
+  routeLabel,
 }: QuickAddProps) {
   const initialCategoryId = lockedCategoryId ?? categories[0]?.id ?? ''
+  const prefillAmount = prefill?.amount
+  const prefillDescription = prefill?.description
+  const categoryHint = prefill?.categoryHint
 
   const [amount, setAmount] = useState('')
   const [categoryId, setCategoryId] = useState(initialCategoryId)
@@ -57,14 +72,14 @@ export function QuickAdd({
   const prevOpen = useRef(false)
   useEffect(() => {
     if (open && !prevOpen.current) {
-      setAmount('')
+      setAmount(prefillAmount ?? '')
       setCategoryId(lockedCategoryId ?? categories[0]?.id ?? '')
       setDate(new Date().toISOString().slice(0, 10))
-      setDescription('')
-      setShowMore(false)
+      setDescription(prefillDescription ?? '')
+      setShowMore(!!prefillDescription)
     }
     prevOpen.current = open
-  }, [open, categories, lockedCategoryId])
+  }, [open, categories, lockedCategoryId, prefillAmount, prefillDescription])
 
   const selectedCategory = useMemo(
     () => categories.find((c) => c.id === categoryId),
@@ -136,7 +151,11 @@ export function QuickAdd({
   }))
 
   return (
-    <Modal open={open} onClose={onClose} title="Add Expense">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={routeLabel ? `Add Expense · ${routeLabel}` : 'Add Expense'}
+    >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <FormInput
           label="Amount"
@@ -146,9 +165,14 @@ export function QuickAdd({
           onChange={(e) => setAmount(e.target.value)}
           placeholder="0.00"
           mono
-          autoFocus
+          autoFocus={autoFocusField !== 'category'}
         />
 
+        {categoryHint && (
+          <p className="text-xs text-neon-amber">
+            Couldn't pick a category from #{categoryHint} — choose one below.
+          </p>
+        )}
         {lockedCategoryId ? (
           <div>
             <label className="mb-1 block text-xs font-medium text-text-muted">Category</label>
@@ -162,6 +186,7 @@ export function QuickAdd({
             value={categoryId}
             onChange={setCategoryId}
             options={categoryOptions}
+            autoFocus={autoFocusField === 'category'}
           />
         )}
 

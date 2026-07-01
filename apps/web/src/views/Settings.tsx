@@ -4,8 +4,7 @@ import { SUPPORTED_CURRENCIES } from '@pancakemaker/shared'
 import { useAppState } from '../hooks/useAppState'
 import { useCategories } from '../hooks/useCategories'
 import { useDatabase } from '../db/DatabaseContext'
-import { getExportRows } from '../db/queries'
-import { formatCSV, formatJSON, downloadFile } from '../lib/export'
+import { exportData } from '../lib/export'
 import { Card } from '../components/Card'
 import { Button } from '../components/Button'
 import { Badge } from '../components/Badge'
@@ -137,13 +136,7 @@ export function Settings() {
     async (format: 'csv' | 'json') => {
       setExporting(true)
       try {
-        const rows = await getExportRows(db, userId)
-        const date = new Date().toISOString().slice(0, 10)
-        if (format === 'csv') {
-          downloadFile(formatCSV(rows), `pancakemaker-${date}.csv`, 'text/csv')
-        } else {
-          downloadFile(formatJSON(rows), `pancakemaker-${date}.json`, 'application/json')
-        }
+        await exportData(db, userId, format)
       } finally {
         setExporting(false)
       }
@@ -236,10 +229,20 @@ export function Settings() {
         <h2 className="font-mono text-sm font-semibold text-text-secondary">Export Data</h2>
         <p className="mt-1 text-xs text-text-muted">Download all your expenses.</p>
         <div className="mt-3 flex gap-2">
-          <Button variant="secondary" onClick={() => handleExport('csv')} disabled={exporting}>
+          <Button
+            variant="secondary"
+            data-fhint
+            onClick={() => handleExport('csv')}
+            disabled={exporting}
+          >
             {exporting ? 'Exporting...' : 'Download CSV'}
           </Button>
-          <Button variant="secondary" onClick={() => handleExport('json')} disabled={exporting}>
+          <Button
+            variant="secondary"
+            data-fhint
+            onClick={() => handleExport('json')}
+            disabled={exporting}
+          >
             {exporting ? 'Exporting...' : 'Download JSON'}
           </Button>
         </div>

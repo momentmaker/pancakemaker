@@ -5,6 +5,9 @@ import { useAppState } from '../hooks/useAppState'
 import { useRoutePrefix } from '../demo/demo-context'
 import { useExpenses } from '../hooks/useExpenses'
 import { useCategories } from '../hooks/useCategories'
+import { useExpenseListCursor } from '../hooks/useExpenseListCursor'
+import { useMonthScrub } from '../hooks/useMonthScrub'
+import { addMonths } from '../lib/month'
 import {
   updatePanel,
   deletePanel,
@@ -46,7 +49,17 @@ export function PanelDetail() {
   const db = useDatabase()
 
   const [panel, setPanel] = useState<PanelRow | null>(null)
-  const [month, setMonth] = useState(currentMonth)
+  // A command-palette jump may pass the target expense's month via router state.
+  const [month, setMonth] = useState<string>(
+    () => (location.state as { month?: string } | null)?.month ?? currentMonth(),
+  )
+  // The instance is reused across panel→panel navigation, so re-seed the month
+  // from router state on each navigation (the lazy initializer runs only once).
+  useEffect(() => {
+    const stateMonth = (location.state as { month?: string } | null)?.month
+    if (stateMonth) setMonth(stateMonth)
+  }, [location.key])
+  useMonthScrub((delta) => setMonth((m) => addMonths(m, delta)))
   const [trend, setTrend] = useState<MonthlyTotal[]>([])
   const { expenses, loading, load, add, update, remove } = useExpenses({ panelId: panelId!, month })
   const { categories, load: loadCategories } = useCategories(routeId)
@@ -88,6 +101,12 @@ export function PanelDetail() {
     }
     return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
   }, [expenses])
+
+  const orderedExpenseIds = useMemo(
+    () => groupedByDate.flatMap(([, dateExpenses]) => dateExpenses.map((e) => e.id)),
+    [groupedByDate],
+  )
+  const { containerRef, activeId, rowRef } = useExpenseListCursor(orderedExpenseIds)
 
   const total = useMemo(() => expenses.reduce((sum, e) => sum + e.amount, 0), [expenses])
 
@@ -282,7 +301,7 @@ export function PanelDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => setShowQuickAdd(true)}>
+          <Button data-fhint onClick={() => setShowQuickAdd(true)}>
             +<span className="hidden sm:inline"> Add</span>
           </Button>
           <div className="relative">
@@ -319,7 +338,7 @@ export function PanelDetail() {
             onAction={() => setShowQuickAdd(true)}
           />
         ) : (
-          <div className="flex flex-col gap-6">
+          <div ref={containerRef} className="flex flex-col gap-6">
             {groupedByDate.map(([date, dateExpenses]) => (
               <div key={date}>
                 <h3 className="mb-2 font-mono text-xs font-medium text-text-muted">
@@ -333,12 +352,14 @@ export function PanelDetail() {
                   {dateExpenses.map((expense) => (
                     <ExpenseRow
                       key={expense.id}
+                      ref={rowRef(expense.id)}
                       expense={expense}
                       category={categoryMap.get(expense.category_id)}
                       onUpdateAmount={handleUpdateAmount}
                       onUpdateDescription={handleUpdateDescription}
                       onDuplicate={handleDuplicate}
                       onDelete={handleRemove}
+                      cursored={activeId === expense.id}
                     />
                   ))}
                 </div>
@@ -437,7 +458,10 @@ function PanelActions({
         </svg>
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-10 mt-1 min-w-[160px] rounded-md border border-border-dim bg-bg-card py-1 shadow-lg">
+        <div
+          data-kbd-popover-open
+          className="absolute right-0 top-full z-10 mt-1 min-w-[160px] rounded-md border border-border-dim bg-bg-card py-1 shadow-lg"
+        >
           {!isDefault && (
             <button
               onClick={() => {

@@ -30,6 +30,7 @@ import {
   getLastSyncTimestamp,
   pruneOldSyncEntries,
   getExportRows,
+  getRecentExpenses,
   getExpensesByCategory,
   getCategoryTotals,
   getDefaultPanelByRoute,
@@ -696,6 +697,99 @@ describe('export', () => {
 
     // #then
     expect(rows).toHaveLength(0)
+  })
+})
+
+describe('getRecentExpenses', () => {
+  it('returns expenses newest-first with the fields the palette needs', async () => {
+    // #given
+    const category = await createCategory(db, routeId, 'Meals', '#ff6b9d', 0)
+    const panel = await createPanel(db, routeId, 'Daily', 'USD', 0)
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: category.id,
+      amount: 500,
+      currency: 'USD',
+      date: '2026-05-01',
+      description: 'older',
+    })
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: category.id,
+      amount: 1250,
+      currency: 'USD',
+      date: '2026-06-20',
+      description: 'newer',
+    })
+
+    // #when
+    const rows = await getRecentExpenses(db, userId)
+
+    // #then
+    expect(rows).toHaveLength(2)
+    expect(rows[0].description).toBe('newer')
+    expect(rows[0].amount).toBe(1250)
+    expect(rows[0].date).toBe('2026-06-20')
+    expect(rows[0].category_id).toBe(category.id)
+    expect(rows[0].category_name).toBe('Meals')
+    expect(rows[0].route_type).toBe('personal')
+  })
+
+  it('caps results at the limit', async () => {
+    // #given
+    const category = await createCategory(db, routeId, 'Meals', '#ff6b9d', 0)
+    const panel = await createPanel(db, routeId, 'Daily', 'USD', 0)
+    for (let i = 0; i < 5; i++) {
+      await createExpense(db, {
+        panelId: panel.id,
+        categoryId: category.id,
+        amount: 100 + i,
+        currency: 'USD',
+        date: `2026-06-0${i + 1}`,
+      })
+    }
+
+    // #when
+    const rows = await getRecentExpenses(db, userId, 3)
+
+    // #then
+    expect(rows).toHaveLength(3)
+  })
+
+  it('excludes soft-deleted expenses and returns [] when empty', async () => {
+    // #given
+    const category = await createCategory(db, routeId, 'Meals', '#ff6b9d', 0)
+    const panel = await createPanel(db, routeId, 'Daily', 'USD', 0)
+    const expense = await createExpense(db, {
+      panelId: panel.id,
+      categoryId: category.id,
+      amount: 500,
+      currency: 'USD',
+      date: '2026-06-01',
+    })
+    await softDeleteExpense(db, expense.id)
+
+    // #when / #then
+    expect(await getRecentExpenses(db, userId)).toEqual([])
+  })
+
+  it('returns an empty description as an empty string, not null', async () => {
+    // #given
+    const category = await createCategory(db, routeId, 'Meals', '#ff6b9d', 0)
+    const panel = await createPanel(db, routeId, 'Daily', 'USD', 0)
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: category.id,
+      amount: 500,
+      currency: 'USD',
+      date: '2026-06-01',
+    })
+
+    // #when
+    const rows = await getRecentExpenses(db, userId)
+
+    // #then
+    expect(rows[0].description).toBe('')
   })
 })
 

@@ -65,3 +65,13 @@
     scrollbar-color: var(--color-border-dim) transparent;
   }
 }
+
+/* Keyboard cursor indicator. Unlayered so it overrides Tailwind border utilities. */
+.kbd-cursor {
+  border-color: var(--color-neon-cyan);
+  box-shadow: 0 0 0 2px var(--color-neon-cyan);
+}
+
+[data-kbd-item-id]:focus {
+  outline: none;
+}

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { type ExpenseRow as ExpenseRowType, type CategoryRow } from '../db/queries'
 import { AmountDisplay } from './AmountDisplay'
 import { Badge } from './Badge'
@@ -10,6 +10,19 @@ interface ExpenseRowProps {
   onUpdateDescription?: (id: string, description: string) => Promise<void>
   onDuplicate?: (expense: ExpenseRowType) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  cursored?: boolean
+}
+
+// Imperative surface the keyboard cursor drives. Lets the global shortcut layer
+// trigger this row's existing edit / 2-tap-delete / duplicate UX without
+// duplicating any of it.
+export interface ExpenseRowHandle {
+  startEdit: () => void
+  startConfirmDelete: () => void
+  confirmDelete: () => void
+  cancelConfirm: () => void
+  isConfirming: () => boolean
+  duplicate: () => void
 }
 
 function centsToDollars(cents: number): string {
@@ -22,14 +35,18 @@ function dollarsToCents(dollars: string): number | null {
   return Math.round(parsed * 100)
 }
 
-export function ExpenseRow({
-  expense,
-  category,
-  onUpdateAmount,
-  onUpdateDescription,
-  onDuplicate,
-  onDelete,
-}: ExpenseRowProps) {
+export const ExpenseRow = forwardRef<ExpenseRowHandle, ExpenseRowProps>(function ExpenseRow(
+  {
+    expense,
+    category,
+    onUpdateAmount,
+    onUpdateDescription,
+    onDuplicate,
+    onDelete,
+    cursored = false,
+  },
+  ref,
+) {
   const [editingAmount, setEditingAmount] = useState(false)
   const [editValue, setEditValue] = useState('')
   const [editingDescription, setEditingDescription] = useState(false)
@@ -83,6 +100,48 @@ export function ExpenseRow({
     await onDelete(expense.id)
   }, [expense.id, onDelete])
 
+  const runDuplicate = useCallback(async () => {
+    if (duplicating || !onDuplicate) return
+    setDuplicating(true)
+    try {
+      await onDuplicate(expense)
+    } finally {
+      setDuplicating(false)
+    }
+  }, [duplicating, onDuplicate, expense])
+
+  // The keyboard handle is created once and reads the latest callbacks/state
+  // through this ref, so the exposed handle identity stays stable.
+  const apiRef = useRef({
+    startEditing,
+    startConfirm,
+    confirmDelete,
+    cancelConfirm,
+    runDuplicate,
+    confirming,
+  })
+  apiRef.current = {
+    startEditing,
+    startConfirm,
+    confirmDelete,
+    cancelConfirm,
+    runDuplicate,
+    confirming,
+  }
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      startEdit: () => apiRef.current.startEditing(),
+      startConfirmDelete: () => apiRef.current.startConfirm(),
+      confirmDelete: () => void apiRef.current.confirmDelete(),
+      cancelConfirm: () => apiRef.current.cancelConfirm(),
+      isConfirming: () => apiRef.current.confirming,
+      duplicate: () => void apiRef.current.runDuplicate(),
+    }),
+    [],
+  )
+
   useEffect(() => {
     return () => {
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current)
@@ -101,7 +160,12 @@ export function ExpenseRow({
   }, [confirming, cancelConfirm])
 
   return (
-    <div className="flex items-center justify-between rounded-md border border-border-dim bg-bg-card px-4 py-3 transition-colors hover:border-border-glow">
+    <div
+      data-kbd-item-id={expense.id}
+      tabIndex={-1}
+      aria-current={cursored ? true : undefined}
+      className={`flex items-center justify-between rounded-md border border-border-dim bg-bg-card px-4 py-3 transition-colors hover:border-border-glow ${cursored ? 'kbd-cursor' : ''}`}
+    >
       <div className="flex items-center gap-3">
         {category && <Badge label={category.name} color={category.color} />}
         {editingDescription ? (
@@ -159,15 +223,7 @@ export function ExpenseRow({
         )}
         {onDuplicate && (
           <button
-            onClick={async () => {
-              if (duplicating) return
-              setDuplicating(true)
-              try {
-                await onDuplicate(expense)
-              } finally {
-                setDuplicating(false)
-              }
-            }}
+            onClick={runDuplicate}
             disabled={duplicating}
             className={`transition-colors ${duplicating ? 'text-neon-cyan/50' : 'text-text-muted/60 hover:text-neon-cyan'}`}
             aria-label="Duplicate expense"
@@ -225,4 +281,4 @@ export function ExpenseRow({
       </div>
     </div>
   )
-}
+})

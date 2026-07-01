@@ -34,12 +34,25 @@ interface FormSelectProps {
   onChange: (value: string) => void
   options: FormSelectOption[]
   id?: string
+  autoFocus?: boolean
 }
 
-export function FormSelect({ label, value, onChange, options, id }: FormSelectProps) {
+export function FormSelect({
+  label,
+  value,
+  onChange,
+  options,
+  id,
+  autoFocus = false,
+}: FormSelectProps) {
   const selectId = id ?? label.toLowerCase().replace(/\s+/g, '-')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (autoFocus) triggerRef.current?.focus()
+  }, [autoFocus])
 
   const selected = options.find((o) => o.value === value)
 
@@ -60,6 +73,7 @@ export function FormSelect({ label, value, onChange, options, id }: FormSelectPr
         </label>
       )}
       <button
+        ref={triggerRef}
         type="button"
         id={selectId}
         aria-labelledby={label ? `${selectId}-label` : undefined}
@@ -99,6 +113,7 @@ export function FormSelect({ label, value, onChange, options, id }: FormSelectPr
       {open && (
         <div
           role="listbox"
+          data-kbd-popover-open
           className="relative z-20 -mt-0.5 max-h-48 overflow-y-auto rounded-md border border-border-dim bg-bg-card py-1 shadow-lg shadow-black/40"
         >
           {options.map((opt) => {

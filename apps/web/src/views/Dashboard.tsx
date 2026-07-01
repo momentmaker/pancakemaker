@@ -5,6 +5,8 @@ import { useDatabase } from '../db/DatabaseContext'
 import { useSync } from '../sync/SyncContext'
 import { useRoutePrefix } from '../demo/demo-context'
 import { useDashboardStats, type BurnRate } from '../hooks/useDashboardStats'
+import { useMonthScrub } from '../hooks/useMonthScrub'
+import { addMonths } from '../lib/month'
 import {
   getPanelsByRoute,
   getCategoriesByRoute,
@@ -395,6 +397,7 @@ export function Dashboard() {
   const { triggerSync, markPending } = useSync()
   const prefix = useRoutePrefix()
   const [month, setMonth] = useState(currentMonth)
+  useMonthScrub((delta) => setMonth((m) => addMonths(m, delta)))
   const { stats, loading, error, reload } = useDashboardStats(month)
 
   const [allPanels, setAllPanels] = useState<PanelRow[]>([])
@@ -470,7 +473,7 @@ export function Dashboard() {
           <h1 className="font-mono text-2xl font-bold text-neon-cyan">{greeting.line1}</h1>
           <p className="mt-0.5 text-sm text-text-secondary">{greeting.line2}</p>
         </div>
-        <Button onClick={() => setShowQuickAdd(true)} className="hidden sm:flex">
+        <Button onClick={() => setShowQuickAdd(true)} className="hidden sm:flex" data-fhint>
           + Add
         </Button>
       </div>

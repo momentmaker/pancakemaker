@@ -768,41 +768,6 @@ export async function getDashboardExpenses(
   )
 }
 
-export interface DashboardRecentExpenseRow {
-  id: string
-  amount: number
-  currency: string
-  date: string
-  description: string | null
-  panel_id: string
-  panel_name: string
-  category_name: string
-  category_color: string
-  route_id: string
-}
-
-export async function getDashboardRecentExpenses(
-  db: Database,
-  personalRouteId: string,
-  businessRouteId: string,
-  limit = 10,
-): Promise<DashboardRecentExpenseRow[]> {
-  return db.query<DashboardRecentExpenseRow>(
-    `SELECT e.id, e.amount, e.currency, e.date, e.description,
-            e.panel_id, p.name AS panel_name,
-            c.name AS category_name, c.color AS category_color,
-            p.route_id
-     FROM expenses e
-     JOIN panels p ON e.panel_id = p.id
-     JOIN categories c ON e.category_id = c.id
-     WHERE p.route_id IN (?, ?)
-       AND e.deleted_at IS NULL
-     ORDER BY e.date DESC, e.created_at DESC
-     LIMIT ?`,
-    [personalRouteId, businessRouteId, limit],
-  )
-}
-
 // --- Export ---
 
 export async function getExportRows(db: Database, userId: string): Promise<ExportRow[]> {
@@ -822,6 +787,47 @@ export async function getExportRows(db: Database, userId: string): Promise<Expor
      WHERE r.user_id = ? AND e.deleted_at IS NULL
      ORDER BY e.date DESC, e.created_at DESC`,
     [userId],
+  )
+}
+
+// --- Command palette ---
+
+export interface RecentExpenseRow {
+  id: string
+  description: string
+  amount: number
+  currency: string
+  date: string
+  category_id: string
+  category_name: string
+  route_type: 'personal' | 'business'
+}
+
+// Recent expenses across both routes for the command palette's index, newest
+// first. route_type comes from the category's route — the palette's jump target
+// is the category detail view (/[route_type]/category/[category_id]).
+export async function getRecentExpenses(
+  db: Database,
+  userId: string,
+  limit = 50,
+): Promise<RecentExpenseRow[]> {
+  return db.query<RecentExpenseRow>(
+    `SELECT
+       e.id,
+       COALESCE(e.description, '') AS description,
+       e.amount,
+       e.currency,
+       e.date,
+       e.category_id,
+       c.name AS category_name,
+       r.type AS route_type
+     FROM expenses e
+     JOIN categories c ON e.category_id = c.id
+     JOIN routes r ON c.route_id = r.id
+     WHERE r.user_id = ? AND e.deleted_at IS NULL
+     ORDER BY e.date DESC, e.created_at DESC
+     LIMIT ?`,
+    [userId, limit],
   )
 }
 
