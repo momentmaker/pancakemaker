@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.8.0] - 2026-06-30
+
+### Added
+
+- Desktop keyboard shortcuts — a vim-style layer for navigating and editing without the mouse (desktop only; every shortcut stands down while you're typing in a field or a dialog/palette is open). Press `?` any time for the full cheatsheet.
+  - Cursor navigation: `j` / `k` to move down / up a list, `g g` / `G` to jump to the first / last item, `Enter` or `o` to open the cursored item, `d` to delete an expense, `y y` to duplicate it.
+  - Go-to jumps: `g d` Dashboard, `g p` Personal, `g b` Business, `g s` Settings.
+  - Fast capture: `a` opens Quick Add; `:` opens a one-line capture bar to type an expense.
+  - Command palette (`⌘K` / `Ctrl-K`): jump to any view, add an expense, export CSV/JSON, open the cheatsheet, find a recent expense, or sync.
+  - Hint mode (`f`): overlays letter badges on the visible nav links, cards, expense rows, and action buttons — type a badge to jump straight to it.
+  - Month scrub: `[` / `]` move the current view to the previous / next month.
+
 ## [1.7.2] - 2026-04-27
 
 ### Fixed
