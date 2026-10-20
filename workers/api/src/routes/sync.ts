@@ -76,33 +76,65 @@ syncRoutes.post('/push', async (c) => {
   return c.json({ ok: true, synced: statements.length, server_timestamp: now })
 })
 
-syncRoutes.get('/pull', async (c) => {
-  const userId = c.get('userId')
-  const since = c.req.query('since') ?? '1970-01-01T00:00:00.000Z'
+const PULL_PAGE_SIZE = 1000
+const PULL_COLUMNS = 'id, table_name, record_id, action, payload, local_timestamp, server_timestamp'
 
-  const db = c.env.DB
-  const { results } = await db
+interface PullRow {
+  id: string
+  table_name: string
+  record_id: string
+  action: string
+  payload: string
+  local_timestamp: string
+  server_timestamp: string
+}
+
+function decodeCursor(cursor: string): { timestamp: string; id: string } {
+  const separator = cursor.lastIndexOf('|')
+  if (separator === -1) return { timestamp: cursor, id: '' }
+  return { timestamp: cursor.slice(0, separator), id: cursor.slice(separator + 1) }
+}
+
+function pullStatement(
+  db: D1Database,
+  userId: string,
+  cursor: string | undefined,
+  since: string,
+): D1PreparedStatement {
+  if (cursor === undefined) {
+    return db
+      .prepare(
+        `SELECT ${PULL_COLUMNS} FROM sync_log
+         WHERE user_id = ? AND server_timestamp > ?
+         ORDER BY server_timestamp ASC, id ASC
+         LIMIT ${PULL_PAGE_SIZE}`,
+      )
+      .bind(userId, since)
+  }
+
+  const position = decodeCursor(cursor)
+  return db
     .prepare(
-      `SELECT id, table_name, record_id, action, payload, local_timestamp, server_timestamp
-       FROM sync_log
-       WHERE user_id = ? AND server_timestamp > ?
-       ORDER BY server_timestamp ASC
-       LIMIT 1000`,
+      `SELECT ${PULL_COLUMNS} FROM sync_log
+       WHERE user_id = ? AND (server_timestamp > ? OR (server_timestamp = ? AND id > ?))
+       ORDER BY server_timestamp ASC, id ASC
+       LIMIT ${PULL_PAGE_SIZE}`,
     )
-    .bind(userId, since)
-    .all<{
-      id: string
-      table_name: string
-      record_id: string
-      action: string
-      payload: string
-      local_timestamp: string
-      server_timestamp: string
-    }>()
+    .bind(userId, position.timestamp, position.timestamp, position.id)
+}
+
+syncRoutes.get('/pull', async (c) => {
+  const statement = pullStatement(
+    c.env.DB,
+    c.get('userId'),
+    c.req.query('cursor'),
+    c.req.query('since') ?? '1970-01-01T00:00:00.000Z',
+  )
+  const { results } = await statement.all<PullRow>()
 
   return c.json({
     entries: results,
     server_timestamp: new Date().toISOString(),
-    has_more: results.length === 1000,
+    has_more: results.length === PULL_PAGE_SIZE,
   })
 })
