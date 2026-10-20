@@ -12,6 +12,7 @@ import {
   getStoredSyncCursor,
   storeSyncCursor,
   clearSyncCursor,
+  cursorAfter,
   type SyncPullEntry,
 } from './api-client.js'
 
@@ -126,8 +127,41 @@ export function createSyncEngine(db: Database): SyncEngine {
     }
   }
 
+  async function applyEntries(
+    entries: SyncPullEntry[],
+    appliedTables: Set<string>,
+  ): Promise<number> {
+    const sorted = [...entries].sort((a, b) => {
+      const pa = TABLE_PRIORITY[a.table_name] ?? 99
+      const pb = TABLE_PRIORITY[b.table_name] ?? 99
+      return pa - pb
+    })
+
+    let applied = 0
+    for (let i = 0; i < sorted.length; i += PULL_BATCH_SIZE) {
+      const batch = sorted.slice(i, i + PULL_BATCH_SIZE)
+      for (const entry of batch) {
+        try {
+          await applyRemoteEntry(entry)
+          applied++
+          appliedTables.add(entry.table_name)
+        } catch (err) {
+          console.log(
+            '[sync] apply failed: table=%s action=%s id=%s',
+            entry.table_name,
+            entry.action,
+            entry.record_id,
+            err,
+          )
+        }
+      }
+      if (i + PULL_BATCH_SIZE < sorted.length) await yieldToMain()
+    }
+    return applied
+  }
+
   async function pull(): Promise<boolean> {
-    const cursor = getStoredSyncCursor() ?? (await getLastSyncTimestamp(db))
+    let cursor = getStoredSyncCursor() ?? (await getLastSyncTimestamp(db))
     console.log('[sync] pull: cursor=%s', cursor)
     let wipedLocalData = false
 
@@ -144,6 +178,7 @@ export function createSyncEngine(db: Database): SyncEngine {
       if (expenses.length === 0) {
         console.log('[sync] stale cursor detected, retrying full pull')
         clearSyncCursor()
+        cursor = null
         result = await pullEntries(null)
         if (!result.success) return false
 
@@ -169,49 +204,33 @@ export function createSyncEngine(db: Database): SyncEngine {
       }
     }
 
-    console.log('[sync] pull: received %d entries', result.data.entries.length)
-
-    const sorted = [...result.data.entries].sort((a, b) => {
-      const pa = TABLE_PRIORITY[a.table_name] ?? 99
-      const pb = TABLE_PRIORITY[b.table_name] ?? 99
-      return pa - pb
-    })
-
+    let received = 0
     let applied = 0
     const appliedTables = new Set<string>()
-    for (let i = 0; i < sorted.length; i += PULL_BATCH_SIZE) {
-      const batch = sorted.slice(i, i + PULL_BATCH_SIZE)
-      for (const entry of batch) {
-        try {
-          await applyRemoteEntry(entry)
-          applied++
-          appliedTables.add(entry.table_name)
-        } catch (err) {
-          console.log(
-            '[sync] apply failed: table=%s action=%s id=%s',
-            entry.table_name,
-            entry.action,
-            entry.record_id,
-            err,
-          )
-        }
+    for (;;) {
+      const { entries, has_more: hasMore } = result.data
+      received += entries.length
+      applied += await applyEntries(entries, appliedTables)
+
+      const lastEntry = entries[entries.length - 1]
+      const nextCursor = lastEntry ? cursorAfter(lastEntry) : cursor
+      if (nextCursor && nextCursor !== cursor) storeSyncCursor(nextCursor)
+      if (!hasMore || nextCursor === cursor) break
+
+      cursor = nextCursor
+      result = await pullEntries(cursor)
+      if (!result.success) {
+        console.log('[sync] pull failed:', result.error)
+        return false
       }
-      if (i + PULL_BATCH_SIZE < sorted.length) await yieldToMain()
     }
 
-    console.log('[sync] pull: applied %d/%d entries', applied, sorted.length)
+    console.log('[sync] pull: applied %d/%d entries', applied, received)
 
-    if (result.data.has_more) {
-      console.log('[sync] pull: server has more entries, will fetch on next cycle')
-    }
-
-    if (result.data.entries.length > 0) {
-      storeSyncCursor(result.data.server_timestamp)
-      if (applied > 0 || wipedLocalData) {
-        await yieldToMain()
-        const tables = wipedLocalData ? new Set(Object.keys(TABLE_PRIORITY)) : appliedTables
-        for (const fn of dataListeners) fn(tables)
-      }
+    if (applied > 0 || wipedLocalData) {
+      await yieldToMain()
+      const tables = wipedLocalData ? new Set(Object.keys(TABLE_PRIORITY)) : appliedTables
+      for (const fn of dataListeners) fn(tables)
     }
 
     return true

@@ -5,7 +5,7 @@ import { createUser, createRoute, logSyncEntry, getUnsyncedEntries } from '../db
 import type { Database } from '../db/interface.js'
 import { createSyncEngine, type SyncStatus } from './sync-engine.js'
 import { installFakeSyncServer } from './test-sync-server.js'
-import type { SyncPullEntry } from './api-client.js'
+import { getStoredSyncCursor, type SyncPullEntry } from './api-client.js'
 
 let db: Database
 let userId: string
@@ -430,5 +430,86 @@ describe('sync cursor', () => {
 
     // #then
     expect(await categoryIds()).toEqual(['cat-remote'])
+  })
+
+  it('applies every page when the server has more than one page', async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+    const server = installFakeSyncServer({ pageSize: 2 })
+    server.entries.push(
+      remoteCategoryEntry('cat-1', '2026-01-02T00:00:00.000Z'),
+      remoteCategoryEntry('cat-2', '2026-01-02T00:00:00.000Z'),
+      remoteCategoryEntry('cat-3', '2026-01-02T00:00:00.000Z'),
+    )
+    const engine = createSyncEngine(db)
+
+    // #when
+    await engine.sync(true)
+    engine.stop()
+
+    // #then
+    expect(await categoryIds()).toEqual(['cat-1', 'cat-2', 'cat-3'])
+  })
+
+  it('stores the cursor of the last applied entry', async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+    const server = installFakeSyncServer()
+    server.entries.push(remoteCategoryEntry('cat-1', '2026-01-02T00:00:00.000Z'))
+    const engine = createSyncEngine(db)
+
+    // #when
+    await engine.sync(true)
+    engine.stop()
+
+    // #then
+    expect(getStoredSyncCursor()).toBe('2026-01-02T00:00:00.000Z|entry-cat-1')
+  })
+
+  it('stops paging when a page leaves the cursor unchanged', async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            entries: [remoteCategoryEntry('cat-1', '2026-01-02T00:00:00.000Z')],
+            server_timestamp: '2026-01-05T00:00:00.000Z',
+            has_more: true,
+          }),
+          { status: 200 },
+        ),
+    )
+    const engine = createSyncEngine(db)
+
+    // #when
+    await engine.sync(true)
+    engine.stop()
+
+    // #then
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('leaves the cursor at the last applied page when a later page fails', async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+    const server = installFakeSyncServer({ pageSize: 2, failPullNumber: 2 })
+    server.entries.push(
+      remoteCategoryEntry('cat-1', '2026-01-02T00:00:00.000Z'),
+      remoteCategoryEntry('cat-2', '2026-01-02T00:00:00.000Z'),
+      remoteCategoryEntry('cat-3', '2026-01-02T00:00:00.000Z'),
+    )
+    const engine = createSyncEngine(db)
+
+    // #when
+    await engine.sync(true)
+    engine.stop()
+
+    // #then
+    expect(getStoredSyncCursor()).toBe('2026-01-02T00:00:00.000Z|entry-cat-2')
   })
 })
