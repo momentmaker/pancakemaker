@@ -23,20 +23,22 @@ Server-side merging was rejected because the server only relays logs and has no 
 
 ### Server: `GET /sync/pull`
 
-- New optional `cursor` query parameter: `<server_timestamp>|<id>`. Clients treat it as opaque.
+- New optional `cursor` query parameter: `<server_timestamp>|<id>`.
 - With `cursor`: return entries where `(server_timestamp, id)` is strictly greater than the cursor, ordered by `server_timestamp, id`, limited to 1000.
-- Response adds `next_cursor`: the cursor for the last entry returned, or `null` when no entries are returned. The client keeps its current cursor when `next_cursor` is `null`.
+- A cursor without `|` (a bare timestamp stored by older clients) is read as `(timestamp, '')`. The empty id sorts before every real id, so the pull starts exactly at that timestamp.
 - `since` keeps its current behavior, so clients that haven't updated still work.
+- The response shape is unchanged. Every entry already carries `server_timestamp` and `id`, so the client builds the next cursor itself.
 
 ### Client: `api-client.ts`
 
-- `pullEntries` takes the stored cursor and sends it as `cursor`.
-- A stored cursor without an id part (a bare timestamp written by older clients) is sent as `(timestamp, '')`. The empty id sorts before every real id, so the next pull starts exactly where the old cursor pointed.
+- `pullEntries` sends the stored cursor as `cursor`.
+- `cursorAfter(entry)` builds `<server_timestamp>|<id>` from a pulled entry.
 
 ### Client: `sync-engine.ts`
 
 - `push()` no longer writes the cursor.
-- `pull()` loops: fetch a page, apply it, store `next_cursor`, and repeat while `has_more` is true. The cursor advances only after a page is applied, so an interrupted pull resumes instead of skipping.
+- `pull()` loops: fetch a page, apply it, store the cursor of its last entry, and repeat while `has_more` is true. The cursor advances only after a page is applied, so an interrupted pull resumes instead of skipping.
+- The loop also stops when a page leaves the cursor unchanged. During a deploy, a new client can briefly reach an old server that ignores `cursor` and returns the same page every time.
 - Entries whose `id` exists in the local `sync_log` are this device's own pushes and are skipped rather than re-applied. This keeps a re-pulled older edit from overwriting a newer local one.
 - The stale-cursor workaround in `pull()` stays for now. Removing it is a follow-up once the fix has been in use for a while.
 
@@ -72,7 +74,7 @@ The download happens first and writes nothing. Everything after it runs in one `
    - **Delete it** otherwise. It is an untouched seed row the account doesn't have.
 6. Drop soft-deleted device expenses (they were never synced).
 7. Replace all pending `sync_log` entries with `create` entries for every kept device row: routes (only when the account lacked that type), categories, panels, tags and live expenses. Pending deletes are dropped, so a delete made before sign-in never reaches the account.
-8. Store the download's final `next_cursor` as the sync cursor.
+8. Store the cursor of the download's last entry as the sync cursor.
 
 If the account has no route of some type, the device's route of that type is kept and pushed instead of matched.
 
@@ -92,13 +94,15 @@ If the account has no route of some type, the device's route of that type is kep
 
 - **Server:**
   - Paging across a boundary inside a batch of entries that share a `server_timestamp` returns every entry exactly once.
+  - A bare-timestamp cursor starts at that timestamp.
   - `since` behaves as before.
 - **Sync engine:**
   - A push does not move the cursor.
   - `has_more` triggers another page from `next_cursor`.
   - The device's own entries are not re-applied.
   - A change another device pushed before this device's push still arrives.
-  - A bare-timestamp cursor from an older client continues without gaps.
+  - A page that leaves the cursor unchanged ends the pull.
+  - A failed page leaves the cursor at the last applied page.
 
 ### Stage 2
 
