@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
-import { verifyToken, storeToken, storeUserEmail } from '../sync/api-client'
+import {
+  verifyToken,
+  storeToken,
+  storeUserEmail,
+  clearToken,
+  clearUserEmail,
+} from '../sync/api-client'
 import { useSync } from '../sync/SyncContext'
 import { useDatabase } from '../db/DatabaseContext'
 import { reconcileAfterAuth } from '../sync/reconcile'
@@ -38,7 +44,9 @@ export function AuthVerify() {
         await reconcileAfterAuth(db, result.data.user)
         await forceSync()
       } catch {
-        setError('Failed to sync your data. Please refresh and try again.')
+        clearToken()
+        clearUserEmail()
+        setError('Failed to sync your data. Please sign in again.')
         setSyncing(false)
         return
       }

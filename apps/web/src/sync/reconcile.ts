@@ -1,7 +1,7 @@
 import type { Database } from '../db/interface.js'
 import type { UserRow, CategoryRow, PanelRow, RouteRow } from '../db/queries.js'
 import { logSyncEntry } from '../db/queries.js'
-import { clearSyncCursor } from './api-client.js'
+import { clearSyncCursor, pullEntries } from './api-client.js'
 
 interface ServerUser {
   id: string
@@ -15,18 +15,33 @@ export async function reconcileAfterAuth(db: Database, serverUser: ServerUser): 
   if (!localUser) return
   if (localUser.id === serverUser.id) return
 
-  const expenseCount = await db.query<{ count: number }>(
-    'SELECT COUNT(*) as count FROM expenses WHERE deleted_at IS NULL',
-  )
-  const hasExpenses = expenseCount[0].count > 0
-
-  if (hasExpenses) {
-    console.log('[reconcile] Path A: has expenses, remapping user ID')
+  if (await hasUserCreatedData(db)) {
+    console.log('[reconcile] Path A: has user-created data, remapping user ID')
+    await reconcileFirstDevice(db, localUser, serverUser)
+  } else if (!(await serverHasData())) {
+    console.log('[reconcile] Path A: server account is empty, remapping user ID')
     await reconcileFirstDevice(db, localUser, serverUser)
   } else {
-    console.log('[reconcile] Path B: no expenses, wiping seed data')
+    console.log('[reconcile] Path B: seed data only, wiping seed data')
     await reconcileSecondDevice(db, localUser, serverUser)
   }
+}
+
+async function serverHasData(): Promise<boolean> {
+  const result = await pullEntries(null)
+  if (!result.success) {
+    throw new Error(`Could not check server account for existing data: ${result.error}`)
+  }
+  return result.data.entries.length > 0
+}
+
+async function hasUserCreatedData(db: Database): Promise<boolean> {
+  const rows = await db.query<{ count: number }>(
+    `SELECT
+       (SELECT COUNT(*) FROM expenses WHERE deleted_at IS NULL) +
+       (SELECT COUNT(*) FROM sync_log WHERE synced_at IS NULL) as count`,
+  )
+  return rows[0].count > 0
 }
 
 async function reconcileFirstDevice(
@@ -88,7 +103,7 @@ async function reconcileSecondDevice(
 async function logSeedData(db: Database, userId: string): Promise<void> {
   const user = await db.query<UserRow>('SELECT * FROM users WHERE id = ?', [userId])
   if (user[0]) {
-    const hasEntry = await hasSyncLogEntry(db, 'users', user[0].id)
+    const hasEntry = await hasCreateEntry(db, 'users', user[0].id)
     if (!hasEntry) {
       await logSyncEntry(db, userId, 'users', user[0].id, 'create', {
         id: user[0].id,
@@ -102,7 +117,7 @@ async function logSeedData(db: Database, userId: string): Promise<void> {
 
   const routes = await db.query<RouteRow>('SELECT * FROM routes WHERE user_id = ?', [userId])
   for (const route of routes) {
-    const hasEntry = await hasSyncLogEntry(db, 'routes', route.id)
+    const hasEntry = await hasCreateEntry(db, 'routes', route.id)
     if (hasEntry) continue
     await logSyncEntry(db, userId, 'routes', route.id, 'create', {
       id: route.id,
@@ -115,7 +130,7 @@ async function logSeedData(db: Database, userId: string): Promise<void> {
 
   const categories = await db.query<CategoryRow>('SELECT * FROM categories')
   for (const cat of categories) {
-    const hasEntry = await hasSyncLogEntry(db, 'categories', cat.id)
+    const hasEntry = await hasCreateEntry(db, 'categories', cat.id)
     if (hasEntry) continue
     await logSyncEntry(db, userId, 'categories', cat.id, 'create', {
       id: cat.id,
@@ -130,7 +145,7 @@ async function logSeedData(db: Database, userId: string): Promise<void> {
 
   const panels = await db.query<PanelRow>('SELECT * FROM panels')
   for (const panel of panels) {
-    const hasEntry = await hasSyncLogEntry(db, 'panels', panel.id)
+    const hasEntry = await hasCreateEntry(db, 'panels', panel.id)
     if (hasEntry) continue
     await logSyncEntry(db, userId, 'panels', panel.id, 'create', {
       id: panel.id,
@@ -147,13 +162,9 @@ async function logSeedData(db: Database, userId: string): Promise<void> {
   }
 }
 
-async function hasSyncLogEntry(
-  db: Database,
-  tableName: string,
-  recordId: string,
-): Promise<boolean> {
+async function hasCreateEntry(db: Database, tableName: string, recordId: string): Promise<boolean> {
   const rows = await db.query<{ count: number }>(
-    'SELECT COUNT(*) as count FROM sync_log WHERE table_name = ? AND record_id = ?',
+    "SELECT COUNT(*) as count FROM sync_log WHERE table_name = ? AND record_id = ? AND action = 'create'",
     [tableName, recordId],
   )
   return rows[0].count > 0
