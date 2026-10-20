@@ -138,6 +138,25 @@ export async function pullEntries(cursor?: string | null): Promise<ApiResult<Pul
   return apiRequest<PullResult>(`/sync/pull${params}`)
 }
 
+export async function pullAllEntries(): Promise<ApiResult<SyncPullEntry[]>> {
+  const entries: SyncPullEntry[] = []
+  let cursor: string | null = null
+  for (;;) {
+    const result = await pullEntries(cursor)
+    if (!result.success) return { success: false, error: result.error }
+
+    const page = result.data.entries
+    if (page.length > 0 && !isAfterCursor(page[0], cursor)) {
+      return { success: false, error: 'Server returned entries at or before the cursor' }
+    }
+    entries.push(...page)
+
+    const lastEntry = page[page.length - 1]
+    if (!result.data.has_more || !lastEntry) return { success: true, data: entries }
+    cursor = cursorAfter(lastEntry)
+  }
+}
+
 interface VerifyResult {
   token: string
   user: { id: string; email: string; baseCurrency: string }
