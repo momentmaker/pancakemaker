@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createTestDatabase } from '../db/test-db.js'
 import { runMigrations } from '../db/migrations.js'
 import { seedDefaultData } from '../db/seed.js'
@@ -19,7 +19,37 @@ let db: Database
 beforeEach(async () => {
   db = createTestDatabase()
   await runMigrations(db)
+  localStorage.clear()
+  localStorage.setItem('pancakemaker_jwt', 'test-token')
 })
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+function mockServerPull(entryCount: number): void {
+  const entries = Array.from({ length: entryCount }, (_, i) => ({
+    id: `srv-${i}`,
+    table_name: 'routes',
+    record_id: `route-${i}`,
+    action: 'create',
+    payload: '{}',
+    local_timestamp: '2026-01-01T00:00:00.000Z',
+    server_timestamp: '2026-01-01T00:00:00.000Z',
+  }))
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    new Response(
+      JSON.stringify({ entries, server_timestamp: new Date().toISOString(), has_more: false }),
+      { status: 200 },
+    ),
+  )
+}
+
+function mockServerPullFailure(): void {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    new Response(JSON.stringify({ error: 'Server error' }), { status: 500 }),
+  )
+}
 
 describe('reconcileAfterAuth', () => {
   it('no-ops when local userId matches server userId', async () => {
@@ -90,9 +120,10 @@ describe('reconcileAfterAuth', () => {
     }
   })
 
-  it('wipes seed data and creates server user when no expenses (Path B)', async () => {
+  it('wipes seed data and creates server user when server account already has data (Path B)', async () => {
     // #given
     await seedDefaultData(db, 'local@pancakemaker.app', 'USD')
+    mockServerPull(1)
     const serverUser = { id: 'server-user-id', email: 'real@email.com', baseCurrency: 'EUR' }
 
     // #when
@@ -179,6 +210,49 @@ describe('reconcileAfterAuth', () => {
       [seeded[0].id],
     )
     expect(creates).toHaveLength(1)
+  })
+
+  it('queues seed data for push when device has only seed data and server account is empty', async () => {
+    // #given
+    await seedDefaultData(db, 'local@pancakemaker.app', 'USD')
+    mockServerPull(0)
+    const serverUser = { id: 'server-user-id', email: 'real@email.com', baseCurrency: 'USD' }
+
+    // #when
+    await reconcileAfterAuth(db, serverUser)
+
+    // #then
+    const pending = await db.query<SyncLogRow>('SELECT * FROM sync_log WHERE synced_at IS NULL')
+    expect(new Set(pending.map((e) => e.table_name))).toEqual(
+      new Set(['users', 'routes', 'categories', 'panels']),
+    )
+  })
+
+  it('rejects when the server data check fails', async () => {
+    // #given
+    await seedDefaultData(db, 'local@pancakemaker.app', 'USD')
+    mockServerPullFailure()
+    const serverUser = { id: 'server-user-id', email: 'real@email.com', baseCurrency: 'USD' }
+
+    // #when
+    const result = reconcileAfterAuth(db, serverUser)
+
+    // #then
+    await expect(result).rejects.toThrow('Server error')
+  })
+
+  it('leaves local data untouched when the server data check fails', async () => {
+    // #given
+    const seed = await seedDefaultData(db, 'local@pancakemaker.app', 'USD')
+    mockServerPullFailure()
+    const serverUser = { id: 'server-user-id', email: 'real@email.com', baseCurrency: 'USD' }
+
+    // #when
+    await reconcileAfterAuth(db, serverUser).catch(() => {})
+
+    // #then
+    const users = await db.query<UserRow>('SELECT * FROM users')
+    expect(users.map((u) => u.id)).toEqual([seed.userId])
   })
 
   it('no-ops when no local user exists', async () => {

@@ -1,7 +1,7 @@
 import type { Database } from '../db/interface.js'
 import type { UserRow, CategoryRow, PanelRow, RouteRow } from '../db/queries.js'
 import { logSyncEntry } from '../db/queries.js'
-import { clearSyncCursor } from './api-client.js'
+import { clearSyncCursor, pullEntries } from './api-client.js'
 
 interface ServerUser {
   id: string
@@ -18,10 +18,21 @@ export async function reconcileAfterAuth(db: Database, serverUser: ServerUser): 
   if (await hasUserCreatedData(db)) {
     console.log('[reconcile] Path A: has user-created data, remapping user ID')
     await reconcileFirstDevice(db, localUser, serverUser)
+  } else if (!(await serverHasData())) {
+    console.log('[reconcile] Path A: server account is empty, remapping user ID')
+    await reconcileFirstDevice(db, localUser, serverUser)
   } else {
     console.log('[reconcile] Path B: seed data only, wiping seed data')
     await reconcileSecondDevice(db, localUser, serverUser)
   }
+}
+
+async function serverHasData(): Promise<boolean> {
+  const result = await pullEntries(null)
+  if (!result.success) {
+    throw new Error(`Could not check server account for existing data: ${result.error}`)
+  }
+  return result.data.entries.length > 0
 }
 
 async function hasUserCreatedData(db: Database): Promise<boolean> {
