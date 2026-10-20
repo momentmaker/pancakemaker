@@ -8,7 +8,8 @@ import {
   updateCategory,
   logSyncEntry,
   getUnsyncedEntries,
-  markEntriesSynced,
+  createPanel,
+  createExpense,
 } from '../db/queries.js'
 import type { Database } from '../db/interface.js'
 import { createSyncEngine, type SyncStatus } from './sync-engine.js'
@@ -53,6 +54,18 @@ function remoteCategoryEntry(id: string, serverTimestamp: string): SyncPullEntry
     }),
     local_timestamp: serverTimestamp,
     server_timestamp: serverTimestamp,
+  }
+}
+
+async function countRows(table: string): Promise<number> {
+  const rows = await db.query<{ n: number }>(`SELECT COUNT(*) as n FROM ${table}`)
+  return rows[0].n
+}
+
+async function logExistingRows(table: string): Promise<void> {
+  const rows = await db.query<Record<string, unknown>>(`SELECT * FROM ${table}`)
+  for (const row of rows) {
+    await logSyncEntry(db, userId, table, row.id as string, 'create', row)
   }
 }
 
@@ -167,8 +180,8 @@ describe('createSyncEngine', () => {
     // #when
     await engine.sync()
 
-    // #then — push + pull + stale-cursor retry pull
-    expect(fetchSpy).toHaveBeenCalledTimes(3)
+    // #then — push + full pull (no stored cursor)
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
     const pushCall = fetchSpy.mock.calls[0]
     expect(pushCall[0]).toContain('/sync/push')
 
@@ -521,27 +534,131 @@ describe('sync cursor', () => {
     expect(getStoredSyncCursor()).toBe('2026-01-02T00:00:00.000Z|entry-cat-2')
   })
 
-  it("does not re-apply this device's own pushed entries", async () => {
+  it('keeps the data it just pushed on a first sign-in with no expenses', async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+    await createCategory(db, routeId, 'Food', '#ffffff', 0)
+    await logExistingRows('users')
+    await logExistingRows('routes')
+    await logExistingRows('categories')
+    installFakeSyncServer({ pushTimestamp: '2026-01-03T00:00:00.000Z' })
+    const engine = createSyncEngine(db)
+
+    // #when
+    await engine.sync(true)
+    engine.stop()
+
+    // #then
+    expect({
+      routes: await countRows('routes'),
+      categories: await countRows('categories'),
+    }).toEqual({ routes: 1, categories: 1 })
+  })
+
+  it('keeps data it pushed on an earlier cycle when it has no expenses', async () => {
     // #given
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
     localStorage.setItem('pancakemaker_jwt', 'test-token')
     localStorage.setItem('pancakemaker_last_sync', '2026-01-01T00:00:00.000Z|')
-    const category = await createCategory(db, routeId, 'Older', '#ffffff', 0)
+    await createCategory(db, routeId, 'Custom', '#ffffff', 0)
+    await logExistingRows('users')
+    await logExistingRows('routes')
+    await logExistingRows('categories')
+    installFakeSyncServer({ pushTimestamp: '2026-01-03T00:00:00.000Z' })
+    const engine = createSyncEngine(db)
+    await engine.sync(true)
+
+    // #when
+    await engine.sync(true)
+    engine.stop()
+
+    // #then
+    expect(await countRows('categories')).toBe(1)
+  })
+
+  it("converges to the server's last write when another device edited the same record first", async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+    localStorage.setItem('pancakemaker_last_sync', '2026-01-01T00:00:00.000Z|')
+    const category = await createCategory(db, routeId, 'Original', '#ffffff', 0)
+    const server = installFakeSyncServer({ pushTimestamp: '2026-01-03T00:00:00.000Z' })
+    server.entries.push({
+      id: 'entry-other-device',
+      table_name: 'categories',
+      record_id: category.id,
+      action: 'update',
+      payload: JSON.stringify({ id: category.id, name: 'FromOtherDevice' }),
+      local_timestamp: '2026-01-02T00:00:00.000Z',
+      server_timestamp: '2026-01-02T00:00:00.000Z',
+    })
+    await updateCategory(db, category.id, { name: 'ThisDevice' })
     await logSyncEntry(db, userId, 'categories', category.id, 'update', {
       id: category.id,
-      name: 'Older',
+      name: 'ThisDevice',
     })
-    const [ownEntry] = await getUnsyncedEntries(db)
-    await markEntriesSynced(db, [ownEntry.id])
-    await updateCategory(db, category.id, { name: 'Newest' })
+    const engine = createSyncEngine(db)
+
+    // #when
+    await engine.sync(true)
+    engine.stop()
+
+    // #then
+    const rows = await db.query<{ name: string }>('SELECT name FROM categories WHERE id = ?', [
+      category.id,
+    ])
+    expect(rows[0].name).toBe('ThisDevice')
+  })
+
+  it('pulls the full history when no cursor is stored', async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+    const category = await createCategory(db, routeId, 'Food', '#ffffff', 0)
+    const panel = await createPanel(db, routeId, 'Daily', 'USD', 0, null, true)
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: category.id,
+      amount: 100,
+      currency: 'USD',
+      date: '2026-01-01',
+    })
+    await logSyncEntry(db, userId, 'tags', 'tag-1', 'delete', { id: 'tag-1' })
+    const server = installFakeSyncServer({ pushTimestamp: '2026-01-03T00:00:00.000Z' })
+    server.entries.push(remoteCategoryEntry('cat-remote', '2026-01-02T00:00:00.000Z'))
+    const engine = createSyncEngine(db)
+
+    // #when
+    await engine.sync(true)
+    engine.stop()
+
+    // #then
+    expect(await categoryIds()).toContain('cat-remote')
+  })
+
+  it('keeps expenses when a pulled create replaces the category they reference', async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+    localStorage.setItem('pancakemaker_last_sync', '2026-01-01T00:00:00.000Z|')
+    const category = await createCategory(db, routeId, 'Food', '#ffffff', 0)
+    const panel = await createPanel(db, routeId, 'Daily', 'USD', 0, null, true)
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: category.id,
+      amount: 100,
+      currency: 'USD',
+      date: '2026-01-01',
+    })
     const server = installFakeSyncServer()
     server.entries.push({
-      id: ownEntry.id,
-      table_name: ownEntry.table_name,
-      record_id: ownEntry.record_id,
-      action: ownEntry.action,
-      payload: ownEntry.payload,
-      local_timestamp: ownEntry.local_timestamp,
+      id: 'entry-replay',
+      table_name: 'categories',
+      record_id: category.id,
+      action: 'create',
+      payload: JSON.stringify({ ...category, name: 'Groceries' }),
+      local_timestamp: '2026-01-02T00:00:00.000Z',
       server_timestamp: '2026-01-02T00:00:00.000Z',
     })
     const engine = createSyncEngine(db)
@@ -554,6 +671,41 @@ describe('sync cursor', () => {
     const rows = await db.query<{ name: string }>('SELECT name FROM categories WHERE id = ?', [
       category.id,
     ])
-    expect(rows[0].name).toBe('Newest')
+    expect({ name: rows[0].name, expenses: await countRows('expenses') }).toEqual({
+      name: 'Groceries',
+      expenses: 1,
+    })
+  })
+
+  it('does not apply a page that starts at or before the stored cursor', async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+    localStorage.setItem('pancakemaker_last_sync', '2026-06-01T00:00:00.000Z|zzz')
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            entries: [
+              remoteCategoryEntry('cat-1', '2026-01-02T00:00:00.000Z'),
+              remoteCategoryEntry('cat-2', '2026-01-03T00:00:00.000Z'),
+            ],
+            server_timestamp: '2026-07-01T00:00:00.000Z',
+            has_more: true,
+          }),
+          { status: 200 },
+        ),
+    )
+    const engine = createSyncEngine(db)
+
+    // #when
+    await engine.sync(true)
+    engine.stop()
+
+    // #then
+    expect({ cursor: getStoredSyncCursor(), categories: await categoryIds() }).toEqual({
+      cursor: '2026-06-01T00:00:00.000Z|zzz',
+      categories: [],
+    })
   })
 })

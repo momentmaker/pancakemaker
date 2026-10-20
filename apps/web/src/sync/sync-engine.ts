@@ -1,11 +1,5 @@
 import type { Database } from '../db/interface.js'
-import {
-  getUnsyncedEntries,
-  markEntriesSynced,
-  getLastSyncTimestamp,
-  pruneOldSyncEntries,
-  getExistingSyncLogIds,
-} from '../db/queries.js'
+import { getUnsyncedEntries, markEntriesSynced, pruneOldSyncEntries } from '../db/queries.js'
 import {
   pushEntries,
   pullEntries,
@@ -14,6 +8,7 @@ import {
   storeSyncCursor,
   clearSyncCursor,
   cursorAfter,
+  isAfterCursor,
   type SyncPullEntry,
 } from './api-client.js'
 
@@ -132,17 +127,11 @@ export function createSyncEngine(db: Database): SyncEngine {
     entries: SyncPullEntry[],
     appliedTables: Set<string>,
   ): Promise<number> {
-    const ownEntryIds = await getExistingSyncLogIds(
-      db,
-      entries.map((e) => e.id),
-    )
-    const sorted = entries
-      .filter((e) => !ownEntryIds.has(e.id))
-      .sort((a, b) => {
-        const pa = TABLE_PRIORITY[a.table_name] ?? 99
-        const pb = TABLE_PRIORITY[b.table_name] ?? 99
-        return pa - pb
-      })
+    const sorted = [...entries].sort((a, b) => {
+      const pa = TABLE_PRIORITY[a.table_name] ?? 99
+      const pb = TABLE_PRIORITY[b.table_name] ?? 99
+      return pa - pb
+    })
 
     let applied = 0
     for (let i = 0; i < sorted.length; i += PULL_BATCH_SIZE) {
@@ -168,7 +157,7 @@ export function createSyncEngine(db: Database): SyncEngine {
   }
 
   async function pull(): Promise<boolean> {
-    let cursor = getStoredSyncCursor() ?? (await getLastSyncTimestamp(db))
+    let cursor = getStoredSyncCursor()
     console.log('[sync] pull: cursor=%s', cursor)
     let wipedLocalData = false
 
@@ -216,6 +205,10 @@ export function createSyncEngine(db: Database): SyncEngine {
     const appliedTables = new Set<string>()
     for (;;) {
       const { entries, has_more: hasMore } = result.data
+      if (entries.length > 0 && !isAfterCursor(entries[0], cursor)) {
+        console.log('[sync] pull: page starts at or before cursor %s, not applying it', cursor)
+        return false
+      }
       received += entries.length
       applied += await applyEntries(entries, appliedTables)
 

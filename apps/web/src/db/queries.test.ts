@@ -27,7 +27,6 @@ import {
   logSyncEntry,
   getUnsyncedEntries,
   markEntriesSynced,
-  getLastSyncTimestamp,
   pruneOldSyncEntries,
   getExportRows,
   getRecentExpenses,
@@ -351,29 +350,6 @@ describe('sync log', () => {
     const remaining = await getUnsyncedEntries(db)
     expect(remaining).toHaveLength(1)
     expect(remaining[0].record_id).toBe('exp-2')
-  })
-
-  it('returns null when no synced entries exist', async () => {
-    // #given - no entries
-
-    // #when
-    const timestamp = await getLastSyncTimestamp(db)
-
-    // #then
-    expect(timestamp).toBeNull()
-  })
-
-  it('returns last sync timestamp', async () => {
-    // #given
-    await logSyncEntry(db, userId, 'expenses', 'exp-1', 'create', { amount: 1000 })
-    const entries = await getUnsyncedEntries(db)
-    await markEntriesSynced(db, [entries[0].id])
-
-    // #when
-    const timestamp = await getLastSyncTimestamp(db)
-
-    // #then
-    expect(timestamp).not.toBeNull()
   })
 
   it('handles markEntriesSynced with empty array', async () => {

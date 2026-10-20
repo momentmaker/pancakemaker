@@ -509,30 +509,9 @@ export async function markEntriesSynced(db: Database, ids: string[]): Promise<vo
   ])
 }
 
-export async function getExistingSyncLogIds(db: Database, ids: string[]): Promise<Set<string>> {
-  const existing = new Set<string>()
-  for (let i = 0; i < ids.length; i += 500) {
-    const chunk = ids.slice(i, i + 500)
-    const placeholders = chunk.map(() => '?').join(', ')
-    const rows = await db.query<{ id: string }>(
-      `SELECT id FROM sync_log WHERE id IN (${placeholders})`,
-      chunk,
-    )
-    for (const row of rows) existing.add(row.id)
-  }
-  return existing
-}
-
 export async function pruneOldSyncEntries(db: Database, retentionDays = 7): Promise<void> {
   const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000).toISOString()
   await db.execute('DELETE FROM sync_log WHERE synced_at IS NOT NULL AND synced_at < ?', [cutoff])
-}
-
-export async function getLastSyncTimestamp(db: Database): Promise<string | null> {
-  const rows = await db.query<{ synced_at: string }>(
-    'SELECT synced_at FROM sync_log WHERE synced_at IS NOT NULL ORDER BY synced_at DESC LIMIT 1',
-  )
-  return rows[0]?.synced_at ?? null
 }
 
 // --- Category-based Queries ---
