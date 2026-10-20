@@ -3,8 +3,10 @@ import { createTestDatabase } from '../db/test-db.js'
 import { runMigrations } from '../db/migrations.js'
 import { seedDefaultData } from '../db/seed.js'
 import {
+  createCategory,
   createExpense,
   logSyncEntry,
+  updateCategory,
   type UserRow,
   type SyncLogRow,
   type RouteRow,
@@ -116,6 +118,67 @@ describe('reconcileAfterAuth', () => {
     // #then — sync_log empty
     const syncEntries = await db.query<SyncLogRow>('SELECT * FROM sync_log')
     expect(syncEntries).toHaveLength(0)
+  })
+
+  it('keeps user-created data when device has unsynced changes but no expenses', async () => {
+    // #given
+    const seed = await seedDefaultData(db, 'local@pancakemaker.app', 'USD')
+    const category = await createCategory(db, seed.personalRouteId, 'Coffee', '#ff0000', 99)
+    await logSyncEntry(db, seed.userId, 'categories', category.id, 'create', { id: category.id })
+    const serverUser = { id: 'server-user-id', email: 'real@email.com', baseCurrency: 'USD' }
+
+    // #when
+    await reconcileAfterAuth(db, serverUser)
+
+    // #then
+    const categories = await db.query<{ id: string }>('SELECT id FROM categories WHERE id = ?', [
+      category.id,
+    ])
+    expect(categories).toHaveLength(1)
+  })
+
+  it('remaps unsynced changes to the server user when device has no expenses', async () => {
+    // #given
+    const seed = await seedDefaultData(db, 'local@pancakemaker.app', 'USD')
+    const category = await createCategory(db, seed.personalRouteId, 'Coffee', '#ff0000', 99)
+    await logSyncEntry(db, seed.userId, 'categories', category.id, 'create', { id: category.id })
+    const serverUser = { id: 'server-user-id', email: 'real@email.com', baseCurrency: 'USD' }
+
+    // #when
+    await reconcileAfterAuth(db, serverUser)
+
+    // #then
+    const pending = await db.query<SyncLogRow>(
+      'SELECT * FROM sync_log WHERE record_id = ? AND synced_at IS NULL',
+      [category.id],
+    )
+    expect(pending.map((e) => e.user_id)).toEqual(['server-user-id'])
+  })
+
+  it('logs a create for a seeded category that only has a pending update', async () => {
+    // #given
+    const seed = await seedDefaultData(db, 'local@pancakemaker.app', 'USD')
+    const seeded = await db.query<{ id: string }>('SELECT id FROM categories LIMIT 1')
+    const renamed = await updateCategory(db, seeded[0].id, { name: 'Groceries' })
+    await logSyncEntry(
+      db,
+      seed.userId,
+      'categories',
+      seeded[0].id,
+      'update',
+      renamed as unknown as Record<string, unknown>,
+    )
+    const serverUser = { id: 'server-user-id', email: 'real@email.com', baseCurrency: 'USD' }
+
+    // #when
+    await reconcileAfterAuth(db, serverUser)
+
+    // #then
+    const creates = await db.query<SyncLogRow>(
+      "SELECT * FROM sync_log WHERE record_id = ? AND action = 'create'",
+      [seeded[0].id],
+    )
+    expect(creates).toHaveLength(1)
   })
 
   it('no-ops when no local user exists', async () => {
