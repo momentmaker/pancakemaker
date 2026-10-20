@@ -4,9 +4,12 @@ import { runMigrations } from '../db/migrations.js'
 import { createUser, createRoute, logSyncEntry, getUnsyncedEntries } from '../db/queries.js'
 import type { Database } from '../db/interface.js'
 import { createSyncEngine, type SyncStatus } from './sync-engine.js'
+import { installFakeSyncServer } from './test-sync-server.js'
+import type { SyncPullEntry } from './api-client.js'
 
 let db: Database
 let userId: string
+let routeId: string
 
 beforeEach(async () => {
   db = createTestDatabase()
@@ -14,7 +17,8 @@ beforeEach(async () => {
 
   const user = await createUser(db, 'test@example.com', 'USD')
   userId = user.id
-  await createRoute(db, userId, 'personal')
+  const route = await createRoute(db, userId, 'personal')
+  routeId = route.id
 
   localStorage.clear()
   vi.restoreAllMocks()
@@ -23,6 +27,31 @@ beforeEach(async () => {
 afterEach(() => {
   vi.restoreAllMocks()
 })
+
+function remoteCategoryEntry(id: string, serverTimestamp: string): SyncPullEntry {
+  return {
+    id: `entry-${id}`,
+    table_name: 'categories',
+    record_id: id,
+    action: 'create',
+    payload: JSON.stringify({
+      id,
+      route_id: routeId,
+      name: `Remote ${id}`,
+      color: '#ffffff',
+      sort_order: 0,
+      created_at: serverTimestamp,
+      updated_at: serverTimestamp,
+    }),
+    local_timestamp: serverTimestamp,
+    server_timestamp: serverTimestamp,
+  }
+}
+
+async function categoryIds(): Promise<string[]> {
+  const rows = await db.query<{ id: string }>('SELECT id FROM categories ORDER BY id')
+  return rows.map((r) => r.id)
+}
 
 describe('createSyncEngine', () => {
   it('initializes with correct status based on navigator.onLine', () => {
@@ -381,5 +410,25 @@ describe('createSyncEngine', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
 
     vi.useRealTimers()
+  })
+})
+
+describe('sync cursor', () => {
+  it('receives a change another device pushed before this device pushes', async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+    localStorage.setItem('pancakemaker_last_sync', '2026-01-01T00:00:00.000Z|')
+    const server = installFakeSyncServer({ pushTimestamp: '2026-01-03T00:00:00.000Z' })
+    server.entries.push(remoteCategoryEntry('cat-remote', '2026-01-02T00:00:00.000Z'))
+    await logSyncEntry(db, userId, 'tags', 'tag-1', 'delete', { id: 'tag-1' })
+    const engine = createSyncEngine(db)
+
+    // #when
+    await engine.sync(true)
+    engine.stop()
+
+    // #then
+    expect(await categoryIds()).toEqual(['cat-remote'])
   })
 })

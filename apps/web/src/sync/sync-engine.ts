@@ -91,7 +91,6 @@ export function createSyncEngine(db: Database): SyncEngine {
     } catch {
       // non-critical cleanup
     }
-    storeSyncCursor(result.data.server_timestamp)
     return true
   }
 
