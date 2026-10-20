@@ -1,5 +1,5 @@
 import type { Database } from '../db/interface.js'
-import type { UserRow, RouteRow, CategoryRow, PanelRow } from '../db/queries.js'
+import type { UserRow, RouteRow, CategoryRow, PanelRow, TagRow } from '../db/queries.js'
 import { logSyncEntry } from '../db/queries.js'
 import { applyEntries } from './apply-entries.js'
 import { cursorAfter, storeSyncCursor, type SyncPullEntry } from './api-client.js'
@@ -19,7 +19,7 @@ interface DeviceRows {
   touched: Set<string>
 }
 
-const QUEUED_TABLES = ['routes', 'categories', 'panels'] as const
+const QUEUED_TABLES = ['routes', 'categories', 'panels', 'tags'] as const
 
 function sameName(a: string, b: string): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase()
@@ -49,6 +49,7 @@ async function moveToServerUser(
   localUser: UserRow,
   serverUser: ServerUser,
 ): Promise<void> {
+  await db.execute('UPDATE users SET email = id WHERE id = ?', [localUser.id])
   await db.execute(
     'INSERT INTO users (id, email, base_currency, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
     [
@@ -168,6 +169,21 @@ async function mergePanels(
   }
 }
 
+async function mergeTags(db: Database, device: DeviceRows): Promise<void> {
+  const tags = await db.query<TagRow>('SELECT * FROM tags ORDER BY created_at, id')
+  const accountTags = tags.filter((t) => !device.tags.has(t.id))
+  for (const tag of tags.filter((t) => device.tags.has(t.id))) {
+    const match = accountTags.find((t) => sameName(t.name, tag.name))
+    if (!match) continue
+    await db.execute('UPDATE OR IGNORE expense_tags SET tag_id = ? WHERE tag_id = ?', [
+      match.id,
+      tag.id,
+    ])
+    await db.execute('DELETE FROM expense_tags WHERE tag_id = ?', [tag.id])
+    await db.execute('DELETE FROM tags WHERE id = ?', [tag.id])
+  }
+}
+
 async function removeMergedRoutes(db: Database, routeMap: Map<string, string>): Promise<void> {
   for (const [deviceRouteId, accountRouteId] of routeMap) {
     if (deviceRouteId !== accountRouteId) {
@@ -207,6 +223,7 @@ export async function mergeIntoAccount(
     const routeMap = await mapRoutes(db, device)
     await mergeCategories(db, device, routeMap)
     await mergePanels(db, device, routeMap)
+    await mergeTags(db, device)
     await removeMergedRoutes(db, routeMap)
     await queueDeviceRows(db, serverUser.id, device)
   })

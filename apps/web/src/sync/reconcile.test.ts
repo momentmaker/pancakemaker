@@ -7,6 +7,8 @@ import {
   createExpense,
   createPanel,
   getUnsyncedEntries,
+  createTag,
+  addTagToExpense,
   logSyncEntry,
   updateCategory,
   type UserRow,
@@ -580,5 +582,143 @@ describe('reconcileAfterAuth merging into an account with data', () => {
       users: [seed.userId],
       categories: categoriesBefore,
     })
+  })
+
+  it('repoints expense tags to the account tag with the same name', async () => {
+    // #given
+    const server = installFakeSyncServer()
+    let accountTagId = ''
+    await createAccount(server, async (accountDb) => {
+      const tag = await createTag(accountDb, SERVER_USER.id, 'Trip')
+      accountTagId = tag.id
+      await logSyncEntry(
+        accountDb,
+        SERVER_USER.id,
+        'tags',
+        tag.id,
+        'create',
+        tag as unknown as Record<string, unknown>,
+      )
+    })
+    const seed = await seedDefaultData(db, 'local@pancakemaker.app', 'USD')
+    const deviceTag = await createTag(db, seed.userId, ' trip')
+    const expense = await createExpense(db, {
+      panelId: (await panelIn(db, 'personal', 'Daily'))!.id,
+      categoryId: (await categoryIn(db, 'personal', 'Meals'))!.id,
+      amount: 500,
+      currency: 'USD',
+      date: '2026-01-05',
+    })
+    await addTagToExpense(db, expense.id, deviceTag.id)
+
+    // #when
+    await reconcileAfterAuth(db, SERVER_USER)
+
+    // #then
+    const rows = await db.query<{ tag_id: string }>(
+      'SELECT tag_id FROM expense_tags WHERE expense_id = ?',
+      [expense.id],
+    )
+    expect(rows.map((r) => r.tag_id)).toEqual([accountTagId])
+  })
+
+  it('queues a create for a device tag the account lacks', async () => {
+    // #given
+    const server = installFakeSyncServer()
+    await createAccount(server)
+    const seed = await seedDefaultData(db, 'local@pancakemaker.app', 'USD')
+    const tag = await createTag(db, seed.userId, 'Solo')
+
+    // #when
+    await reconcileAfterAuth(db, SERVER_USER)
+
+    // #then
+    expect(await pendingFor(db, tag.id)).toEqual(['create'])
+  })
+
+  it('merges when the device user already has the account email', async () => {
+    // #given
+    const server = installFakeSyncServer()
+    await createAccount(server)
+    const seed = await seedDefaultData(db, 'local@pancakemaker.app', 'USD')
+    await db.execute('UPDATE users SET email = ? WHERE id = ?', [SERVER_USER.email, seed.userId])
+
+    // #when
+    await reconcileAfterAuth(db, SERVER_USER)
+
+    // #then
+    expect(await idsIn(db, 'users')).toEqual([SERVER_USER.id])
+  })
+
+  it('maps device rows to the oldest account route of a type', async () => {
+    // #given
+    const server = installFakeSyncServer()
+    const accountDb = await createAccount(server)
+    const duplicateRoute = {
+      id: 'route-duplicate',
+      user_id: SERVER_USER.id,
+      type: 'personal',
+      created_at: '2099-01-01T00:00:00.000Z',
+      updated_at: '2099-01-01T00:00:00.000Z',
+    }
+    server.entries.push({
+      id: '9999999999999-000000-duplicate-route',
+      table_name: 'routes',
+      record_id: duplicateRoute.id,
+      action: 'create',
+      payload: JSON.stringify(duplicateRoute),
+      local_timestamp: ACCOUNT_TIMESTAMP,
+      server_timestamp: ACCOUNT_TIMESTAMP,
+    })
+    await seedDefaultData(db, 'local@pancakemaker.app', 'USD')
+    const expense = await createExpense(db, {
+      panelId: (await panelIn(db, 'personal', 'Daily'))!.id,
+      categoryId: (await categoryIn(db, 'personal', 'Meals'))!.id,
+      amount: 500,
+      currency: 'USD',
+      date: '2026-01-05',
+    })
+
+    // #when
+    await reconcileAfterAuth(db, SERVER_USER)
+
+    // #then
+    const rows = await db.query<{ category_id: string }>(
+      'SELECT category_id FROM expenses WHERE id = ?',
+      [expense.id],
+    )
+    expect(rows[0].category_id).toBe((await categoryIn(accountDb, 'personal', 'Meals'))!.id)
+  })
+
+  it('merges even when an account entry fails to apply', async () => {
+    // #given
+    const server = installFakeSyncServer()
+    await createAccount(server)
+    server.entries.push({
+      id: '9999999999999-000000-broken-expense',
+      table_name: 'expenses',
+      record_id: 'exp-broken',
+      action: 'create',
+      payload: JSON.stringify({
+        id: 'exp-broken',
+        panel_id: 'missing-panel',
+        category_id: 'missing-category',
+        amount: 1,
+        currency: 'USD',
+        date: '2026-01-02',
+        is_recurring: 0,
+        created_at: ACCOUNT_TIMESTAMP,
+        updated_at: ACCOUNT_TIMESTAMP,
+      }),
+      local_timestamp: ACCOUNT_TIMESTAMP,
+      server_timestamp: ACCOUNT_TIMESTAMP,
+    })
+    await seedDefaultData(db, 'local@pancakemaker.app', 'USD')
+
+    // #when
+    await reconcileAfterAuth(db, SERVER_USER)
+
+    // #then
+    expect(await idsIn(db, 'users')).toEqual([SERVER_USER.id])
   })
 })
