@@ -1,13 +1,8 @@
 import type { Database } from '../db/interface.js'
 import type { UserRow, CategoryRow, PanelRow, RouteRow } from '../db/queries.js'
 import { logSyncEntry } from '../db/queries.js'
-import { clearSyncCursor, pullEntries } from './api-client.js'
-
-interface ServerUser {
-  id: string
-  email: string
-  baseCurrency: string
-}
+import { pullAllEntries } from './api-client.js'
+import { mergeIntoAccount, type ServerUser } from './merge.js'
 
 export async function reconcileAfterAuth(db: Database, serverUser: ServerUser): Promise<void> {
   const users = await db.query<UserRow>('SELECT * FROM users LIMIT 1')
@@ -15,33 +10,18 @@ export async function reconcileAfterAuth(db: Database, serverUser: ServerUser): 
   if (!localUser) return
   if (localUser.id === serverUser.id) return
 
-  if (await hasUserCreatedData(db)) {
-    console.log('[reconcile] Path A: has user-created data, remapping user ID')
-    await reconcileFirstDevice(db, localUser, serverUser)
-  } else if (!(await serverHasData())) {
-    console.log('[reconcile] Path A: server account is empty, remapping user ID')
+  const history = await pullAllEntries()
+  if (!history.success) {
+    throw new Error(`Could not download account history: ${history.error}`)
+  }
+
+  if (history.data.length === 0) {
+    console.log('[reconcile] account is empty, adopting this device')
     await reconcileFirstDevice(db, localUser, serverUser)
   } else {
-    console.log('[reconcile] Path B: seed data only, wiping seed data')
-    await reconcileSecondDevice(db, localUser, serverUser)
+    console.log('[reconcile] account has %d entries, merging this device', history.data.length)
+    await mergeIntoAccount(db, localUser, serverUser, history.data)
   }
-}
-
-async function serverHasData(): Promise<boolean> {
-  const result = await pullEntries(null)
-  if (!result.success) {
-    throw new Error(`Could not check server account for existing data: ${result.error}`)
-  }
-  return result.data.entries.length > 0
-}
-
-async function hasUserCreatedData(db: Database): Promise<boolean> {
-  const rows = await db.query<{ count: number }>(
-    `SELECT
-       (SELECT COUNT(*) FROM expenses WHERE deleted_at IS NULL) +
-       (SELECT COUNT(*) FROM sync_log WHERE synced_at IS NULL) as count`,
-  )
-  return rows[0].count > 0
 }
 
 async function reconcileFirstDevice(
@@ -70,34 +50,6 @@ async function reconcileFirstDevice(
   }
 
   await logSeedData(db, serverUser.id)
-}
-
-async function reconcileSecondDevice(
-  db: Database,
-  _localUser: UserRow,
-  serverUser: ServerUser,
-): Promise<void> {
-  await db.execute('PRAGMA foreign_keys=OFF')
-  try {
-    await db.execute('DELETE FROM expense_tags')
-    await db.execute('DELETE FROM recurring_templates')
-    await db.execute('DELETE FROM expenses')
-    await db.execute('DELETE FROM categories')
-    await db.execute('DELETE FROM panels')
-    await db.execute('DELETE FROM routes')
-    await db.execute('DELETE FROM tags')
-    await db.execute('DELETE FROM sync_log')
-    await db.execute('DELETE FROM users')
-    const timestamp = new Date().toISOString()
-    await db.execute(
-      'INSERT INTO users (id, email, base_currency, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-      [serverUser.id, serverUser.email, serverUser.baseCurrency, timestamp, timestamp],
-    )
-  } finally {
-    await db.execute('PRAGMA foreign_keys=ON')
-  }
-
-  clearSyncCursor()
 }
 
 async function logSeedData(db: Database, userId: string): Promise<void> {
