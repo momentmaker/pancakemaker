@@ -9,6 +9,7 @@ import {
   getUnsyncedEntries,
   createTag,
   addTagToExpense,
+  getRoutesByUser,
   logSyncEntry,
   updateCategory,
   type UserRow,
@@ -720,5 +721,47 @@ describe('reconcileAfterAuth merging into an account with data', () => {
 
     // #then
     expect(await idsIn(db, 'users')).toEqual([SERVER_USER.id])
+  })
+
+  it('shows the route device rows were merged into when the account has an older duplicate', async () => {
+    // #given
+    const server = installFakeSyncServer()
+    await createAccount(server)
+    const olderDuplicate = {
+      id: 'route-older-duplicate',
+      user_id: SERVER_USER.id,
+      type: 'personal',
+      created_at: '2000-01-01T00:00:00.000Z',
+      updated_at: '2000-01-01T00:00:00.000Z',
+    }
+    server.entries.push({
+      id: '9999999999999-000000-older-duplicate-route',
+      table_name: 'routes',
+      record_id: olderDuplicate.id,
+      action: 'create',
+      payload: JSON.stringify(olderDuplicate),
+      local_timestamp: ACCOUNT_TIMESTAMP,
+      server_timestamp: ACCOUNT_TIMESTAMP,
+    })
+    const seed = await seedDefaultData(db, 'local@pancakemaker.app', 'USD')
+    const coffee = await createCategory(db, seed.personalRouteId, 'Coffee', '#6b4f3a', 99)
+    await createExpense(db, {
+      panelId: (await panelIn(db, 'personal', 'Daily'))!.id,
+      categoryId: coffee.id,
+      amount: 300,
+      currency: 'USD',
+      date: '2026-01-05',
+    })
+
+    // #when
+    await reconcileAfterAuth(db, SERVER_USER)
+
+    // #then
+    const shown = (await getRoutesByUser(db, SERVER_USER.id)).find((r) => r.type === 'personal')
+    const coffeeRows = await db.query<{ route_id: string }>(
+      'SELECT route_id FROM categories WHERE id = ?',
+      [coffee.id],
+    )
+    expect(shown?.id).toBe(coffeeRows[0].route_id)
   })
 })

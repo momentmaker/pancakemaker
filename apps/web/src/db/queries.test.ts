@@ -321,6 +321,22 @@ describe('expense tags', () => {
 })
 
 describe('sync log', () => {
+  it('returns unsynced entries in id order even when the clock moved backwards', async () => {
+    // #given
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-03-02T00:00:00.000Z'))
+    await logSyncEntry(db, userId, 'expenses', 'parent', 'create', { id: 'parent' })
+    vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'))
+    await logSyncEntry(db, userId, 'expenses', 'child', 'create', { id: 'child' })
+    vi.useRealTimers()
+
+    // #when
+    const entries = await getUnsyncedEntries(db)
+
+    // #then
+    expect(entries.map((e) => e.record_id)).toEqual(['parent', 'child'])
+  })
+
   it('gives sync entries ids that sort in the order they were logged', async () => {
     // #given
     const recordIds = Array.from({ length: 20 }, (_, i) => `r-${String(i).padStart(2, '0')}`)

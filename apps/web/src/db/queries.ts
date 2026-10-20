@@ -74,7 +74,10 @@ export async function createRoute(
 }
 
 export async function getRoutesByUser(db: Database, userId: string): Promise<RouteRow[]> {
-  return db.query<RouteRow>('SELECT * FROM routes WHERE user_id = ? ORDER BY type', [userId])
+  return db.query<RouteRow>(
+    'SELECT * FROM routes WHERE user_id = ? ORDER BY type, created_at, id',
+    [userId],
+  )
 }
 
 // --- Categories ---
@@ -506,7 +509,7 @@ export async function logSyncEntry(
 
 export async function getUnsyncedEntries(db: Database): Promise<SyncLogRow[]> {
   return db.query<SyncLogRow>(
-    'SELECT * FROM sync_log WHERE synced_at IS NULL ORDER BY local_timestamp ASC',
+    'SELECT * FROM sync_log WHERE synced_at IS NULL ORDER BY id ASC',
   )
 }
 
