@@ -116,8 +116,12 @@ export async function pushEntries(entries: SyncPushEntry[]): Promise<ApiResult<P
   })
 }
 
-export async function pullEntries(since?: string | null): Promise<ApiResult<PullResult>> {
-  const params = since ? `?since=${encodeURIComponent(since)}` : ''
+export function cursorAfter(entry: Pick<SyncPullEntry, 'server_timestamp' | 'id'>): string {
+  return `${entry.server_timestamp}|${entry.id}`
+}
+
+export async function pullEntries(cursor?: string | null): Promise<ApiResult<PullResult>> {
+  const params = cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''
   return apiRequest<PullResult>(`/sync/pull${params}`)
 }
 
