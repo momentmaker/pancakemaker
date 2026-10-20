@@ -38,8 +38,10 @@ Server-side merging was rejected because the server only relays logs and has no 
 
 - `push()` no longer writes the cursor.
 - `pull()` loops: fetch a page, apply it, store the cursor of its last entry, and repeat while `has_more` is true. The cursor advances only after a page is applied, so an interrupted pull resumes instead of skipping.
-- The loop also stops when a page leaves the cursor unchanged. During a deploy, a new client can briefly reach an old server that ignores `cursor` and returns the same page every time.
-- Entries whose `id` exists in the local `sync_log` are this device's own pushes and are skipped rather than re-applied. This keeps a re-pulled older edit from overwriting a newer local one.
+- With no stored cursor, `pull()` starts from the beginning of the account's history. The old fallback to the newest local `synced_at` is removed: it is a local clock time, and every push moves it.
+- A page whose first entry is not after the cursor is not applied, and the pull fails like any other failed pull (backoff and retry). During a deploy, a new client can briefly reach an old server that ignores `cursor` and returns history from the start; applying that page would move the cursor backwards. The deploy workflow also deploys the web app only after the API.
+- The loop also stops when a page leaves the cursor unchanged (an empty page that still claims `has_more`).
+- Every pulled entry is applied in server order, including this device's own. Skipping any entry can make devices diverge: panel updates carry only the changed fields, so a skipped entry can drop another device's change to a different field. The cost is a brief flicker: a re-pulled older own edit can overwrite a newer pending local edit until that edit is pushed and pulled back.
 - The stale-cursor workaround in `pull()` stays for now. Removing it is a follow-up once the fix has been in use for a while.
 
 ## Design: Stage 2, Second-Device Merge
@@ -87,6 +89,8 @@ If the account has no route of some type, the device's route of that type is kep
 
 - **Syncing `expense_tags`.** The links between expenses and tags are not synced today. The merge keeps local links consistent but does not start syncing them.
 - **Removing the stale-cursor workaround.** That is a follow-up after stage 1 has been in use.
+- **Pushes over 500 entries.** Push sends every unsynced entry in one request, and the server rejects more than 500, so a device with a larger backlog can never push. This predates stage 1. Stage 2 must batch pushes, because the merge's regenerated `create` entries can exceed 500.
+- **Index for paging.** Each pull page scans every `sync_log` row for the user. A D1 index on `(user_id, server_timestamp, id)` would make paging a range scan. That needs a D1 migration, which stage 1 avoids.
 
 ## Testing
 
@@ -98,9 +102,12 @@ If the account has no route of some type, the device's route of that type is kep
   - `since` behaves as before.
 - **Sync engine:**
   - A push does not move the cursor.
-  - `has_more` triggers another page from `next_cursor`.
-  - The device's own entries are not re-applied.
-  - A change another device pushed before this device's push still arrives.
+  - `has_more` triggers another page from the last applied entry.
+  - A change another device pushed before this device's push still arrives, with and without a stored cursor.
+  - A first sign-in with no expenses keeps the data it just pushed, and a device with no expenses keeps data it pushed on an earlier cycle (both go through the stale-cursor workaround).
+  - Concurrent edits to one record converge to the server's last write.
+  - Re-applying a `create` over a row that expenses reference keeps those expenses.
+  - A page that starts at or before the cursor is not applied.
   - A page that leaves the cursor unchanged ends the pull.
   - A failed page leaves the cursor at the last applied page.
 
