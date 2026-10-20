@@ -13,6 +13,7 @@ import {
 } from '../db/queries.js'
 import type { Database } from '../db/interface.js'
 import { createSyncEngine, type SyncStatus } from './sync-engine.js'
+import { MAX_PUSH_ENTRIES } from '@pancakemaker/shared'
 import { installFakeSyncServer } from './test-sync-server.js'
 import { getStoredSyncCursor, type SyncPullEntry } from './api-client.js'
 
@@ -188,6 +189,24 @@ describe('createSyncEngine', () => {
     const remaining = await getUnsyncedEntries(db)
     expect(remaining).toHaveLength(0)
     engine.stop()
+  })
+
+  it("pushes a backlog larger than the server's per-request limit", async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+    for (let i = 0; i <= MAX_PUSH_ENTRIES; i++) {
+      await logSyncEntry(db, userId, 'tags', `tag-${i}`, 'delete', { id: `tag-${i}` })
+    }
+    installFakeSyncServer()
+    const engine = createSyncEngine(db)
+
+    // #when
+    await engine.sync(true)
+    engine.stop()
+
+    // #then
+    expect(await getUnsyncedEntries(db)).toHaveLength(0)
   })
 
   it('handles push failure gracefully', async () => {

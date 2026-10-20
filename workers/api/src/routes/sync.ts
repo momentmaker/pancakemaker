@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { MAX_PUSH_ENTRIES } from '@pancakemaker/shared'
 import type { AppEnv } from '../types.js'
 import { requireAuth } from '../middleware/auth.js'
 
@@ -35,8 +36,8 @@ syncRoutes.post('/push', async (c) => {
     return c.json({ error: 'entries array is required' }, 400)
   }
 
-  if (body.entries.length > 500) {
-    return c.json({ error: 'Maximum 500 entries per push' }, 400)
+  if (body.entries.length > MAX_PUSH_ENTRIES) {
+    return c.json({ error: `Maximum ${MAX_PUSH_ENTRIES} entries per push` }, 400)
   }
 
   const db = c.env.DB

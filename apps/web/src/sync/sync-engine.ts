@@ -1,3 +1,4 @@
+import { MAX_PUSH_ENTRIES } from '@pancakemaker/shared'
 import type { Database } from '../db/interface.js'
 import { getUnsyncedEntries, markEntriesSynced, pruneOldSyncEntries } from '../db/queries.js'
 import {
@@ -63,26 +64,29 @@ export function createSyncEngine(db: Database): SyncEngine {
     console.log('[sync] push: %d unsynced entries', entries.length)
     if (entries.length === 0) return true
 
-    const result = await pushEntries(
-      entries.map((e) => ({
-        id: e.id,
-        table_name: e.table_name,
-        record_id: e.record_id,
-        action: e.action,
-        payload: e.payload,
-        local_timestamp: e.local_timestamp,
-      })),
-    )
+    for (let i = 0; i < entries.length; i += MAX_PUSH_ENTRIES) {
+      const batch = entries.slice(i, i + MAX_PUSH_ENTRIES)
+      const result = await pushEntries(
+        batch.map((e) => ({
+          id: e.id,
+          table_name: e.table_name,
+          record_id: e.record_id,
+          action: e.action,
+          payload: e.payload,
+          local_timestamp: e.local_timestamp,
+        })),
+      )
 
-    if (!result.success) {
-      console.log('[sync] push failed:', result.error)
-      return false
+      if (!result.success) {
+        console.log('[sync] push failed:', result.error)
+        return false
+      }
+
+      await markEntriesSynced(
+        db,
+        batch.map((e) => e.id),
+      )
     }
-
-    await markEntriesSynced(
-      db,
-      entries.map((e) => e.id),
-    )
     try {
       await pruneOldSyncEntries(db)
     } catch {
