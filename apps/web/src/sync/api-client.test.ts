@@ -7,6 +7,7 @@ import {
   storeSyncCursor,
   pushEntries,
   pullEntries,
+  cursorAfter,
   requestMagicLink,
   verifyToken,
   getStoredUserEmail,
@@ -148,7 +149,7 @@ describe('pullEntries', () => {
     expect(result.success).toBe(false)
   })
 
-  it('fetches entries with since parameter', async () => {
+  it('sends the cursor as a query parameter', async () => {
     // #given
     storeToken('test-jwt')
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
@@ -163,15 +164,14 @@ describe('pullEntries', () => {
     )
 
     // #when
-    const result = await pullEntries('2026-02-26T00:00:00.000Z')
+    await pullEntries('2026-02-26T00:00:00.000Z|e-1')
 
     // #then
-    expect(result.success).toBe(true)
     const [url] = fetchSpy.mock.calls[0]
-    expect(url).toContain('since=2026-02-26T00%3A00%3A00.000Z')
+    expect(url).toContain('cursor=2026-02-26T00%3A00%3A00.000Z%7Ce-1')
   })
 
-  it('fetches without since parameter when null', async () => {
+  it('omits the cursor when null', async () => {
     // #given
     storeToken('test-jwt')
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
@@ -190,7 +190,20 @@ describe('pullEntries', () => {
 
     // #then
     const [url] = fetchSpy.mock.calls[0]
-    expect(url).not.toContain('since=')
+    expect(url).not.toContain('cursor=')
+  })
+})
+
+describe('cursorAfter', () => {
+  it('builds a cursor from the entry timestamp and id', () => {
+    // #given
+    const entry = { server_timestamp: '2026-03-01T00:00:00.000Z', id: 'e-1' }
+
+    // #when
+    const cursor = cursorAfter(entry)
+
+    // #then
+    expect(cursor).toBe('2026-03-01T00:00:00.000Z|e-1')
   })
 })
 

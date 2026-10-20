@@ -16,7 +16,8 @@
     "src/**/*.test.tsx",
     "src/db/test-db.ts",
     "src/test-utils.tsx",
-    "src/test-setup.ts"
+    "src/test-setup.ts",
+    "src/sync/test-sync-server.ts"
   ],
   "references": [{ "path": "../../packages/shared" }]
 }

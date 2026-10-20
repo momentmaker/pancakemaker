@@ -50,7 +50,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   deploy-web:
-    needs: ci
+    needs: [ci, deploy-api]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

@@ -116,8 +116,25 @@ export async function pushEntries(entries: SyncPushEntry[]): Promise<ApiResult<P
   })
 }
 
-export async function pullEntries(since?: string | null): Promise<ApiResult<PullResult>> {
-  const params = since ? `?since=${encodeURIComponent(since)}` : ''
+export function cursorAfter(entry: Pick<SyncPullEntry, 'server_timestamp' | 'id'>): string {
+  return `${entry.server_timestamp}|${entry.id}`
+}
+
+export function isAfterCursor(
+  entry: Pick<SyncPullEntry, 'server_timestamp' | 'id'>,
+  cursor: string | null,
+): boolean {
+  if (!cursor) return true
+  const separator = cursor.lastIndexOf('|')
+  const timestamp = separator === -1 ? cursor : cursor.slice(0, separator)
+  const id = separator === -1 ? '' : cursor.slice(separator + 1)
+  return (
+    entry.server_timestamp > timestamp || (entry.server_timestamp === timestamp && entry.id > id)
+  )
+}
+
+export async function pullEntries(cursor?: string | null): Promise<ApiResult<PullResult>> {
+  const params = cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''
   return apiRequest<PullResult>(`/sync/pull${params}`)
 }
 
