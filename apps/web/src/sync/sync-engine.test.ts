@@ -1,7 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createTestDatabase } from '../db/test-db.js'
 import { runMigrations } from '../db/migrations.js'
-import { createUser, createRoute, logSyncEntry, getUnsyncedEntries } from '../db/queries.js'
+import {
+  createUser,
+  createRoute,
+  createCategory,
+  updateCategory,
+  logSyncEntry,
+  getUnsyncedEntries,
+  markEntriesSynced,
+} from '../db/queries.js'
 import type { Database } from '../db/interface.js'
 import { createSyncEngine, type SyncStatus } from './sync-engine.js'
 import { installFakeSyncServer } from './test-sync-server.js'
@@ -511,5 +519,41 @@ describe('sync cursor', () => {
 
     // #then
     expect(getStoredSyncCursor()).toBe('2026-01-02T00:00:00.000Z|entry-cat-2')
+  })
+
+  it("does not re-apply this device's own pushed entries", async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+    localStorage.setItem('pancakemaker_last_sync', '2026-01-01T00:00:00.000Z|')
+    const category = await createCategory(db, routeId, 'Older', '#ffffff', 0)
+    await logSyncEntry(db, userId, 'categories', category.id, 'update', {
+      id: category.id,
+      name: 'Older',
+    })
+    const [ownEntry] = await getUnsyncedEntries(db)
+    await markEntriesSynced(db, [ownEntry.id])
+    await updateCategory(db, category.id, { name: 'Newest' })
+    const server = installFakeSyncServer()
+    server.entries.push({
+      id: ownEntry.id,
+      table_name: ownEntry.table_name,
+      record_id: ownEntry.record_id,
+      action: ownEntry.action,
+      payload: ownEntry.payload,
+      local_timestamp: ownEntry.local_timestamp,
+      server_timestamp: '2026-01-02T00:00:00.000Z',
+    })
+    const engine = createSyncEngine(db)
+
+    // #when
+    await engine.sync(true)
+    engine.stop()
+
+    // #then
+    const rows = await db.query<{ name: string }>('SELECT name FROM categories WHERE id = ?', [
+      category.id,
+    ])
+    expect(rows[0].name).toBe('Newest')
   })
 })

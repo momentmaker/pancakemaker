@@ -4,6 +4,7 @@ import {
   markEntriesSynced,
   getLastSyncTimestamp,
   pruneOldSyncEntries,
+  getExistingSyncLogIds,
 } from '../db/queries.js'
 import {
   pushEntries,
@@ -131,11 +132,17 @@ export function createSyncEngine(db: Database): SyncEngine {
     entries: SyncPullEntry[],
     appliedTables: Set<string>,
   ): Promise<number> {
-    const sorted = [...entries].sort((a, b) => {
-      const pa = TABLE_PRIORITY[a.table_name] ?? 99
-      const pb = TABLE_PRIORITY[b.table_name] ?? 99
-      return pa - pb
-    })
+    const ownEntryIds = await getExistingSyncLogIds(
+      db,
+      entries.map((e) => e.id),
+    )
+    const sorted = entries
+      .filter((e) => !ownEntryIds.has(e.id))
+      .sort((a, b) => {
+        const pa = TABLE_PRIORITY[a.table_name] ?? 99
+        const pb = TABLE_PRIORITY[b.table_name] ?? 99
+        return pa - pb
+      })
 
     let applied = 0
     for (let i = 0; i < sorted.length; i += PULL_BATCH_SIZE) {
