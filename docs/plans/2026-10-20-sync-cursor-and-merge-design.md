@@ -89,7 +89,6 @@ If the account has no route of some type, the device's route of that type is kep
 
 - **Syncing `expense_tags`.** The links between expenses and tags are not synced today. The merge keeps local links consistent but does not start syncing them.
 - **Removing the stale-cursor workaround.** That is a follow-up after stage 1 has been in use.
-- **Pushes over 500 entries.** Push sends every unsynced entry in one request, and the server rejects more than 500, so a device with a larger backlog can never push. This predates stage 1. Stage 2 must batch pushes, because the merge's regenerated `create` entries can exceed 500.
 - **Index for paging.** Each pull page scans every `sync_log` row for the user. A D1 index on `(user_id, server_timestamp, id)` would make paging a range scan. That needs a D1 migration, which stage 1 avoids.
 
 ## Testing

@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import { MAX_PUSH_ENTRIES } from '@pancakemaker/shared'
 import type { SyncPullEntry, SyncPushEntry } from './api-client.js'
 
 export interface FakeSyncServer {
@@ -38,6 +39,9 @@ export function installFakeSyncServer(options: FakeSyncServerOptions = {}): Fake
 
     if (url.pathname === '/sync/push') {
       const { entries } = JSON.parse(String(init?.body)) as { entries: SyncPushEntry[] }
+      if (entries.length > MAX_PUSH_ENTRIES) {
+        return jsonResponse({ error: `Maximum ${MAX_PUSH_ENTRIES} entries per push` }, 400)
+      }
       const serverTimestamp = options.pushTimestamp ?? new Date().toISOString()
       for (const entry of entries) {
         server.entries.push({ ...entry, server_timestamp: serverTimestamp })

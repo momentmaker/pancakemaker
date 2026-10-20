@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { sign } from 'hono/jwt'
 import app from '../index.js'
+import { MAX_PUSH_ENTRIES } from '@pancakemaker/shared'
 import { createTestD1, type TestD1 } from '../test-d1.js'
 
 const JWT_SECRET = 'test-secret-key-for-testing'
@@ -82,5 +83,35 @@ describe('GET /sync/pull with since', () => {
 
     // #then
     expect(body.entries.map((e) => e.id)).toEqual(['after'])
+  })
+})
+
+describe('POST /sync/push', () => {
+  it('rejects more entries than the shared per-request limit', async () => {
+    // #given
+    const now = Math.floor(Date.now() / 1000)
+    const jwt = await sign({ sub: USER_ID, iat: now, exp: now + 3600 }, JWT_SECRET)
+    const entries = Array.from({ length: MAX_PUSH_ENTRIES + 1 }, (_, i) => ({
+      id: `e-${i}`,
+      table_name: 'tags',
+      record_id: `tag-${i}`,
+      action: 'delete',
+      payload: '{}',
+      local_timestamp: '2026-03-01T00:00:00.000Z',
+    }))
+
+    // #when
+    const res = await app.request(
+      '/sync/push',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entries }),
+      },
+      { DB: d1.db, JWT_SECRET },
+    )
+
+    // #then
+    expect(res.status).toBe(400)
   })
 })
