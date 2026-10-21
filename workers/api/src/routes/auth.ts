@@ -23,21 +23,25 @@ async function completeVerification(
     .bind(new Date().toISOString(), row.id)
     .run()
 
-  let user = await db
-    .prepare('SELECT id, email, base_currency FROM users WHERE email = ?')
-    .bind(row.email)
-    .first<{ id: string; email: string; base_currency: string }>()
+  const findUser = () =>
+    db
+      .prepare('SELECT id, email, base_currency FROM users WHERE email = ?')
+      .bind(row.email)
+      .first<{ id: string; email: string; base_currency: string }>()
 
+  let user = await findUser()
   if (!user) {
-    const userId = crypto.randomUUID()
     const now = new Date().toISOString()
     await db
       .prepare(
-        'INSERT INTO users (id, email, base_currency, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO users (id, email, base_currency, created_at, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING',
       )
-      .bind(userId, row.email, DEFAULT_CURRENCY, now, now)
+      .bind(crypto.randomUUID(), row.email, DEFAULT_CURRENCY, now, now)
       .run()
-    user = { id: userId, email: row.email, base_currency: DEFAULT_CURRENCY }
+    user = await findUser()
+  }
+  if (!user) {
+    throw new Error(`User for ${row.email} missing after insert`)
   }
 
   const jwt = await createToken(user.id, jwtSecret)
