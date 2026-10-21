@@ -59,4 +59,30 @@ describe('AuthVerify', () => {
     // #then
     expect(await screen.findByText(/sign in to that account first/i)).toBeTruthy()
   })
+
+  it('verifies the magic link once even when effects run twice', async () => {
+    // #given
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (String(input).includes('/auth/verify')) {
+        return new Response(
+          JSON.stringify({
+            token: 'jwt',
+            user: { id: 'server-user-id', email: 'real@email.com', baseCurrency: 'USD' },
+          }),
+          { status: 200 },
+        )
+      }
+      return new Response(JSON.stringify({ error: 'Server error' }), { status: 500 })
+    })
+
+    // #when
+    renderWithProviders(<AuthVerify />, '/auth/verify?token=magic', { reactStrictMode: true })
+    await screen.findByText(/failed to sync/i)
+
+    // #then
+    const verifyCalls = fetchSpy.mock.calls.filter(([input]) =>
+      String(input).includes('/auth/verify'),
+    )
+    expect(verifyCalls).toHaveLength(1)
+  })
 })

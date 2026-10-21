@@ -232,70 +232,6 @@ describe('createSyncEngine', () => {
     engine.stop()
   })
 
-  it('notifies dataListeners with all tables on stale cursor recovery', async () => {
-    // #given
-    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
-    localStorage.setItem('pancakemaker_jwt', 'test-token')
-    localStorage.setItem('pancakemaker_last_sync', '2025-01-01T00:00:00Z')
-
-    const serverTs = new Date().toISOString()
-    const remoteEntry = {
-      id: 'remote-1',
-      table_name: 'expenses',
-      record_id: 'exp-remote',
-      action: 'create',
-      payload: JSON.stringify({
-        id: 'exp-remote',
-        panel_id: 'p1',
-        category_id: 'c1',
-        amount: 500,
-        currency: 'USD',
-        description: null,
-        date: '2026-01-01',
-        is_recurring: 0,
-        recurrence_type: null,
-        recurrence_end_date: null,
-        recurrence_day: null,
-        source_expense_id: null,
-        created_at: serverTs,
-        updated_at: serverTs,
-        deleted_at: null,
-      }),
-      server_timestamp: serverTs,
-    }
-
-    vi.spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ entries: [], server_timestamp: serverTs, has_more: false }), {
-          status: 200,
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            entries: [remoteEntry],
-            server_timestamp: serverTs,
-            has_more: false,
-          }),
-          { status: 200 },
-        ),
-      )
-
-    const engine = createSyncEngine(db)
-    const receivedTables: Set<string>[] = []
-    engine.onDataReceived((tables) => receivedTables.push(tables))
-
-    // #when
-    await engine.sync()
-
-    // #then
-    expect(receivedTables).toHaveLength(1)
-    expect(receivedTables[0].has('expenses')).toBe(true)
-    expect(receivedTables[0].has('users')).toBe(true)
-    expect(receivedTables[0].has('panels')).toBe(true)
-    engine.stop()
-  })
-
   it('unsubscribes listeners correctly', () => {
     // #given
     const engine = createSyncEngine(db)
@@ -726,5 +662,49 @@ describe('sync cursor', () => {
       cursor: '2026-06-01T00:00:00.000Z|zzz',
       categories: [],
     })
+  })
+
+  it('keeps local data when a pull finds nothing new and there are no expenses', async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+    localStorage.setItem('pancakemaker_last_sync', '2026-01-02T00:00:00.000Z|entry-cat-remote')
+    const server = installFakeSyncServer()
+    server.entries.push(remoteCategoryEntry('cat-remote', '2026-01-02T00:00:00.000Z'))
+    const localOnly = await createCategory(db, routeId, 'Local only', '#ffffff', 5)
+    const engine = createSyncEngine(db)
+
+    // #when
+    await engine.sync(true)
+    engine.stop()
+
+    // #then
+    expect(await categoryIds()).toContain(localOnly.id)
+  })
+
+  it('pulls the full history once when the stored cursor predates compound cursors', async () => {
+    // #given
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    localStorage.setItem('pancakemaker_jwt', 'test-token')
+    localStorage.setItem('pancakemaker_last_sync', '2026-06-01T00:00:00.000Z')
+    const category = await createCategory(db, routeId, 'Food', '#ffffff', 0)
+    const panel = await createPanel(db, routeId, 'Daily', 'USD', 0, null, true)
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: category.id,
+      amount: 100,
+      currency: 'USD',
+      date: '2026-01-01',
+    })
+    const server = installFakeSyncServer()
+    server.entries.push(remoteCategoryEntry('cat-remote', '2026-01-02T00:00:00.000Z'))
+    const engine = createSyncEngine(db)
+
+    // #when
+    await engine.sync(true)
+    engine.stop()
+
+    // #then
+    expect(await categoryIds()).toContain('cat-remote')
   })
 })

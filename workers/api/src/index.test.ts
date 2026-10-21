@@ -214,7 +214,7 @@ describe('POST /auth/verify', () => {
   })
 
   it('creates new user and returns JWT for valid token', async () => {
-    // #given - first call returns auth_token, second returns null (no existing user)
+    // #given - auth token, then no existing user, then the user just inserted
     const firstFn = vi
       .fn()
       .mockResolvedValueOnce({
@@ -224,6 +224,7 @@ describe('POST /auth/verify', () => {
         used_at: null,
       })
       .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'user-new', email: 'new@example.com', base_currency: 'USD' })
 
     const testEnv = env({ first: firstFn })
 
@@ -364,6 +365,7 @@ describe('POST /auth/verify-code', () => {
         used_at: null,
       })
       .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'user-new', email: 'test@example.com', base_currency: 'USD' })
 
     const testEnv = env({ first: firstFn })
 
