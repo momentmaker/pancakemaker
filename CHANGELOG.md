@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.8.1] - 2026-10-20
+
+### Fixed
+
+- Signing in on a device that had custom categories or panels but no expenses no longer deletes them; unsynced changes are kept and uploaded.
+- A new account's default categories and panels now sync on first sign-in, so expenses logged afterwards reach your other devices.
+- Signing in on a second device that already has its own data now merges it into your account instead of duplicating the Personal and Business routes. Categories, panels and tags with the same name are combined, and only what the account lacks is uploaded.
+- Changes from another device are no longer skipped when this device also has changes to upload, and accounts with more than 1,000 changes now sync completely onto a new device.
+- Devices with more than 500 unsynced changes can sync again; before, every upload was rejected.
+- Expenses no longer go missing on other devices when they arrive before the category they belong to.
+- Signing in to a different account no longer copies the previous account's data into it. The device starts fresh, or, if it still has unsynced changes from the previous account, asks you to sign in to that account first so nothing is lost.
+- Devices without expenses no longer wipe and re-download their data on every sync.
+- Magic-link sign-in no longer fails when two sign-ins for a new email arrive at the same moment, and the sign-in page sends its verification once.
+- When an account already has duplicate routes, the app consistently shows the same one.
+
+### Changed
+
+- After updating, each device re-downloads its sync history once, which repairs anything earlier sync bugs made it miss.
+- Deploys now publish the web app only after the API is live.
+
 ## [1.8.0] - 2026-06-30
 
 ### Added
