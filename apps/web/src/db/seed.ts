@@ -34,6 +34,8 @@ async function seedRoutes(
   }
 }
 
+export const LOCAL_USER_EMAIL = 'local@pancakemaker.app'
+
 export async function seedDefaultData(
   db: Database,
   email: string,

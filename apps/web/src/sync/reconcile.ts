@@ -1,18 +1,50 @@
 import type { Database } from '../db/interface.js'
 import type { UserRow, CategoryRow, PanelRow, RouteRow } from '../db/queries.js'
 import { logSyncEntry } from '../db/queries.js'
-import { pullAllEntries } from './api-client.js'
+import { LOCAL_USER_EMAIL, seedDefaultData } from '../db/seed.js'
+import { clearSyncCursor, pullAllEntries } from './api-client.js'
 import { mergeIntoAccount, type ServerUser } from './merge.js'
+
+const RESET_TABLES = [
+  'expense_tags',
+  'expenses',
+  'recurring_templates',
+  'categories',
+  'panels',
+  'tags',
+  'routes',
+  'sync_log',
+  'users',
+]
+
+export class AccountSwitchBlockedError extends Error {
+  constructor() {
+    super(
+      'This device has changes from another account that have not synced yet. Sign in to that account first so they sync, then switch accounts.',
+    )
+    this.name = 'AccountSwitchBlockedError'
+  }
+}
 
 export async function reconcileAfterAuth(db: Database, serverUser: ServerUser): Promise<void> {
   const users = await db.query<UserRow>('SELECT * FROM users LIMIT 1')
-  const localUser = users[0]
+  let localUser = users[0]
   if (!localUser) return
   if (localUser.id === serverUser.id) return
+
+  const belongsToAnotherAccount = localUser.email !== LOCAL_USER_EMAIL
+  if (belongsToAnotherAccount && (await hasPendingChanges(db))) {
+    throw new AccountSwitchBlockedError()
+  }
 
   const history = await pullAllEntries()
   if (!history.success) {
     throw new Error(`Could not download account history: ${history.error}`)
+  }
+
+  if (belongsToAnotherAccount) {
+    console.log('[reconcile] device belonged to another account, resetting it')
+    localUser = await resetToFreshDevice(db, localUser.base_currency)
   }
 
   if (history.data.length === 0) {
@@ -22,6 +54,25 @@ export async function reconcileAfterAuth(db: Database, serverUser: ServerUser): 
     console.log('[reconcile] account has %d entries, merging this device', history.data.length)
     await mergeIntoAccount(db, localUser, serverUser, history.data)
   }
+}
+
+async function hasPendingChanges(db: Database): Promise<boolean> {
+  const rows = await db.query<{ count: number }>(
+    'SELECT COUNT(*) as count FROM sync_log WHERE synced_at IS NULL',
+  )
+  return rows[0].count > 0
+}
+
+async function resetToFreshDevice(db: Database, baseCurrency: string): Promise<UserRow> {
+  await db.transaction(async () => {
+    for (const table of RESET_TABLES) {
+      await db.execute(`DELETE FROM ${table}`)
+    }
+    await seedDefaultData(db, LOCAL_USER_EMAIL, baseCurrency)
+  })
+  clearSyncCursor()
+  const users = await db.query<UserRow>('SELECT * FROM users LIMIT 1')
+  return users[0]
 }
 
 async function reconcileFirstDevice(

@@ -9,7 +9,7 @@ import {
 } from '../sync/api-client'
 import { useSync } from '../sync/SyncContext'
 import { useDatabase } from '../db/DatabaseContext'
-import { reconcileAfterAuth } from '../sync/reconcile'
+import { reconcileAfterAuth, AccountSwitchBlockedError } from '../sync/reconcile'
 
 export function AuthVerify() {
   const [searchParams] = useSearchParams()
@@ -43,10 +43,14 @@ export function AuthVerify() {
       try {
         await reconcileAfterAuth(db, result.data.user)
         await forceSync()
-      } catch {
+      } catch (err) {
         clearToken()
         clearUserEmail()
-        setError('Failed to sync your data. Please sign in again.')
+        setError(
+          err instanceof AccountSwitchBlockedError
+            ? err.message
+            : 'Failed to sync your data. Please sign in again.',
+        )
         setSyncing(false)
         return
       }

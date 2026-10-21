@@ -19,7 +19,7 @@ import {
   type PanelRow,
 } from '../db/queries.js'
 import type { Database } from '../db/interface.js'
-import { reconcileAfterAuth } from './reconcile.js'
+import { reconcileAfterAuth, AccountSwitchBlockedError } from './reconcile.js'
 import { installFakeSyncServer, type FakeSyncServer } from './test-sync-server.js'
 import { getStoredSyncCursor } from './api-client.js'
 
@@ -763,5 +763,73 @@ describe('reconcileAfterAuth merging into an account with data', () => {
       [coffee.id],
     )
     expect(shown?.id).toBe(coffeeRows[0].route_id)
+  })
+})
+
+describe('reconcileAfterAuth switching accounts', () => {
+  async function deviceOfPreviousAccount(): Promise<{ expenseId: string }> {
+    await seedDefaultData(db, 'local@pancakemaker.app', 'USD')
+    await db.execute("UPDATE users SET email = 'previous@email.com'")
+    const expense = await createExpense(db, {
+      panelId: (await panelIn(db, 'personal', 'Daily'))!.id,
+      categoryId: (await categoryIn(db, 'personal', 'Meals'))!.id,
+      amount: 900,
+      currency: 'USD',
+      date: '2026-01-05',
+    })
+    return { expenseId: expense.id }
+  }
+
+  it("does not queue the previous account's expenses into an account with data", async () => {
+    // #given
+    const server = installFakeSyncServer()
+    await createAccount(server)
+    const { expenseId } = await deviceOfPreviousAccount()
+
+    // #when
+    await reconcileAfterAuth(db, SERVER_USER)
+
+    // #then
+    expect(await pendingFor(db, expenseId)).toEqual([])
+  })
+
+  it("does not keep the previous account's expenses when switching to an empty account", async () => {
+    // #given
+    installFakeSyncServer()
+    await deviceOfPreviousAccount()
+
+    // #when
+    await reconcileAfterAuth(db, SERVER_USER)
+
+    // #then
+    expect(await idsIn(db, 'expenses')).toEqual([])
+  })
+
+  it('refuses to switch while the previous account has unsynced changes', async () => {
+    // #given
+    installFakeSyncServer()
+    const { expenseId } = await deviceOfPreviousAccount()
+    const users = await db.query<UserRow>('SELECT * FROM users')
+    await logSyncEntry(db, users[0].id, 'expenses', expenseId, 'create', { id: expenseId })
+
+    // #when
+    const result = reconcileAfterAuth(db, SERVER_USER)
+
+    // #then
+    await expect(result).rejects.toBeInstanceOf(AccountSwitchBlockedError)
+  })
+
+  it("keeps the previous account's unsynced changes when it refuses to switch", async () => {
+    // #given
+    installFakeSyncServer()
+    const { expenseId } = await deviceOfPreviousAccount()
+    const users = await db.query<UserRow>('SELECT * FROM users')
+    await logSyncEntry(db, users[0].id, 'expenses', expenseId, 'create', { id: expenseId })
+
+    // #when
+    await reconcileAfterAuth(db, SERVER_USER).catch(() => {})
+
+    // #then
+    expect(await pendingFor(db, expenseId)).toEqual(['create'])
   })
 })
