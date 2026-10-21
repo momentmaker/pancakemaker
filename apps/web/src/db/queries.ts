@@ -508,9 +508,7 @@ export async function logSyncEntry(
 }
 
 export async function getUnsyncedEntries(db: Database): Promise<SyncLogRow[]> {
-  return db.query<SyncLogRow>(
-    'SELECT * FROM sync_log WHERE synced_at IS NULL ORDER BY id ASC',
-  )
+  return db.query<SyncLogRow>('SELECT * FROM sync_log WHERE synced_at IS NULL ORDER BY id ASC')
 }
 
 export async function markEntriesSynced(db: Database, ids: string[]): Promise<void> {
