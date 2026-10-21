@@ -42,7 +42,7 @@ Server-side merging was rejected because the server only relays logs and has no 
 - A page whose first entry is not after the cursor is not applied, and the pull fails like any other failed pull (backoff and retry). During a deploy, a new client can briefly reach an old server that ignores `cursor` and returns history from the start; applying that page would move the cursor backwards. The deploy workflow also deploys the web app only after the API.
 - The loop also stops when a page leaves the cursor unchanged (an empty page that still claims `has_more`).
 - Every pulled entry is applied in server order, including this device's own. Skipping any entry can make devices diverge: panel updates carry only the changed fields, so a skipped entry can drop another device's change to a different field. The cost is a brief flicker: a re-pulled older own edit can overwrite a newer pending local edit until that edit is pushed and pulled back.
-- The stale-cursor workaround in `pull()` stays for now. Removing it is a follow-up once the fix has been in use for a while.
+- The stale-cursor workaround in `pull()` is removed. With the cursor correct it only did harm: on every idle sync of a device with no expenses it wiped local data and replayed the history. A device still holding a bare-timestamp cursor from before compound cursors re-pulls the full history once instead, without wiping, which repairs anything the old cursor bugs made it miss.
 
 ## Design: Stage 2, Second-Device Merge
 
@@ -101,7 +101,6 @@ If the account has no route of some type, the device's route of that type is kep
 ## Out of Scope
 
 - **Syncing `expense_tags`.** The links between expenses and tags are not synced today. The merge keeps local links consistent but does not start syncing them.
-- **Removing the stale-cursor workaround.** That is a follow-up after stage 1 has been in use.
 - **Index for paging.** Each pull page scans every `sync_log` row for the user. A D1 index on `(user_id, server_timestamp, id)` would make paging a range scan. That needs a D1 migration, which stage 1 avoids.
 
 ## Testing

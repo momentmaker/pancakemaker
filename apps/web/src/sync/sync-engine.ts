@@ -7,12 +7,11 @@ import {
   getStoredToken,
   getStoredSyncCursor,
   storeSyncCursor,
-  clearSyncCursor,
   cursorAfter,
   isAfterCursor,
   type SyncPullEntry,
 } from './api-client.js'
-import { TABLE_PRIORITY, applyEntries, yieldToMain } from './apply-entries.js'
+import { applyEntries, yieldToMain } from './apply-entries.js'
 
 export type SyncStatus = 'synced' | 'pending' | 'offline' | 'local' | 'error'
 
@@ -29,6 +28,11 @@ const MAX_CONSECUTIVE_FAILURES = 3
 const SYNC_INTERVAL_MS = 60_000
 const SYNC_CATCHUP_MS = 2_000
 const BACKOFF_BASE_MS = 5_000
+
+function storedCompoundCursor(): string | null {
+  const stored = getStoredSyncCursor()
+  return stored?.includes('|') ? stored : null
+}
 
 export function createSyncEngine(db: Database): SyncEngine {
   let status: SyncStatus = !navigator.onLine ? 'offline' : getStoredToken() ? 'pending' : 'local'
@@ -81,47 +85,13 @@ export function createSyncEngine(db: Database): SyncEngine {
   }
 
   async function pull(): Promise<boolean> {
-    let cursor = getStoredSyncCursor()
+    let cursor = storedCompoundCursor()
     console.log('[sync] pull: cursor=%s', cursor)
-    let wipedLocalData = false
 
     let result = await pullEntries(cursor)
     if (!result.success) {
       console.log('[sync] pull failed:', result.error)
       return false
-    }
-
-    if (result.data.entries.length === 0 && cursor) {
-      const expenses = await db.query<{ id: string }>(
-        'SELECT id FROM expenses WHERE deleted_at IS NULL LIMIT 1',
-      )
-      if (expenses.length === 0) {
-        console.log('[sync] stale cursor detected, retrying full pull')
-        clearSyncCursor()
-        cursor = null
-        result = await pullEntries(null)
-        if (!result.success) return false
-
-        if (result.data.entries.length > 0) {
-          console.log(
-            '[sync] full pull got %d entries, wiping local seed data',
-            result.data.entries.length,
-          )
-          wipedLocalData = true
-          await db.execute('PRAGMA foreign_keys=OFF')
-          try {
-            await db.execute('DELETE FROM expense_tags')
-            await db.execute('DELETE FROM recurring_templates')
-            await db.execute('DELETE FROM expenses')
-            await db.execute('DELETE FROM categories')
-            await db.execute('DELETE FROM panels')
-            await db.execute('DELETE FROM routes')
-            await db.execute('DELETE FROM tags')
-          } finally {
-            await db.execute('PRAGMA foreign_keys=ON')
-          }
-        }
-      }
     }
 
     let received = 0
@@ -151,10 +121,9 @@ export function createSyncEngine(db: Database): SyncEngine {
 
     console.log('[sync] pull: applied %d/%d entries', applied, received)
 
-    if (applied > 0 || wipedLocalData) {
+    if (applied > 0) {
       await yieldToMain()
-      const tables = wipedLocalData ? new Set(Object.keys(TABLE_PRIORITY)) : appliedTables
-      for (const fn of dataListeners) fn(tables)
+      for (const fn of dataListeners) fn(appliedTables)
     }
 
     return true
