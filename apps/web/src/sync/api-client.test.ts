@@ -7,12 +7,14 @@ import {
   storeSyncCursor,
   pushEntries,
   pullEntries,
+  pullAllEntries,
   cursorAfter,
   requestMagicLink,
   verifyToken,
   getStoredUserEmail,
   storeUserEmail,
 } from './api-client.js'
+import { installFakeSyncServer } from './test-sync-server.js'
 
 beforeEach(() => {
   localStorage.clear()
@@ -311,5 +313,75 @@ describe('user email storage', () => {
 
   it('returns null when no email stored', () => {
     expect(getStoredUserEmail()).toBeNull()
+  })
+})
+
+describe('pullAllEntries', () => {
+  function tagDelete(id: string): {
+    id: string
+    table_name: string
+    record_id: string
+    action: string
+    payload: string
+    local_timestamp: string
+    server_timestamp: string
+  } {
+    return {
+      id,
+      table_name: 'tags',
+      record_id: id,
+      action: 'delete',
+      payload: '{}',
+      local_timestamp: '2026-01-02T00:00:00.000Z',
+      server_timestamp: '2026-01-02T00:00:00.000Z',
+    }
+  }
+
+  it('downloads every page of the account history', async () => {
+    // #given
+    storeToken('test-jwt')
+    const server = installFakeSyncServer({ pageSize: 2 })
+    server.entries.push(tagDelete('e-1'), tagDelete('e-2'), tagDelete('e-3'))
+
+    // #when
+    const result = await pullAllEntries()
+
+    // #then
+    expect(result.success && result.data.map((e) => e.id)).toEqual(['e-1', 'e-2', 'e-3'])
+  })
+
+  it('fails when a page fails', async () => {
+    // #given
+    storeToken('test-jwt')
+    const server = installFakeSyncServer({ pageSize: 2, failPullNumber: 2 })
+    server.entries.push(tagDelete('e-1'), tagDelete('e-2'), tagDelete('e-3'))
+
+    // #when
+    const result = await pullAllEntries()
+
+    // #then
+    expect(result.success).toBe(false)
+  })
+
+  it('fails when the server ignores the cursor', async () => {
+    // #given
+    storeToken('test-jwt')
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            entries: [tagDelete('e-1')],
+            server_timestamp: '2026-01-05T00:00:00.000Z',
+            has_more: true,
+          }),
+          { status: 200 },
+        ),
+    )
+
+    // #when
+    const result = await pullAllEntries()
+
+    // #then
+    expect(result.success).toBe(false)
   })
 })

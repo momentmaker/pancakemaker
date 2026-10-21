@@ -8,6 +8,16 @@ function now(): string {
   return new Date().toISOString()
 }
 
+let lastSyncEntryTime = 0
+let syncEntrySequence = 0
+
+function syncEntryId(): string {
+  const time = Math.max(Date.now(), lastSyncEntryTime)
+  syncEntrySequence = time === lastSyncEntryTime ? syncEntrySequence + 1 : 0
+  lastSyncEntryTime = time
+  return `${String(time).padStart(13, '0')}-${String(syncEntrySequence).padStart(6, '0')}-${uuid()}`
+}
+
 // --- Users ---
 
 export interface UserRow {
@@ -64,7 +74,10 @@ export async function createRoute(
 }
 
 export async function getRoutesByUser(db: Database, userId: string): Promise<RouteRow[]> {
-  return db.query<RouteRow>('SELECT * FROM routes WHERE user_id = ? ORDER BY type', [userId])
+  return db.query<RouteRow>(
+    'SELECT * FROM routes WHERE user_id = ? ORDER BY type, created_at, id',
+    [userId],
+  )
 }
 
 // --- Categories ---
@@ -490,14 +503,12 @@ export async function logSyncEntry(
 ): Promise<void> {
   await db.execute(
     'INSERT INTO sync_log (id, user_id, table_name, record_id, action, payload, local_timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [uuid(), userId, tableName, recordId, action, JSON.stringify(payload), now()],
+    [syncEntryId(), userId, tableName, recordId, action, JSON.stringify(payload), now()],
   )
 }
 
 export async function getUnsyncedEntries(db: Database): Promise<SyncLogRow[]> {
-  return db.query<SyncLogRow>(
-    'SELECT * FROM sync_log WHERE synced_at IS NULL ORDER BY local_timestamp ASC',
-  )
+  return db.query<SyncLogRow>('SELECT * FROM sync_log WHERE synced_at IS NULL ORDER BY id ASC')
 }
 
 export async function markEntriesSynced(db: Database, ids: string[]): Promise<void> {

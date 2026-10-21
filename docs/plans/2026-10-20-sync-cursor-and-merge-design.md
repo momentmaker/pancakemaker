@@ -48,12 +48,23 @@ Server-side merging was rejected because the server only relays logs and has no 
 
 ### Reconcile paths
 
-`reconcileAfterAuth` keeps its early returns (no local user, or local id equals server id). Otherwise it downloads the account's full history using stage 1 paging.
+`reconcileAfterAuth` keeps its early returns (no local user, or local id equals server id). Otherwise it downloads the account's full history once, using stage 1 paging, and picks the path from it. This replaces the two-step check (local data first, then a server probe) added in PR #8.
 
 - **Account history is empty: adopt.** This is the current `reconcileFirstDevice`: remap the user id and queue creates for the seeded rows.
 - **Account history is not empty: merge.**
 
 The wipe path (`reconcileSecondDevice`) and the `hasUserCreatedData` check are removed. A seed-only device is a merge in which nothing is kept.
+
+**Switching accounts.** Signing out only clears the token, so a device can still hold another account's data. Once a device has signed in, its local user no longer has the seed email (`local@pancakemaker.app`), so a different email means the device belonged to another account. In that case:
+
+- If the device has unsynced changes, sign-in is refused with a message to sign in to the previous account first, so the changes sync rather than being lost. This check runs before any network call.
+- Otherwise the device downloads the new account's history, then resets to a fresh seed in one transaction (the previous account's data is safe on its server), and continues as a fresh device: adopt if the new account is empty, merge otherwise. Nothing from the previous account reaches the new one.
+
+**Showing the right route.** The app lists routes by type, then age (`created_at`, `id`), so when an account already has duplicate routes of a type, the app shows the oldest one, which is the one the merge maps device rows to.
+
+### Ordered sync log ids
+
+Entries from one push share a `server_timestamp`, and their ids are random UUIDs. A pull page boundary that falls inside such a batch can put an expense on an earlier page than the category it references, and the expense then fails its foreign key check on the pulling device and is skipped for good. The merge pushes large dependent batches, and ordinary use hits this too on accounts with more than 1000 entries. Sync log ids therefore sort in creation order: `<13-digit ms timestamp>-<6-digit sequence>-<uuid>`, never decreasing even if the clock moves back. Parents are logged before their children, so they sort first.
 
 ### Shared apply
 
@@ -61,9 +72,9 @@ The wipe path (`reconcileSecondDevice`) and the `hasUserCreatedData` check are r
 
 ### Merge steps
 
-The download happens first and writes nothing. Everything after it runs in one `db.transaction`.
+The download happens first and writes nothing. Everything after it runs in one `db.transaction`. SQLite ignores `PRAGMA foreign_keys` inside a transaction, so every statement keeps foreign keys valid by ordering: insert the server user row before moving children to it, repoint references before deleting a row.
 
-1. Remap the local user id to the server user id.
+1. Move the device to the server user: insert the server user row (after renaming the old row's email to its id, in case the emails collide), move routes, tags and `sync_log` rows to it, then delete the old user row.
 2. Apply the downloaded entries to the local DB. The device's rows and the account's rows now sit side by side.
 3. Build an id map from device rows to account rows.
    - **Routes:** by `type`.
@@ -71,11 +82,13 @@ The download happens first and writes nothing. Everything after it runs in one `
    - **Panels:** within the mapped route, by name (trimmed, case-insensitive) and `recurrence_type`.
    - **Tags:** by name, trimmed and case-insensitive.
 4. For each matched device row, repoint its references (`expenses.panel_id`, `expenses.category_id`, `recurring_templates.panel_id`, `recurring_templates.category_id`, `expense_tags.tag_id`) to the account row, then delete the device row. Matching takes precedence over local edits: the account's version of a matched row wins, even if the device edited it.
-5. For each unmatched device row:
-   - **Keep it** if it is in use (referenced by a live expense or a recurring template) or user-touched (it has a pending `sync_log` entry). Kept rows are re-parented to the mapped account route. Kept panels get `is_default = 0`.
+5. For each unmatched device category or panel:
+   - **Keep it** if it is in use (referenced by any device expense, including soft-deleted ones, or a recurring template) or user-touched (it has a pending `sync_log` entry). Kept rows are re-parented to the mapped account route. Kept panels get `is_default = 0`.
    - **Delete it** otherwise. It is an untouched seed row the account doesn't have.
-6. Drop soft-deleted device expenses (they were never synced).
-7. Replace all pending `sync_log` entries with `create` entries for every kept device row: routes (only when the account lacked that type), categories, panels, tags and live expenses. Pending deletes are dropped, so a delete made before sign-in never reaches the account.
+   - Unmatched device tags are always kept: seeding creates no tags, so every device tag was made by the user.
+   - Rows under a device route that was kept (the account has no route of that type) are all kept.
+6. Keep every device expense, including soft-deleted ones. Generated recurring copies reference their source through `source_expense_id`, so dropping a soft-deleted source would break its live copies on other devices.
+7. Replace all pending `sync_log` entries with `create` entries for every kept device row, in dependency order: routes (only when the account lacked that type), categories, panels, tags, then all device expenses by `created_at`. Pending deletes are dropped, so a delete made before sign-in never reaches the account.
 8. Store the cursor of the download's last entry as the sync cursor.
 
 If the account has no route of some type, the device's route of that type is kept and pushed instead of matched.
@@ -121,7 +134,7 @@ If the account has no route of some type, the device's route of that type is kep
   - untouched unmatched seed row deleted;
   - kept panel loses `is_default`;
   - pre-sign-in delete not queued;
-  - soft-deleted expense dropped;
+  - soft-deleted device expense queued;
   - seed-only device ends identical to the account;
   - download failure leaves the local DB untouched.
 - **Two-device simulation:** both devices end with the same routes, categories and panels, and every expense from either device applies on the other.

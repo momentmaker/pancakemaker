@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, type ReactNode 
 import type { Database } from '../db/interface.js'
 import { DatabaseProvider } from '../db/DatabaseContext.js'
 import { runMigrations } from '../db/migrations.js'
-import { seedDefaultData, seedRoutesForUser } from '../db/seed.js'
+import { LOCAL_USER_EMAIL, seedDefaultData, seedRoutesForUser } from '../db/seed.js'
 import { clearSyncCursor } from '../sync/api-client.js'
 import {
   getRoutesByUser,
@@ -55,7 +55,7 @@ export function AppProvider({ createDatabase, children }: AppProviderProps) {
           let baseCurrency: string
 
           if (users.length === 0) {
-            const seed = await seedDefaultData(database, 'local@pancakemaker.app')
+            const seed = await seedDefaultData(database, LOCAL_USER_EMAIL)
             userId = seed.userId
             baseCurrency = 'USD'
           } else {

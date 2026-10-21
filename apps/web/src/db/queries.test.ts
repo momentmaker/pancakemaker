@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createTestDatabase } from './test-db.js'
 import { runMigrations } from './migrations.js'
 import {
@@ -321,6 +321,53 @@ describe('expense tags', () => {
 })
 
 describe('sync log', () => {
+  it('returns unsynced entries in id order even when the clock moved backwards', async () => {
+    // #given
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-03-02T00:00:00.000Z'))
+    await logSyncEntry(db, userId, 'expenses', 'parent', 'create', { id: 'parent' })
+    vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'))
+    await logSyncEntry(db, userId, 'expenses', 'child', 'create', { id: 'child' })
+    vi.useRealTimers()
+
+    // #when
+    const entries = await getUnsyncedEntries(db)
+
+    // #then
+    expect(entries.map((e) => e.record_id)).toEqual(['parent', 'child'])
+  })
+
+  it('gives sync entries ids that sort in the order they were logged', async () => {
+    // #given
+    const recordIds = Array.from({ length: 20 }, (_, i) => `r-${String(i).padStart(2, '0')}`)
+
+    // #when
+    for (const recordId of recordIds) {
+      await logSyncEntry(db, userId, 'expenses', recordId, 'create', { id: recordId })
+    }
+
+    // #then
+    const rows = await db.query<{ record_id: string }>('SELECT record_id FROM sync_log ORDER BY id')
+    expect(rows.map((r) => r.record_id)).toEqual(recordIds)
+  })
+
+  it('keeps sync entry ids increasing when the clock moves backwards', async () => {
+    // #given
+    const recordIds = Array.from({ length: 10 }, (_, i) => `r-${i}`)
+    const clock = vi.spyOn(Date, 'now')
+    recordIds.forEach((_, i) => clock.mockReturnValueOnce(9_000_000_000_000 - i * 1000))
+
+    // #when
+    for (const recordId of recordIds) {
+      await logSyncEntry(db, userId, 'expenses', recordId, 'create', { id: recordId })
+    }
+    clock.mockRestore()
+
+    // #then
+    const rows = await db.query<{ record_id: string }>('SELECT record_id FROM sync_log ORDER BY id')
+    expect(rows.map((r) => r.record_id)).toEqual(recordIds)
+  })
+
   it('logs and retrieves unsynced entries', async () => {
     // #given
     await logSyncEntry(db, userId, 'expenses', 'exp-1', 'create', { amount: 1000 })
