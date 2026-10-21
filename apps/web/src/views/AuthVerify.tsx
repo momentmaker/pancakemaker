@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import {
   verifyToken,
@@ -18,8 +18,12 @@ export function AuthVerify() {
   const [error, setError] = useState<string | null>(null)
   const [verifying, setVerifying] = useState(true)
   const [syncing, setSyncing] = useState(false)
+  const verificationStarted = useRef(false)
 
   useEffect(() => {
+    if (verificationStarted.current) return
+    verificationStarted.current = true
+
     const token = searchParams.get('token')
     if (!token) {
       setError('No token provided')

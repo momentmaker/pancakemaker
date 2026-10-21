@@ -32,7 +32,11 @@ export function getTestDb(): { db: Database; state: AppState } {
   return { db: cachedDb, state: cachedState }
 }
 
-export function renderWithProviders(ui: ReactNode, initialRoute = '/') {
+export function renderWithProviders(
+  ui: ReactNode,
+  initialRoute = '/',
+  options: { reactStrictMode?: boolean } = {},
+) {
   const { db, state } = getTestDb()
   return render(
     <DatabaseProvider database={db}>
@@ -42,5 +46,6 @@ export function renderWithProviders(ui: ReactNode, initialRoute = '/') {
         </SyncProvider>
       </AppStateContext.Provider>
     </DatabaseProvider>,
+    options,
   )
 }
