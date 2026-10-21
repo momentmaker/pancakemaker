@@ -55,6 +55,13 @@ Server-side merging was rejected because the server only relays logs and has no 
 
 The wipe path (`reconcileSecondDevice`) and the `hasUserCreatedData` check are removed. A seed-only device is a merge in which nothing is kept.
 
+**Switching accounts.** Signing out only clears the token, so a device can still hold another account's data. Once a device has signed in, its local user no longer has the seed email (`local@pancakemaker.app`), so a different email means the device belonged to another account. In that case:
+
+- If the device has unsynced changes, sign-in is refused with a message to sign in to the previous account first, so the changes sync rather than being lost. This check runs before any network call.
+- Otherwise the device downloads the new account's history, then resets to a fresh seed in one transaction (the previous account's data is safe on its server), and continues as a fresh device: adopt if the new account is empty, merge otherwise. Nothing from the previous account reaches the new one.
+
+**Showing the right route.** The app lists routes by type, then age (`created_at`, `id`), so when an account already has duplicate routes of a type, the app shows the oldest one, which is the one the merge maps device rows to.
+
 ### Ordered sync log ids
 
 Entries from one push share a `server_timestamp`, and their ids are random UUIDs. A pull page boundary that falls inside such a batch can put an expense on an earlier page than the category it references, and the expense then fails its foreign key check on the pulling device and is skipped for good. The merge pushes large dependent batches, and ordinary use hits this too on accounts with more than 1000 entries. Sync log ids therefore sort in creation order: `<13-digit ms timestamp>-<6-digit sequence>-<uuid>`, never decreasing even if the clock moves back. Parents are logged before their children, so they sort first.
@@ -127,7 +134,7 @@ If the account has no route of some type, the device's route of that type is kep
   - untouched unmatched seed row deleted;
   - kept panel loses `is_default`;
   - pre-sign-in delete not queued;
-  - soft-deleted expense dropped;
+  - soft-deleted device expense queued;
   - seed-only device ends identical to the account;
   - download failure leaves the local DB untouched.
 - **Two-device simulation:** both devices end with the same routes, categories and panels, and every expense from either device applies on the other.
