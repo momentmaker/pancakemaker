@@ -23,6 +23,7 @@ export interface CommandActions {
   focusExpense: (id: string) => void
   exportCsv: () => void
   exportJson: () => void
+  exportTaxEnvelope: () => void
 }
 
 // Builds the command palette's grouped index from live data — routes, both
@@ -190,6 +191,13 @@ export function useCommandIndex(actions: CommandActions): CommandItem[] {
       label: 'Export JSON',
       matchText: 'Export JSON data',
       run: actions.exportJson,
+    })
+    items.push({
+      id: 'action:export-tax',
+      group: 'Actions',
+      label: 'Export tax envelope (this year)',
+      matchText: 'Export tax envelope accountant business deductible',
+      run: actions.exportTaxEnvelope,
     })
     items.push({
       id: 'action:cheatsheet',

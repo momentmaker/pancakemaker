@@ -743,6 +743,12 @@ export interface ExportRow {
   panel: string
   route_type: string
   description: string
+  tags: string
+}
+
+export interface ExportRange {
+  from?: string
+  to?: string
 }
 
 // --- Dashboard ---
@@ -784,7 +790,13 @@ export async function getDashboardExpenses(
 
 // --- Export ---
 
-export async function getExportRows(db: Database, userId: string): Promise<ExportRow[]> {
+export async function getExportRows(
+  db: Database,
+  userId: string,
+  range: ExportRange = {},
+): Promise<ExportRow[]> {
+  const from = range.from || null
+  const to = range.to || null
   return db.query<ExportRow>(
     `SELECT
        e.date,
@@ -793,14 +805,24 @@ export async function getExportRows(db: Database, userId: string): Promise<Expor
        c.name AS category,
        p.name AS panel,
        r.type AS route_type,
-       COALESCE(e.description, '') AS description
+       COALESCE(e.description, '') AS description,
+       COALESCE((
+         SELECT GROUP_CONCAT(tag, ' ') FROM (
+           SELECT DISTINCT '+' || LOWER(t.name) AS tag
+           FROM expense_tags et JOIN tags t ON t.id = et.tag_id
+           WHERE et.expense_id = e.id
+           ORDER BY tag
+         )
+       ), '') AS tags
      FROM expenses e
      JOIN panels p ON e.panel_id = p.id
      JOIN categories c ON e.category_id = c.id
      JOIN routes r ON p.route_id = r.id
      WHERE r.user_id = ? AND e.deleted_at IS NULL
+       AND (? IS NULL OR e.date >= ?)
+       AND (? IS NULL OR e.date <= ?)
      ORDER BY e.date DESC, e.created_at DESC`,
-    [userId],
+    [userId, from, from, to, to],
   )
 }
 

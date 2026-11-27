@@ -4,7 +4,6 @@ import { SUPPORTED_CURRENCIES } from '@pancakemaker/shared'
 import { useAppState } from '../hooks/useAppState'
 import { useCategories } from '../hooks/useCategories'
 import { useDatabase } from '../db/DatabaseContext'
-import { exportData } from '../lib/export'
 import { Card } from '../components/Card'
 import { Button } from '../components/Button'
 import { Badge } from '../components/Badge'
@@ -12,6 +11,7 @@ import { FormInput, FormSelect } from '../components/FormInput'
 import { Modal } from '../components/Modal'
 import { SyncIndicator } from '../components/SyncIndicator'
 import { BackupCard } from '../components/BackupCard'
+import { ExportCard } from '../components/ExportCard'
 import { useSync } from '../sync/SyncContext'
 import { getStoredUserEmail, clearToken, clearUserEmail } from '../sync/api-client'
 
@@ -43,7 +43,6 @@ export function Settings() {
   const db = useDatabase()
   const navigate = useNavigate()
   const userEmail = getStoredUserEmail()
-  const [exporting, setExporting] = useState(false)
 
   const [editingCategory, setEditingCategory] = useState<{
     id: string
@@ -133,18 +132,6 @@ export function Settings() {
     [editingCategory, deleteConfirm, personalRouteId, personalCategories, businessCategories],
   )
 
-  const handleExport = useCallback(
-    async (format: 'csv' | 'json') => {
-      setExporting(true)
-      try {
-        await exportData(db, userId, format)
-      } finally {
-        setExporting(false)
-      }
-    },
-    [db, userId],
-  )
-
   const handleSignOut = useCallback(() => {
     clearToken()
     clearUserEmail()
@@ -225,29 +212,7 @@ export function Settings() {
         )}
       </Card>
 
-      {/* Export Data */}
-      <Card className="mt-4">
-        <h2 className="font-mono text-sm font-semibold text-text-secondary">Export Data</h2>
-        <p className="mt-1 text-xs text-text-muted">Download all your expenses.</p>
-        <div className="mt-3 flex gap-2">
-          <Button
-            variant="secondary"
-            data-fhint
-            onClick={() => handleExport('csv')}
-            disabled={exporting}
-          >
-            {exporting ? 'Exporting...' : 'Download CSV'}
-          </Button>
-          <Button
-            variant="secondary"
-            data-fhint
-            onClick={() => handleExport('json')}
-            disabled={exporting}
-          >
-            {exporting ? 'Exporting...' : 'Download JSON'}
-          </Button>
-        </div>
-      </Card>
+      <ExportCard />
 
       <BackupCard />
 
