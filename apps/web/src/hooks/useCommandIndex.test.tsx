@@ -4,6 +4,7 @@ import { useCommandIndex, type CommandActions } from './useCommandIndex.js'
 import { renderWithProviders, setupTestDb, getTestDb } from '../test-utils.js'
 import { getCategoriesByRoute, getPanelsByRoute, createExpense } from '../db/queries.js'
 import type { CommandItem } from '../lib/command-palette/types.js'
+import { tagExpense } from '../db/lenses.js'
 
 afterEach(cleanup)
 
@@ -66,6 +67,7 @@ describe('useCommandIndex', () => {
       'Business',
       'Settings',
       'Upcoming',
+      'Lenses',
     ])
     // Personal (10) + Business (8) seeded categories are both indexed.
     expect(items.filter((i) => i.group === 'Categories').length).toBe(18)
@@ -110,5 +112,19 @@ describe('useCommandIndex', () => {
     expect(actions.syncNow).toHaveBeenCalledOnce()
     expect(actions.exportCsv).toHaveBeenCalledOnce()
     expect(actions.openCheatsheet).toHaveBeenCalledOnce()
+  })
+
+  it('lists each lens and opens it', async () => {
+    // #given
+    const { db, state } = getTestDb()
+    await tagExpense(db, state.userId, expenseId, ['japan-trip'])
+
+    // #when
+    renderWithProviders(<Probe />, '/')
+    await waitFor(() => expect(items.some((i) => i.group === 'Lenses')).toBe(true))
+    find('+japan-trip').run()
+
+    // #then
+    expect(actions.navigate).toHaveBeenCalledWith('/lens/japan-trip')
   })
 })

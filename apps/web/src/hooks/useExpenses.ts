@@ -3,7 +3,6 @@ import { useDatabase } from '../db/DatabaseContext.js'
 import {
   getExpensesByPanel,
   getExpensesByCategory,
-  createExpense,
   updateExpense,
   softDeleteExpense,
   restoreExpense,
@@ -16,6 +15,9 @@ import {
   undoStopRecurring as undoStopRecurringInDb,
   type StopRecurringResult,
 } from '../db/recurring-generator.js'
+import { tagExpense, getTagsForExpenses } from '../db/lenses.js'
+import { saveNewExpense } from '../db/save-expense.js'
+import { splitTags } from '../lib/keyboard/capture.js'
 import { useAppState } from './useAppState.js'
 import { useSync } from '../sync/SyncContext.js'
 
@@ -33,6 +35,7 @@ export function useExpenses(params: UseExpensesParams | string) {
   const { triggerSync, markPending, tableVersions } = useSync()
   const expenseVersion = tableVersions['expenses'] ?? 0
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
+  const [tagsByExpense, setTagsByExpense] = useState<Map<string, string[]>>(new Map())
   const [loading, setLoading] = useState(false)
   const queryKey = `${normalized.panelId}-${normalized.categoryId}-${normalized.month}`
   const lastQueryKeyRef = useRef('')
@@ -61,24 +64,37 @@ export function useExpenses(params: UseExpensesParams | string) {
         rows = []
       }
       setExpenses(rows)
+      setTagsByExpense(
+        await getTagsForExpenses(
+          db,
+          rows.map((r) => r.id),
+        ),
+      )
     } finally {
       setLoading(false)
       lastQueryKeyRef.current = queryKey
     }
   }, [db, normalized.panelId, normalized.categoryId, normalized.month, queryKey, expenseVersion])
 
+  // `+tags` typed into a note become tags; the stored note keeps the rest.
+  const applyTags = useCallback(
+    async (expenseId: string, tags: string[]) => {
+      if (tags.length === 0) return
+      await tagExpense(db, userId, expenseId, tags)
+      const fresh = await getTagsForExpenses(db, [expenseId])
+      setTagsByExpense((prev) => new Map(prev).set(expenseId, fresh.get(expenseId) ?? []))
+    },
+    [db, userId],
+  )
+
   const add = useCallback(
     async (input: CreateExpenseInput) => {
-      const expense = await createExpense(db, input)
+      const expense = await saveNewExpense(db, userId, input)
       setExpenses((prev) => [expense, ...prev])
-      await logSyncEntry(
-        db,
-        userId,
-        'expenses',
-        expense.id,
-        'create',
-        expense as unknown as Record<string, unknown>,
-      )
+      const fresh = await getTagsForExpenses(db, [expense.id])
+      if (fresh.has(expense.id)) {
+        setTagsByExpense((prev) => new Map(prev).set(expense.id, fresh.get(expense.id)!))
+      }
       markPending()
       triggerSync()
       return expense
@@ -87,8 +103,16 @@ export function useExpenses(params: UseExpensesParams | string) {
   )
 
   const update = useCallback(
-    async (id: string, updates: Partial<CreateExpenseInput>) => {
+    async (id: string, rawUpdates: Partial<CreateExpenseInput>) => {
+      let updates = rawUpdates
+      let tags: string[] = []
+      if (rawUpdates.description !== undefined) {
+        const split = splitTags(rawUpdates.description)
+        tags = split.tags
+        updates = { ...rawUpdates, description: split.text || undefined }
+      }
       const updated = await updateExpense(db, id, updates)
+      await applyTags(id, tags)
       if (updated) {
         setExpenses((prev) => prev.map((e) => (e.id === id ? updated : e)))
         await logSyncEntry(
@@ -104,7 +128,7 @@ export function useExpenses(params: UseExpensesParams | string) {
       }
       return updated
     },
-    [db, userId, markPending, triggerSync],
+    [db, userId, markPending, triggerSync, applyTags],
   )
 
   const remove = useCallback(
@@ -179,6 +203,7 @@ export function useExpenses(params: UseExpensesParams | string) {
 
   return {
     expenses,
+    tagsByExpense,
     loading,
     load,
     add,

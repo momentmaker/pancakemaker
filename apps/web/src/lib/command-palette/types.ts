@@ -1,9 +1,16 @@
-export type CommandGroup = 'Routes' | 'Categories' | 'Panels' | 'Recent expenses' | 'Actions'
+export type CommandGroup =
+  | 'Routes'
+  | 'Categories'
+  | 'Panels'
+  | 'Lenses'
+  | 'Recent expenses'
+  | 'Actions'
 
 export const COMMAND_GROUP_ORDER: CommandGroup[] = [
   'Routes',
   'Categories',
   'Panels',
+  'Lenses',
   'Recent expenses',
   'Actions',
 ]

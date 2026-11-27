@@ -6,6 +6,7 @@ import { useSync } from '../sync/SyncContext'
 import { useCategories } from './useCategories'
 import { usePanels } from './usePanels'
 import { getRecentExpenses, type RecentExpenseRow } from '../db/queries'
+import { getLenses, type LensSummary } from '../db/lenses'
 import { navItems } from '../components/nav-items'
 import { formatCurrency } from '../lib/format'
 import type { CommandItem } from '../lib/command-palette/types'
@@ -48,6 +49,20 @@ export function useCommandIndex(actions: CommandActions): CommandItem[] {
     loadBusinessPanels()
   }, [loadPersonalCats, loadBusinessCats, loadPersonalPanels, loadBusinessPanels])
 
+  const [lenses, setLenses] = useState<LensSummary[]>([])
+  useEffect(() => {
+    let cancelled = false
+    getLenses(db, userId)
+      .then((rows) => {
+        if (!cancelled) setLenses(rows)
+      })
+      // A failed load leaves the lenses group empty; the palette stays usable.
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [db, userId, expenseVersion])
+
   const [recent, setRecent] = useState<RecentExpenseRow[]>([])
   useEffect(() => {
     let cancelled = false
@@ -83,6 +98,13 @@ export function useCommandIndex(actions: CommandActions): CommandItem[] {
       matchText: 'Upcoming bills subscriptions renewals recurring',
       run: () => actions.navigate('/upcoming'),
     })
+    items.push({
+      id: 'route:/lenses',
+      group: 'Routes',
+      label: 'Lenses',
+      matchText: 'Lenses tags projects trips',
+      run: () => actions.navigate('/lenses'),
+    })
 
     const routeCats = [
       { routeType: 'personal' as const, label: 'Personal', cats: personalCats.categories },
@@ -116,6 +138,17 @@ export function useCommandIndex(actions: CommandActions): CommandItem[] {
           run: () => actions.navigate(`/${routeType}/panel/${p.id}`),
         })
       }
+    }
+
+    for (const lens of lenses) {
+      items.push({
+        id: `lens:${lens.name}`,
+        group: 'Lenses',
+        label: `+${lens.name}`,
+        sublabel: `${lens.count} ${lens.count === 1 ? 'expense' : 'expenses'}`,
+        matchText: `${lens.name} lens tag`,
+        run: () => actions.navigate(`/lens/${encodeURIComponent(lens.name)}`),
+      })
     }
 
     for (const e of recent) {
@@ -180,6 +213,7 @@ export function useCommandIndex(actions: CommandActions): CommandItem[] {
     businessCats.categories,
     personalPanels.panels,
     businessPanels.panels,
+    lenses,
     recent,
   ])
 }

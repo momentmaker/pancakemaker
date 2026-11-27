@@ -7,6 +7,7 @@ export interface ParsedCapture {
   amount: number | null
   note: string
   categoryToken: string | null
+  tags: string[]
 }
 
 export type CategoryResolution =
@@ -21,14 +22,34 @@ function parseAmount(token: string): number | null {
   return n
 }
 
-// Grammar: <amount> <note...> [#category]. The amount is the leading token
+// Grammar: <amount> <note...> [+tag...] [#category]. `+tag` tokens may sit
+// anywhere after the amount; they are lowercased and pulled out of the note. The amount is the leading token
 // (a `$` prefix and thousands separators are stripped); the category is only
 // the trailing token when it starts with `#`, so notes may contain `#` freely;
 // the note is everything in between (and includes the leading token when it is
 // not a valid amount, so `:coffee` keeps "coffee" as the note).
+function splitTagTokens(tokens: readonly string[]): { text: string; tags: string[] } {
+  const tags: string[] = []
+  const rest: string[] = []
+  for (const token of tokens) {
+    if (token.startsWith('+') && token.length > 1) {
+      const tag = token.slice(1).toLowerCase()
+      if (!tags.includes(tag)) tags.push(tag)
+    } else {
+      rest.push(token)
+    }
+  }
+  return { text: rest.join(' '), tags }
+}
+
+// Pulls `+tag` tokens out of free text such as an expense note.
+export function splitTags(text: string): { text: string; tags: string[] } {
+  return splitTagTokens(text.trim().split(/\s+/).filter(Boolean))
+}
+
 export function parseCaptureLine(input: string): ParsedCapture {
   const tokens = input.trim().split(/\s+/).filter(Boolean)
-  if (tokens.length === 0) return { amount: null, note: '', categoryToken: null }
+  if (tokens.length === 0) return { amount: null, note: '', categoryToken: null, tags: [] }
 
   let categoryToken: string | null = null
   let end = tokens.length
@@ -40,9 +61,9 @@ export function parseCaptureLine(input: string): ParsedCapture {
 
   const amount = parseAmount(tokens[0])
   const noteStart = amount !== null ? 1 : 0
-  const note = tokens.slice(noteStart, end).join(' ')
+  const { text, tags } = splitTagTokens(tokens.slice(noteStart, end))
 
-  return { amount, note, categoryToken }
+  return { amount, note: text, categoryToken, tags }
 }
 
 export function resolveCategory(token: string, categories: CategoryRow[]): CategoryResolution {
@@ -54,8 +75,21 @@ export function resolveCategory(token: string, categories: CategoryRow[]): Categ
 }
 
 export type CaptureDecision =
-  | { kind: 'create'; panel: PanelRow; category: CategoryRow; amount: number; note: string }
-  | { kind: 'prefill'; amount: number | null; note: string; categoryToken: string | null }
+  | {
+      kind: 'create'
+      panel: PanelRow
+      category: CategoryRow
+      amount: number
+      note: string
+      tags: string[]
+    }
+  | {
+      kind: 'prefill'
+      amount: number | null
+      note: string
+      categoryToken: string | null
+      tags: string[]
+    }
 
 // One-shot create fires only when the line gives an amount worth at least one
 // cent, a uniquely-resolved category (from the #token, or else from history via
@@ -74,6 +108,7 @@ export function decideCapture(
     amount: parsed.amount,
     note: parsed.note,
     categoryToken: parsed.categoryToken,
+    tags: parsed.tags,
   }
 
   if (parsed.amount === null || !defaultPanel) return prefill
@@ -95,5 +130,6 @@ export function decideCapture(
     category,
     amount: parsed.amount,
     note: parsed.note,
+    tags: parsed.tags,
   }
 }

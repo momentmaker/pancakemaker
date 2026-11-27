@@ -44,6 +44,12 @@ export async function applyRemoteEntry(db: Database, entry: SyncPullEntry): Prom
         new Date().toISOString(),
         entry.record_id,
       ])
+    } else if (table === 'expense_tags') {
+      // Tag links have a composite key and no id column.
+      await db.execute('DELETE FROM expense_tags WHERE expense_id = ? AND tag_id = ?', [
+        payload.expense_id,
+        payload.tag_id,
+      ])
     } else {
       await db.execute(`DELETE FROM ${table} WHERE id = ?`, [entry.record_id])
     }

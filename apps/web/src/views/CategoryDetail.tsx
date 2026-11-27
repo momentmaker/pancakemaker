@@ -67,6 +67,7 @@ export function CategoryDetail() {
   const { categories, load: loadCategories } = useCategories(routeId)
   const {
     expenses,
+    tagsByExpense,
     loading,
     load,
     add,
@@ -367,6 +368,8 @@ export function CategoryDetail() {
                                 onDuplicate={handleDuplicate}
                                 onDelete={handleRemove}
                                 onStopRecurring={handleStopRecurring}
+                                tags={tagsByExpense.get(expense.id)}
+                                tagLinkPrefix={prefix}
                                 cursored={activeId === expense.id}
                               />
                             ))}

@@ -9,6 +9,7 @@ import { runMigrations } from '../db/migrations.js'
 import { seedDefaultData } from '../db/seed.js'
 import { getPanelsByRoute, getCategoriesByRoute, createExpense } from '../db/queries.js'
 import { generateRecurringExpenses } from '../db/recurring-generator.js'
+import { getTagsForExpenses } from '../db/lenses.js'
 import { useExpenses } from './useExpenses.js'
 import type { Database } from '../db/interface.js'
 
@@ -229,6 +230,56 @@ describe('useExpenses', () => {
       dates: result.current.expenses.map((e) => e.date).sort(),
       updateCount: updates.length,
     }).toEqual({ dates: ['2026-01-01', '2026-02-01', '2026-03-01'], updateCount: 4 })
+  })
+
+  it('turns +tags in a new note into tags and keeps the note clean', async () => {
+    // #given
+    const { result } = renderHook(() => useExpenses(panelId), { wrapper })
+
+    // #when
+    let expenseId = ''
+    await act(async () => {
+      const expense = await result.current.add({
+        panelId,
+        categoryId,
+        amount: 1500,
+        currency: 'USD',
+        date: '2026-01-15',
+        description: 'ramen +japan-trip',
+      })
+      expenseId = expense.id
+    })
+
+    // #then
+    expect({
+      description: result.current.expenses[0].description,
+      tags: (await getTagsForExpenses(db, [expenseId])).get(expenseId),
+    }).toEqual({ description: 'ramen', tags: ['japan-trip'] })
+  })
+
+  it('tags an expense when +tags are added while editing its note', async () => {
+    // #given
+    const { result } = renderHook(() => useExpenses(panelId), { wrapper })
+    let expenseId = ''
+    await act(async () => {
+      const expense = await result.current.add({
+        panelId,
+        categoryId,
+        amount: 1500,
+        currency: 'USD',
+        date: '2026-01-15',
+        description: 'ramen',
+      })
+      expenseId = expense.id
+    })
+
+    // #when
+    await act(async () => {
+      await result.current.update(expenseId, { description: 'ramen +japan-trip' })
+    })
+
+    // #then
+    expect((await getTagsForExpenses(db, [expenseId])).get(expenseId)).toEqual(['japan-trip'])
   })
 
   it('loads expenses by category', async () => {

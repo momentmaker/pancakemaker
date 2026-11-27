@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseCaptureLine, resolveCategory, decideCapture } from './capture.js'
+import { parseCaptureLine, resolveCategory, decideCapture, splitTags } from './capture.js'
 import type { CategoryRow, PanelRow } from '../../db/queries'
 
 function cat(id: string, name: string): CategoryRow {
@@ -16,6 +16,7 @@ describe('parseCaptureLine', () => {
       amount: 12.5,
       note: 'coffee',
       categoryToken: 'food',
+      tags: [],
     })
   })
 
@@ -24,6 +25,7 @@ describe('parseCaptureLine', () => {
       amount: 1250,
       note: 'rent',
       categoryToken: 'housing',
+      tags: [],
     })
   })
 
@@ -32,6 +34,7 @@ describe('parseCaptureLine', () => {
       amount: 12,
       note: 'lunch',
       categoryToken: null,
+      tags: [],
     })
   })
 
@@ -40,11 +43,17 @@ describe('parseCaptureLine', () => {
       amount: 12.5,
       note: '',
       categoryToken: 'food',
+      tags: [],
     })
   })
 
   it('parses a bare amount', () => {
-    expect(parseCaptureLine('12.50')).toEqual({ amount: 12.5, note: '', categoryToken: null })
+    expect(parseCaptureLine('12.50')).toEqual({
+      amount: 12.5,
+      note: '',
+      categoryToken: null,
+      tags: [],
+    })
   })
 
   it('keeps the whole text as the note when there is no valid amount (AE5)', () => {
@@ -52,6 +61,7 @@ describe('parseCaptureLine', () => {
       amount: null,
       note: 'coffee',
       categoryToken: null,
+      tags: [],
     })
   })
 
@@ -66,11 +76,53 @@ describe('parseCaptureLine', () => {
       amount: 12,
       note: 'lunch #2 with bob',
       categoryToken: null,
+      tags: [],
     })
   })
 
   it('returns empty fields for blank input', () => {
-    expect(parseCaptureLine('   ')).toEqual({ amount: null, note: '', categoryToken: null })
+    expect(parseCaptureLine('   ')).toEqual({
+      amount: null,
+      note: '',
+      categoryToken: null,
+      tags: [],
+    })
+  })
+})
+
+describe('parseCaptureLine +tags', () => {
+  it('pulls +tags out of the note', () => {
+    expect(parseCaptureLine('45 ramen +japan-trip #meals')).toEqual({
+      amount: 45,
+      note: 'ramen',
+      categoryToken: 'meals',
+      tags: ['japan-trip'],
+    })
+  })
+
+  it('accepts several tags anywhere after the amount, lowercased and once each', () => {
+    expect(parseCaptureLine('12 +Japan lunch +work +japan').tags).toEqual(['japan', 'work'])
+  })
+
+  it('reads a leading +number as the amount, not a tag', () => {
+    expect(parseCaptureLine('+5 tip').amount).toBe(5)
+  })
+
+  it('ignores a lone plus sign', () => {
+    expect(parseCaptureLine('5 a + b').note).toBe('a + b')
+  })
+})
+
+describe('splitTags', () => {
+  it('separates +tags from the rest of a note', () => {
+    expect(splitTags('ramen near the station +japan-trip +Food')).toEqual({
+      text: 'ramen near the station',
+      tags: ['japan-trip', 'food'],
+    })
+  })
+
+  it('returns a note without tags unchanged', () => {
+    expect(splitTags('just coffee')).toEqual({ text: 'just coffee', tags: [] })
   })
 })
 
@@ -107,6 +159,7 @@ describe('decideCapture', () => {
       category: categories[0],
       amount: 12.5,
       note: 'coffee',
+      tags: [],
     })
   })
 
@@ -118,6 +171,7 @@ describe('decideCapture', () => {
       category: categories[0],
       amount: 4.5,
       note: 'coffee',
+      tags: [],
     })
   })
 
@@ -137,6 +191,7 @@ describe('decideCapture', () => {
       amount: 12.5,
       note: 'coffee',
       categoryToken: null,
+      tags: [],
     })
   })
 
@@ -158,6 +213,7 @@ describe('decideCapture', () => {
       amount: null,
       note: 'coffee',
       categoryToken: null,
+      tags: [],
     })
   })
 

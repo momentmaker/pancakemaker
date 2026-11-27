@@ -1,6 +1,7 @@
 import { createRef } from 'react'
 import { render, screen, act, cleanup, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import { ExpenseRow, type ExpenseRowHandle } from './ExpenseRow.js'
 import type { ExpenseRow as ExpenseRowType } from '../db/queries'
 
@@ -197,5 +198,24 @@ describe('ExpenseRow delete button', () => {
       deleted: onDelete.mock.calls.length,
       offersFuture: screen.queryByRole('button', { name: 'This & future' }) !== null,
     }).toEqual({ deleted: 0, offersFuture: true })
+  })
+})
+
+describe('ExpenseRow tags', () => {
+  it('links each tag to its lens', () => {
+    render(
+      <MemoryRouter>
+        <ExpenseRow
+          expense={makeExpense()}
+          onUpdateAmount={vi.fn()}
+          onDelete={vi.fn()}
+          tags={['japan-trip']}
+          tagLinkPrefix="/demo/chaos-goblin"
+        />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('link', { name: '+japan-trip' }).getAttribute('href')).toBe(
+      '/demo/chaos-goblin/lens/japan-trip',
+    )
   })
 })

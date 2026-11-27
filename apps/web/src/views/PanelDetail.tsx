@@ -65,6 +65,7 @@ export function PanelDetail() {
   const [trend, setTrend] = useState<MonthlyTotal[]>([])
   const {
     expenses,
+    tagsByExpense,
     loading,
     load,
     add,
@@ -404,6 +405,8 @@ export function PanelDetail() {
                       onDuplicate={handleDuplicate}
                       onDelete={handleRemove}
                       onStopRecurring={handleStopRecurring}
+                      tags={tagsByExpense.get(expense.id)}
+                      tagLinkPrefix={prefix}
                       cursored={activeId === expense.id}
                     />
                   ))}

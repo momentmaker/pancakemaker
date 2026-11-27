@@ -5,14 +5,13 @@ import { useDatabase } from '../db/DatabaseContext'
 import { useSync } from '../sync/SyncContext'
 import { useRoutePrefix } from '../demo/demo-context'
 import { useCapture } from '../hooks/useCapture'
+import { saveNewExpense } from '../db/save-expense'
 import { useDashboardStats, type BurnRate } from '../hooks/useDashboardStats'
 import { useMonthScrub } from '../hooks/useMonthScrub'
 import { addMonths } from '../lib/month'
 import {
   getPanelsByRoute,
   getCategoriesByRoute,
-  createExpense,
-  logSyncEntry,
   type PanelRow,
   type CategoryRow,
 } from '../db/queries'
@@ -358,15 +357,7 @@ export function Dashboard() {
       date: string
       description?: string
     }) => {
-      const expense = await createExpense(db, data)
-      await logSyncEntry(
-        db,
-        userId,
-        'expenses',
-        expense.id,
-        'create',
-        expense as unknown as Record<string, unknown>,
-      )
+      await saveNewExpense(db, userId, data)
       markPending()
       triggerSync()
       reload()
