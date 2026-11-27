@@ -4,6 +4,8 @@ import { useDatabase } from '../db/DatabaseContext'
 import { useAppState } from '../hooks/useAppState'
 import { useRoutePrefix } from '../demo/demo-context'
 import { useExpenses } from '../hooks/useExpenses'
+import { useUndo } from '../hooks/useUndo'
+import { deletedMessage, stoppedMessage } from '../lib/undo-messages'
 import { useCategories } from '../hooks/useCategories'
 import { useExpenseListCursor } from '../hooks/useExpenseListCursor'
 import { useMonthScrub } from '../hooks/useMonthScrub'
@@ -61,7 +63,17 @@ export function PanelDetail() {
   }, [location.key])
   useMonthScrub((delta) => setMonth((m) => addMonths(m, delta)))
   const [trend, setTrend] = useState<MonthlyTotal[]>([])
-  const { expenses, loading, load, add, update, remove, stopRecurring } = useExpenses({
+  const {
+    expenses,
+    loading,
+    load,
+    add,
+    update,
+    remove,
+    restore,
+    stopRecurring,
+    undoStopRecurring,
+  } = useExpenses({
     panelId: panelId!,
     month,
   })
@@ -155,20 +167,41 @@ export function PanelDetail() {
     [handleAdd],
   )
 
+  const undo = useUndo()
+  const refreshTrend = useCallback(() => {
+    getPanelMonthlyTrend(db, panelId!, month).then(setTrend)
+  }, [db, panelId, month])
+
   const handleRemove = useCallback(
     async (id: string) => {
+      const expense = expenses.find((e) => e.id === id)
       await remove(id)
-      getPanelMonthlyTrend(db, panelId!, month).then(setTrend)
+      refreshTrend()
+      if (!expense) return
+      undo?.offerUndo({
+        message: deletedMessage(expense),
+        undo: async () => {
+          await restore(id)
+          refreshTrend()
+        },
+      })
     },
-    [remove, db, panelId, month],
+    [expenses, remove, restore, refreshTrend, undo],
   )
 
   const handleStopRecurring = useCallback(
     async (expense: (typeof expenses)[0]) => {
-      await stopRecurring(expense)
-      getPanelMonthlyTrend(db, panelId!, month).then(setTrend)
+      const stopped = await stopRecurring(expense)
+      refreshTrend()
+      undo?.offerUndo({
+        message: stoppedMessage(expense),
+        undo: async () => {
+          await undoStopRecurring(stopped)
+          refreshTrend()
+        },
+      })
     },
-    [stopRecurring, db, panelId, month],
+    [stopRecurring, undoStopRecurring, refreshTrend, undo],
   )
 
   const startEditing = useCallback(() => {

@@ -14,6 +14,7 @@ export const KEYBOARD_BINDINGS: KeyBinding[] = [
   { keys: 'Enter / o', description: 'Open or edit the cursored item' },
   { keys: 'd', description: 'Delete the cursored expense' },
   { keys: 'y y', description: 'Duplicate the cursored expense' },
+  { keys: 'u', description: 'Undo the last delete' },
   { keys: 'g d', description: 'Go to Dashboard' },
   { keys: 'g p', description: 'Go to Personal' },
   { keys: 'g b', description: 'Go to Business' },

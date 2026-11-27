@@ -415,6 +415,15 @@ export async function softDeleteExpense(db: Database, id: string): Promise<void>
   ])
 }
 
+export async function restoreExpense(db: Database, id: string): Promise<ExpenseRow | null> {
+  await db.execute('UPDATE expenses SET deleted_at = NULL, updated_at = ? WHERE id = ?', [
+    now(),
+    id,
+  ])
+  const rows = await db.query<ExpenseRow>('SELECT * FROM expenses WHERE id = ?', [id])
+  return rows[0] ?? null
+}
+
 // --- Tags ---
 
 export interface TagRow {

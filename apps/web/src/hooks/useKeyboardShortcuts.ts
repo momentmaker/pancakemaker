@@ -6,6 +6,7 @@ import { useCapture } from './useCapture.js'
 import { useCommandPalette } from './useCommandPalette.js'
 import { useFHints } from './useFHints.js'
 import { useMonthScrubControls } from './useMonthScrub.js'
+import { useUndo } from './useUndo.js'
 import { useRoutePrefix } from '../demo/demo-context.js'
 import { navItems } from '../components/nav-items.js'
 import { resolveIntent, type KeyAction, type PendingPrefix } from '../lib/keyboard/intents.js'
@@ -45,6 +46,7 @@ export function useKeyboardShortcuts({ onCheatsheet }: KeyboardShortcutsOptions)
   const palette = useCommandPalette()
   const fhints = useFHints()
   const monthScrub = useMonthScrubControls()
+  const undo = useUndo()
 
   const navigateRef = useRef(navigate)
   const prefixRef = useRef(routePrefix)
@@ -54,6 +56,7 @@ export function useKeyboardShortcuts({ onCheatsheet }: KeyboardShortcutsOptions)
   const paletteRef = useRef(palette)
   const fhintsRef = useRef(fhints)
   const monthScrubRef = useRef(monthScrub)
+  const undoRef = useRef(undo)
   navigateRef.current = navigate
   prefixRef.current = routePrefix
   cheatsheetRef.current = onCheatsheet
@@ -62,6 +65,7 @@ export function useKeyboardShortcuts({ onCheatsheet }: KeyboardShortcutsOptions)
   paletteRef.current = palette
   fhintsRef.current = fhints
   monthScrubRef.current = monthScrub
+  undoRef.current = undo
 
   const pendingRef = useRef<PendingPrefix>(null)
   const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -135,6 +139,10 @@ export function useKeyboardShortcuts({ onCheatsheet }: KeyboardShortcutsOptions)
           if (action === 'open') cursor.open()
           else if (action === 'delete') cursor.remove()
           else cursor.duplicate()
+          return true
+        case 'undo':
+          if (!undoRef.current) return false
+          void undoRef.current.undoLast()
           return true
         case 'escape':
           // A focused field owns Esc — its own handler cancels the edit. Blurring

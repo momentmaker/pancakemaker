@@ -6,11 +6,16 @@ import {
   createExpense,
   updateExpense,
   softDeleteExpense,
+  restoreExpense,
   logSyncEntry,
   type ExpenseRow,
   type CreateExpenseInput,
 } from '../db/queries.js'
-import { stopRecurringFrom } from '../db/recurring-generator.js'
+import {
+  stopRecurringFrom,
+  undoStopRecurring as undoStopRecurringInDb,
+  type StopRecurringResult,
+} from '../db/recurring-generator.js'
 import { useAppState } from './useAppState.js'
 import { useSync } from '../sync/SyncContext.js'
 
@@ -113,9 +118,26 @@ export function useExpenses(params: UseExpensesParams | string) {
     [db, userId, markPending, triggerSync],
   )
 
+  const restore = useCallback(
+    async (id: string) => {
+      const restored = await restoreExpense(db, id)
+      if (!restored) return
+      await logSyncEntry(db, userId, 'expenses', id, 'update', {
+        id,
+        deleted_at: null,
+        updated_at: restored.updated_at,
+      })
+      markPending()
+      triggerSync()
+      await load()
+    },
+    [db, userId, markPending, triggerSync, load],
+  )
+
   const stopRecurring = useCallback(
-    async (copy: ExpenseRow) => {
-      const { original, deletedIds } = await stopRecurringFrom(db, copy)
+    async (copy: ExpenseRow): Promise<StopRecurringResult> => {
+      const stopped = await stopRecurringFrom(db, copy)
+      const { original, deletedIds } = stopped
       const deleted = new Set(deletedIds)
       setExpenses((prev) => prev.filter((e) => !deleted.has(e.id)))
       await logSyncEntry(db, userId, 'expenses', original.id, 'update', {
@@ -128,9 +150,42 @@ export function useExpenses(params: UseExpensesParams | string) {
       }
       markPending()
       triggerSync()
+      return stopped
     },
     [db, userId, markPending, triggerSync],
   )
 
-  return { expenses, loading, load, add, update, remove, stopRecurring }
+  const undoStopRecurring = useCallback(
+    async (stopped: StopRecurringResult) => {
+      const { original, restoredIds } = await undoStopRecurringInDb(db, stopped)
+      await logSyncEntry(db, userId, 'expenses', original.id, 'update', {
+        id: original.id,
+        recurrence_end_date: original.recurrence_end_date,
+        updated_at: original.updated_at,
+      })
+      for (const id of restoredIds) {
+        await logSyncEntry(db, userId, 'expenses', id, 'update', {
+          id,
+          deleted_at: null,
+          updated_at: original.updated_at,
+        })
+      }
+      markPending()
+      triggerSync()
+      await load()
+    },
+    [db, userId, markPending, triggerSync, load],
+  )
+
+  return {
+    expenses,
+    loading,
+    load,
+    add,
+    update,
+    remove,
+    restore,
+    stopRecurring,
+    undoStopRecurring,
+  }
 }

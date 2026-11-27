@@ -161,3 +161,41 @@ describe('ExpenseRow recurring delete', () => {
     expect(screen.queryByRole('button', { name: 'This & future' })).toBeNull()
   })
 })
+
+describe('ExpenseRow delete button', () => {
+  it('deletes a one-off expense with a single tap', async () => {
+    // #given
+    const onDelete = vi.fn().mockResolvedValue(undefined)
+    render(<ExpenseRow expense={makeExpense()} onUpdateAmount={vi.fn()} onDelete={onDelete} />)
+
+    // #when
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Delete expense' }))
+    })
+
+    // #then
+    expect(onDelete).toHaveBeenCalledWith('e1')
+  })
+
+  it('asks a generated recurring month which deletion is meant before deleting', () => {
+    // #given
+    const onDelete = vi.fn()
+    render(
+      <ExpenseRow
+        expense={makeExpense({ source_expense_id: 'orig' })}
+        onUpdateAmount={vi.fn()}
+        onDelete={onDelete}
+        onStopRecurring={vi.fn()}
+      />,
+    )
+
+    // #when
+    fireEvent.click(screen.getByRole('button', { name: 'Delete expense' }))
+
+    // #then
+    expect({
+      deleted: onDelete.mock.calls.length,
+      offersFuture: screen.queryByRole('button', { name: 'This & future' }) !== null,
+    }).toEqual({ deleted: 0, offersFuture: true })
+  })
+})

@@ -16,6 +16,10 @@ describe('resolveIntent — single keys', () => {
     expect(resolveIntent('Enter').action).toBe('open')
   })
 
+  it('maps u to undo', () => {
+    expect(resolveIntent('u').action).toBe('undo')
+  })
+
   it('maps d to delete', () => {
     expect(resolveIntent('d').action).toBe('delete')
   })
@@ -119,6 +123,10 @@ describe('mutating metadata', () => {
     expect(resolveIntent('y', { pending: 'y' }).mutating).toBe(true)
     expect(isMutating('delete')).toBe(true)
     expect(isMutating('duplicate')).toBe(true)
+  })
+
+  it('flags undo as mutating so a held key cannot repeat it', () => {
+    expect(isMutating('undo')).toBe(true)
   })
 
   it('flags navigation as non-mutating', () => {

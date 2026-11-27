@@ -10,6 +10,7 @@ export type KeyAction =
   | 'open'
   | 'delete'
   | 'duplicate'
+  | 'undo'
   | 'go-dashboard'
   | 'go-personal'
   | 'go-business'
@@ -39,7 +40,7 @@ export interface Intent {
   mutating: boolean
 }
 
-const MUTATING_ACTIONS: ReadonlySet<KeyAction> = new Set<KeyAction>(['delete', 'duplicate'])
+const MUTATING_ACTIONS: ReadonlySet<KeyAction> = new Set<KeyAction>(['delete', 'duplicate', 'undo'])
 
 export function isMutating(action: KeyAction): boolean {
   return MUTATING_ACTIONS.has(action)
@@ -66,6 +67,7 @@ const SINGLE_KEYS = new Map<string, KeyAction>([
   ['o', 'open'],
   ['Enter', 'open'],
   ['d', 'delete'],
+  ['u', 'undo'],
   ['a', 'open-quick-add'],
   [':', 'open-capture'],
   ['f', 'open-fhints'],

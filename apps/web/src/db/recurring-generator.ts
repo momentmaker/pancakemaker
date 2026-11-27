@@ -180,6 +180,7 @@ export async function generateRecurringExpenses(
 export interface StopRecurringResult {
   original: ExpenseRow
   deletedIds: string[]
+  previousEndDate: string | null
 }
 
 export async function stopRecurringFrom(
@@ -219,5 +220,41 @@ export async function stopRecurringFrom(
   return {
     original: { ...originals[0], recurrence_end_date: endDate, updated_at: timestamp },
     deletedIds: toDelete.map((r) => r.id),
+    previousEndDate: originals[0].recurrence_end_date,
+  }
+}
+
+export interface UndoStopRecurringResult {
+  original: ExpenseRow
+  restoredIds: string[]
+}
+
+export async function undoStopRecurring(
+  db: Database,
+  stopped: StopRecurringResult,
+): Promise<UndoStopRecurringResult> {
+  const timestamp = new Date().toISOString()
+
+  await db.transaction(async () => {
+    await db.execute('UPDATE expenses SET recurrence_end_date = ?, updated_at = ? WHERE id = ?', [
+      stopped.previousEndDate,
+      timestamp,
+      stopped.original.id,
+    ])
+    for (const id of stopped.deletedIds) {
+      await db.execute('UPDATE expenses SET deleted_at = NULL, updated_at = ? WHERE id = ?', [
+        timestamp,
+        id,
+      ])
+    }
+  })
+
+  return {
+    original: {
+      ...stopped.original,
+      recurrence_end_date: stopped.previousEndDate,
+      updated_at: timestamp,
+    },
+    restoredIds: stopped.deletedIds,
   }
 }
