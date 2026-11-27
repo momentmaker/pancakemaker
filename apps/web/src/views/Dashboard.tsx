@@ -22,6 +22,7 @@ import { PancakeStack } from '../components/PancakeStack'
 import { SparkBars } from '../components/SparkBars'
 import type { DashboardExpenseRow } from '../db/queries'
 import { QuickAdd } from '../components/QuickAdd'
+import { UnconvertedNote } from '../components/UnconvertedNote'
 import { Button } from '../components/Button'
 import { ComingUpCard } from '../components/ComingUpCard'
 
@@ -525,6 +526,7 @@ export function Dashboard() {
                   </>
                 )}
               </div>
+              <UnconvertedNote summary={stats.unconverted} />
             </Card>
             <Card>
               <div className="flex items-center gap-2">

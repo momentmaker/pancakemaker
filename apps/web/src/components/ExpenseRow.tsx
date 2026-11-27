@@ -285,7 +285,7 @@ export const ExpenseRow = forwardRef<ExpenseRowHandle, ExpenseRowProps>(function
           </div>
         ) : (
           <button
-            onClick={startConfirm}
+            onClick={offersStopRecurring ? startConfirm : confirmDelete}
             className="text-red-400/60 transition-colors hover:text-red-400"
             aria-label="Delete expense"
           >

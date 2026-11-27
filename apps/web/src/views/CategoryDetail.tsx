@@ -4,6 +4,8 @@ import { useDatabase } from '../db/DatabaseContext'
 import { useAppState } from '../hooks/useAppState'
 import { useRoutePrefix } from '../demo/demo-context'
 import { useExpenses } from '../hooks/useExpenses'
+import { useUndo } from '../hooks/useUndo'
+import { deletedMessage, stoppedMessage } from '../lib/undo-messages'
 import { useCategories } from '../hooks/useCategories'
 import { useExchangeRates } from '../hooks/useExchangeRates'
 import { useExpenseListCursor } from '../hooks/useExpenseListCursor'
@@ -21,6 +23,8 @@ import { ExpenseRow } from '../components/ExpenseRow'
 import { EmptyState } from '../components/EmptyState'
 import { MonthPicker } from '../components/MonthPicker'
 import { QuickAdd } from '../components/QuickAdd'
+import { UnconvertedNote } from '../components/UnconvertedNote'
+import { summarizeUnconverted } from '../lib/currency'
 import { SparkBars } from '../components/SparkBars'
 
 function currentMonth(): string {
@@ -61,11 +65,21 @@ export function CategoryDetail() {
   const [showQuickAdd, setShowQuickAdd] = useState(false)
 
   const { categories, load: loadCategories } = useCategories(routeId)
-  const { expenses, loading, load, add, update, remove, stopRecurring } = useExpenses({
+  const {
+    expenses,
+    loading,
+    load,
+    add,
+    update,
+    remove,
+    restore,
+    stopRecurring,
+    undoStopRecurring,
+  } = useExpenses({
     categoryId: categoryId!,
     month,
   })
-  const { convert } = useExchangeRates(baseCurrency)
+  const { convert, canConvert } = useExchangeRates(baseCurrency)
 
   const category = useMemo(
     () => categories.find((c) => c.id === categoryId),
@@ -131,6 +145,10 @@ export function CategoryDetail() {
     () => expenses.reduce((sum, e) => sum + convert(e.amount, e.currency), 0),
     [expenses, convert],
   )
+  const unconverted = useMemo(
+    () => summarizeUnconverted(expenses, canConvert),
+    [expenses, canConvert],
+  )
 
   const sparkData = useMemo(
     () => trend.map((t) => ({ label: monthLabel(t.month), value: t.total })),
@@ -171,22 +189,42 @@ export function CategoryDetail() {
     [handleAdd],
   )
 
+  const undo = useUndo()
+  const refreshTrend = useCallback(async () => {
+    const trendData = await getCategoryMonthlyTrend(db, categoryId!, month)
+    setTrend(trendData)
+  }, [db, categoryId, month])
+
   const handleRemove = useCallback(
     async (id: string) => {
+      const expense = expenses.find((e) => e.id === id)
       await remove(id)
-      const trendData = await getCategoryMonthlyTrend(db, categoryId!, month)
-      setTrend(trendData)
+      await refreshTrend()
+      if (!expense) return
+      undo?.offerUndo({
+        message: deletedMessage(expense),
+        undo: async () => {
+          await restore(id)
+          await refreshTrend()
+        },
+      })
     },
-    [remove, db, categoryId, month],
+    [expenses, remove, restore, refreshTrend, undo],
   )
 
   const handleStopRecurring = useCallback(
     async (expense: (typeof expenses)[0]) => {
-      await stopRecurring(expense)
-      const trendData = await getCategoryMonthlyTrend(db, categoryId!, month)
-      setTrend(trendData)
+      const stopped = await stopRecurring(expense)
+      await refreshTrend()
+      undo?.offerUndo({
+        message: stoppedMessage(expense),
+        undo: async () => {
+          await undoStopRecurring(stopped)
+          await refreshTrend()
+        },
+      })
     },
-    [stopRecurring, db, categoryId, month],
+    [stopRecurring, undoStopRecurring, refreshTrend, undo],
   )
 
   const handleUpdateAmount = useCallback(
@@ -244,6 +282,7 @@ export function CategoryDetail() {
               {expenses.length} {expenses.length === 1 ? 'expense' : 'expenses'}
             </span>
           </div>
+          <UnconvertedNote summary={unconverted} />
           <div className="mt-3">
             <MonthPicker month={month} onChange={setMonth} />
           </div>
