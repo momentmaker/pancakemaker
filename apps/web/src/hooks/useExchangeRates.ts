@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useDatabase } from '../db/DatabaseContext.js'
 import { getExchangeRates, upsertExchangeRates } from '../db/queries.js'
+import { convertAmount } from '../lib/currency.js'
 
 const FRANKFURTER_API = 'https://api.frankfurter.dev/v1'
 const CACHE_DURATION_MS = 6 * 60 * 60 * 1000
@@ -65,15 +66,18 @@ export function useExchangeRates(baseCurrency: string) {
     }
   }, [db, baseCurrency])
 
+  // Amounts with no rate count as 0: adding raw yen to dollars would be
+  // silently wrong. Callers surface them with summarizeUnconverted.
   const convert = useCallback(
-    (amount: number, fromCurrency: string): number => {
-      if (fromCurrency === baseCurrency) return amount
-      const rate = rates.get(fromCurrency)
-      if (!rate || rate === 0) return amount
-      return Math.round(amount / rate)
-    },
+    (amount: number, fromCurrency: string): number =>
+      convertAmount(amount, fromCurrency, baseCurrency, rates) ?? 0,
     [rates, baseCurrency],
   )
 
-  return { rates, loading, convert }
+  const canConvert = useCallback(
+    (fromCurrency: string): boolean => convertAmount(1, fromCurrency, baseCurrency, rates) !== null,
+    [rates, baseCurrency],
+  )
+
+  return { rates, loading, convert, canConvert }
 }

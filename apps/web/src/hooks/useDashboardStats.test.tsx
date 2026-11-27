@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react'
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { DatabaseProvider } from '../db/DatabaseContext.js'
 import { AppStateContext, type AppState } from './useAppState.js'
@@ -149,6 +149,45 @@ describe('useDashboardStats', () => {
     expect(result.current.stats!.personalAmount).toBe(1500)
     expect(result.current.stats!.businessAmount).toBe(3000)
     expect(result.current.stats!.totalExpenses).toBe(2)
+  })
+
+  it('leaves amounts without an exchange rate out of totals and reports them', async () => {
+    // #given
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ base: 'USD', date: '2026-01-31', rates: { EUR: 0.5 } }),
+      }),
+    )
+    const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
+    const cat = await createCategory(db, personalRouteId, 'Travel', '#ff0000', 0)
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 1500,
+      currency: 'USD',
+      date: '2026-01-15',
+    })
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 500000,
+      currency: 'JPY',
+      date: '2026-01-16',
+    })
+
+    // #when
+    const { result } = renderHook(() => useDashboardStats('2026-01'), { wrapper })
+    await act(async () => {})
+    await act(async () => {})
+
+    // #then
+    expect({
+      total: result.current.stats!.totalAmount,
+      unconverted: result.current.stats!.unconverted,
+    }).toEqual({ total: 1500, unconverted: { count: 1, currencies: ['JPY'] } })
+    vi.unstubAllGlobals()
   })
 
   it('returns category breakdown sorted by amount', async () => {
