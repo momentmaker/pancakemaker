@@ -5,6 +5,8 @@ import { useSync } from '../sync/SyncContext.js'
 import { useExchangeRates } from './useExchangeRates.js'
 import { getDashboardExpenses, type DashboardExpenseRow } from '../db/queries.js'
 import { summarizeUnconverted, type UnconvertedSummary } from '../lib/currency.js'
+import { cumulative, ghostCurve, projectMonthEnd } from '../lib/pace.js'
+import { getRenewalRadar } from '../db/renewals.js'
 
 interface CategorySpend {
   id: string
@@ -36,7 +38,12 @@ export interface DashboardStats {
   projectedTotal: number | null
   insights: string[]
   unconverted: UnconvertedSummary
+  paceCurve: number[]
+  ghostCurve: number[] | null
+  ghostLabel: string | null
 }
+
+const GHOST_MONTHS = 3
 
 function previousMonth(month: string): string {
   const [year, m] = month.split('-').map(Number)
@@ -49,6 +56,31 @@ function previousMonth(month: string): string {
 function daysInMonth(month: string): number {
   const [year, m] = month.split('-').map(Number)
   return new Date(year, m, 0).getDate()
+}
+
+function describeGhost(monthsWithSpending: string[], lastMonth: string): string | null {
+  if (monthsWithSpending.length >= 2) return 'your normal'
+  if (monthsWithSpending.length === 0) return null
+  if (monthsWithSpending[0] === lastMonth) return 'last month'
+  const [year, m] = monthsWithSpending[0].split('-').map(Number)
+  return new Date(year, m - 1).toLocaleDateString('en-US', { month: 'long' })
+}
+
+function currentMonthString(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
+async function upcomingRecurringThisMonth(
+  db: Parameters<typeof getRenewalRadar>[0],
+  month: string,
+  convert: (amount: number, currency: string) => number,
+): Promise<number> {
+  if (month !== currentMonthString()) return 0
+  const now = new Date()
+  const today = `${month}-${String(now.getDate()).padStart(2, '0')}`
+  const radar = await getRenewalRadar(db, today, daysInMonth(month) - now.getDate())
+  return radar.upcoming.reduce((sum, c) => sum + convert(c.totalInWindow, c.currency), 0)
 }
 
 function computeDaysElapsed(month: string, override?: number): number {
@@ -232,11 +264,15 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
     setError(null)
 
     try {
-      const prevMonth = previousMonth(month)
-      const [currentExpenses, prevExpenses] = await Promise.all([
+      const ghostMonths: string[] = []
+      for (let m = previousMonth(month), i = 0; i < GHOST_MONTHS; i++, m = previousMonth(m)) {
+        ghostMonths.push(m)
+      }
+      const [currentExpenses, ...pastMonthsExpenses] = await Promise.all([
         getDashboardExpenses(db, personalRouteId, businessRouteId, month),
-        getDashboardExpenses(db, personalRouteId, businessRouteId, prevMonth),
+        ...ghostMonths.map((m) => getDashboardExpenses(db, personalRouteId, businessRouteId, m)),
       ])
+      const prevExpenses = pastMonthsExpenses[0]
 
       const current = aggregateExpenses(currentExpenses, personalRouteId, convert)
 
@@ -255,8 +291,29 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
       )
 
       const days = daysInMonth(month)
-      const projectedTotal =
-        elapsed >= 2 ? Math.round((current.totalAmount / elapsed) * days) : null
+      const recurringSpentSoFar = currentExpenses
+        .filter((e) => e.panel_recurrence_type !== null)
+        .reduce((sum, e) => sum + convert(e.amount, e.currency), 0)
+      const projectedTotal = projectMonthEnd({
+        spentSoFar: current.totalAmount,
+        recurringSpentSoFar,
+        upcomingRecurring: await upcomingRecurringThisMonth(db, month, convert),
+        daysElapsed: elapsed,
+        daysInMonth: days,
+      })
+
+      const pastWithSpending = ghostMonths
+        .map((m, i) => ({ month: m, expenses: pastMonthsExpenses[i] }))
+        .filter((p) => p.expenses.length > 0)
+      const pastCurves = pastWithSpending.map((p) =>
+        cumulative(buildDayBreakdown(p.expenses, p.month, convert).map((d) => d.value)),
+      )
+      const ghost = ghostCurve(pastCurves, days)
+      const ghostLabel = describeGhost(
+        pastWithSpending.map((p) => p.month),
+        ghostMonths[0],
+      )
+      const paceCurve = cumulative(dayBreakdown.map((d) => d.value)).slice(0, elapsed)
 
       const biggestExpense =
         currentExpenses.length > 0
@@ -280,6 +337,9 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
         daysElapsed: elapsed,
         projectedTotal,
         unconverted: summarizeUnconverted(currentExpenses, canConvert),
+        paceCurve,
+        ghostCurve: ghost,
+        ghostLabel,
       })
     } catch (err) {
       if (loadId !== loadIdRef.current) return

@@ -40,4 +40,58 @@ describe('CaptureBar', () => {
     )
     expect(container.querySelector('[data-kbd-popover-open]')).not.toBeNull()
   })
+
+  it('logs a usual expense with one tap', () => {
+    // #given
+    const onPickUsual = vi.fn()
+    render(
+      <CaptureBar
+        open
+        routeLabel="Personal"
+        onSubmit={vi.fn()}
+        onClose={vi.fn()}
+        usuals={[{ key: 'u1', label: 'Coffee', detail: '$4.50 · Meals' }]}
+        onPickUsual={onPickUsual}
+      />,
+    )
+
+    // #when
+    fireEvent.click(screen.getByRole('button', { name: /Coffee/ }))
+
+    // #then
+    expect(onPickUsual).toHaveBeenCalledWith('u1')
+  })
+
+  it('hands the typed line to the full form', () => {
+    // #given
+    const onMore = vi.fn()
+    render(
+      <CaptureBar
+        open
+        routeLabel="Personal"
+        onSubmit={vi.fn()}
+        onClose={vi.fn()}
+        onMore={onMore}
+      />,
+    )
+    fireEvent.change(screen.getByLabelText(/Quick capture/), { target: { value: '12 lunch' } })
+
+    // #when
+    fireEvent.click(screen.getByRole('button', { name: 'More…' }))
+
+    // #then
+    expect(onMore).toHaveBeenCalledWith('12 lunch')
+  })
+
+  it('closes from its close button, for touch screens without Escape', () => {
+    // #given
+    const onClose = vi.fn()
+    render(<CaptureBar open routeLabel="Personal" onSubmit={vi.fn()} onClose={onClose} />)
+
+    // #when
+    fireEvent.click(screen.getByRole('button', { name: 'Close capture' }))
+
+    // #then
+    expect(onClose).toHaveBeenCalledOnce()
+  })
 })
