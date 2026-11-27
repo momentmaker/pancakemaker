@@ -8,8 +8,15 @@ import {
   createCategory,
   createExpense,
   getExpensesByCategory,
+  softDeleteExpense,
+  updateExpense,
+  type ExpenseRow,
 } from './queries.js'
-import { calculateMissingDates, generateRecurringExpenses } from './recurring-generator.js'
+import {
+  calculateMissingDates,
+  generateRecurringExpenses,
+  stopRecurringFrom,
+} from './recurring-generator.js'
 import type { Database } from './interface.js'
 
 describe('calculateMissingDates', () => {
@@ -202,5 +209,193 @@ describe('generateRecurringExpenses', () => {
       expenses.filter((e) => e.source_expense_id).map((e) => e.source_expense_id),
     )
     expect(sources.size).toBe(2)
+  })
+
+  async function createMonthlyRent(date = '2026-01-01', amount = 150000): Promise<ExpenseRow> {
+    return createExpense(db, {
+      panelId: monthlyPanelId,
+      categoryId,
+      amount,
+      currency: 'USD',
+      date,
+      recurrenceDay: 1,
+    })
+  }
+
+  async function liveExpenses(): Promise<ExpenseRow[]> {
+    const rows = await getExpensesByCategory(db, categoryId)
+    return rows.sort((a, b) => a.date.localeCompare(b.date))
+  }
+
+  async function copyOn(date: string): Promise<ExpenseRow> {
+    const rows = await db.query<ExpenseRow>(
+      'SELECT * FROM expenses WHERE date = ? AND source_expense_id IS NOT NULL',
+      [date],
+    )
+    return rows[0]
+  }
+
+  it('does not regenerate a month the user deleted', async () => {
+    // #given
+    await createMonthlyRent()
+    await generateRecurringExpenses(db, '2026-03-15')
+    await softDeleteExpense(db, (await copyOn('2026-03-01')).id)
+
+    // #when
+    await generateRecurringExpenses(db, '2026-03-15')
+
+    // #then
+    expect((await liveExpenses()).map((e) => e.date)).toEqual(['2026-01-01', '2026-02-01'])
+  })
+
+  it('gives a generated month the same id on every device', async () => {
+    // #given
+    const original = await createMonthlyRent()
+    await generateRecurringExpenses(db, '2026-02-15')
+    const firstDeviceId = (await copyOn('2026-02-01')).id
+    await db.execute('DELETE FROM expenses WHERE source_expense_id = ?', [original.id])
+
+    // #when
+    await generateRecurringExpenses(db, '2026-02-15')
+
+    // #then
+    expect((await copyOn('2026-02-01')).id).toBe(firstDeviceId)
+  })
+
+  it('stops generating after the recurrence end date', async () => {
+    // #given
+    const original = await createMonthlyRent()
+    await updateExpense(db, original.id, { recurrenceEndDate: '2026-02-15' })
+
+    // #when
+    await generateRecurringExpenses(db, '2026-04-15')
+
+    // #then
+    expect((await liveExpenses()).map((e) => e.date)).toEqual(['2026-01-01', '2026-02-01'])
+  })
+
+  it('removes months past an end date that was set on another device', async () => {
+    // #given
+    const original = await createMonthlyRent()
+    await generateRecurringExpenses(db, '2026-04-15')
+    await db.execute('UPDATE expenses SET recurrence_end_date = ? WHERE id = ?', [
+      '2026-02-28',
+      original.id,
+    ])
+
+    // #when
+    await generateRecurringExpenses(db, '2026-04-15')
+
+    // #then
+    expect((await liveExpenses()).map((e) => e.date)).toEqual(['2026-01-01', '2026-02-01'])
+  })
+
+  it('carries a new price forward from the most recent month', async () => {
+    // #given
+    await createMonthlyRent('2026-01-01', 150000)
+    await generateRecurringExpenses(db, '2026-02-15')
+    await updateExpense(db, (await copyOn('2026-02-01')).id, { amount: 160000 })
+
+    // #when
+    await generateRecurringExpenses(db, '2026-04-15')
+
+    // #then
+    expect((await liveExpenses()).map((e) => e.amount)).toEqual([150000, 160000, 160000, 160000])
+  })
+
+  it('carries forward from the latest month that was not deleted', async () => {
+    // #given
+    await createMonthlyRent('2026-01-01', 150000)
+    await generateRecurringExpenses(db, '2026-03-15')
+    await updateExpense(db, (await copyOn('2026-02-01')).id, { amount: 160000 })
+    await updateExpense(db, (await copyOn('2026-03-01')).id, { amount: 999 })
+    await softDeleteExpense(db, (await copyOn('2026-03-01')).id)
+
+    // #when
+    await generateRecurringExpenses(db, '2026-04-15')
+
+    // #then
+    expect((await copyOn('2026-04-01')).amount).toBe(160000)
+  })
+})
+
+describe('stopRecurringFrom', () => {
+  let db: Database
+  let original: ExpenseRow
+
+  beforeEach(async () => {
+    db = createTestDatabase()
+    await runMigrations(db)
+    const user = await createUser(db, 'test@example.com', 'USD')
+    const route = await createRoute(db, user.id, 'personal')
+    const panel = await createPanel(db, route.id, 'Monthly', 'USD', 1, 'monthly')
+    const cat = await createCategory(db, route.id, 'Rent', '#ff0000', 0)
+    original = await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 150000,
+      currency: 'USD',
+      date: '2026-01-01',
+      recurrenceDay: 1,
+    })
+    await generateRecurringExpenses(db, '2026-04-15')
+  })
+
+  async function copyOn(date: string): Promise<ExpenseRow> {
+    const rows = await db.query<ExpenseRow>(
+      'SELECT * FROM expenses WHERE date = ? AND source_expense_id = ?',
+      [date, original.id],
+    )
+    return rows[0]
+  }
+
+  async function liveDates(): Promise<string[]> {
+    const rows = await db.query<{ date: string }>(
+      'SELECT date FROM expenses WHERE deleted_at IS NULL ORDER BY date',
+    )
+    return rows.map((r) => r.date)
+  }
+
+  it('ends the series the day before the chosen month', async () => {
+    // #when
+    await stopRecurringFrom(db, await copyOn('2026-03-01'))
+
+    // #then
+    const rows = await db.query<ExpenseRow>('SELECT * FROM expenses WHERE id = ?', [original.id])
+    expect(rows[0].recurrence_end_date).toBe('2026-02-28')
+  })
+
+  it('deletes the chosen month and every later month', async () => {
+    // #when
+    await stopRecurringFrom(db, await copyOn('2026-03-01'))
+
+    // #then
+    expect(await liveDates()).toEqual(['2026-01-01', '2026-02-01'])
+  })
+
+  it('returns the original and the deleted months so they can be synced', async () => {
+    // #given
+    const march = await copyOn('2026-03-01')
+    const april = await copyOn('2026-04-01')
+
+    // #when
+    const result = await stopRecurringFrom(db, march)
+
+    // #then
+    expect({
+      originalId: result.original.id,
+      deletedIds: [...result.deletedIds].sort(),
+    }).toEqual({ originalId: original.id, deletedIds: [march.id, april.id].sort() })
+  })
+
+  it('keeps the series stopped on later app loads', async () => {
+    // #given
+    await stopRecurringFrom(db, await copyOn('2026-03-01'))
+
+    // #when
+    await generateRecurringExpenses(db, '2026-08-15')
+
+    // #then
+    expect(await liveDates()).toEqual(['2026-01-01', '2026-02-01'])
   })
 })

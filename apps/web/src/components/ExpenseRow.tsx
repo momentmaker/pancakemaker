@@ -10,6 +10,7 @@ interface ExpenseRowProps {
   onUpdateDescription?: (id: string, description: string) => Promise<void>
   onDuplicate?: (expense: ExpenseRowType) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  onStopRecurring?: (expense: ExpenseRowType) => Promise<void>
   cursored?: boolean
 }
 
@@ -43,6 +44,7 @@ export const ExpenseRow = forwardRef<ExpenseRowHandle, ExpenseRowProps>(function
     onUpdateDescription,
     onDuplicate,
     onDelete,
+    onStopRecurring,
     cursored = false,
   },
   ref,
@@ -57,6 +59,7 @@ export const ExpenseRow = forwardRef<ExpenseRowHandle, ExpenseRowProps>(function
   const descInputRef = useRef<HTMLInputElement>(null)
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
   const confirmRef = useRef<HTMLDivElement>(null)
+  const offersStopRecurring = Boolean(expense.source_expense_id && onStopRecurring)
 
   const startEditing = useCallback(() => {
     setEditValue(centsToDollars(expense.amount))
@@ -86,8 +89,11 @@ export const ExpenseRow = forwardRef<ExpenseRowHandle, ExpenseRowProps>(function
 
   const startConfirm = useCallback(() => {
     setConfirming(true)
-    confirmTimerRef.current = setTimeout(() => setConfirming(false), 3000)
-  }, [])
+    confirmTimerRef.current = setTimeout(
+      () => setConfirming(false),
+      offersStopRecurring ? 5000 : 3000,
+    )
+  }, [offersStopRecurring])
 
   const cancelConfirm = useCallback(() => {
     setConfirming(false)
@@ -99,6 +105,12 @@ export const ExpenseRow = forwardRef<ExpenseRowHandle, ExpenseRowProps>(function
     setConfirming(false)
     await onDelete(expense.id)
   }, [expense.id, onDelete])
+
+  const confirmStopRecurring = useCallback(async () => {
+    if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current)
+    setConfirming(false)
+    await onStopRecurring?.(expense)
+  }, [expense, onStopRecurring])
 
   const runDuplicate = useCallback(async () => {
     if (duplicating || !onDuplicate) return
@@ -253,8 +265,17 @@ export const ExpenseRow = forwardRef<ExpenseRowHandle, ExpenseRowProps>(function
               onClick={confirmDelete}
               className="rounded px-1.5 py-0.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-400/15"
             >
-              Yes
+              {offersStopRecurring ? 'This month' : 'Yes'}
             </button>
+            {offersStopRecurring && (
+              <button
+                onClick={confirmStopRecurring}
+                className="rounded px-1.5 py-0.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-400/15"
+                title="Delete this month and stop it repeating"
+              >
+                This &amp; future
+              </button>
+            )}
             <button
               onClick={cancelConfirm}
               className="rounded px-1.5 py-0.5 text-xs text-text-muted transition-colors hover:bg-bg-elevated"

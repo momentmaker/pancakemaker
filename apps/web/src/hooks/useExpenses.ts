@@ -10,6 +10,7 @@ import {
   type ExpenseRow,
   type CreateExpenseInput,
 } from '../db/queries.js'
+import { stopRecurringFrom } from '../db/recurring-generator.js'
 import { useAppState } from './useAppState.js'
 import { useSync } from '../sync/SyncContext.js'
 
@@ -112,5 +113,24 @@ export function useExpenses(params: UseExpensesParams | string) {
     [db, userId, markPending, triggerSync],
   )
 
-  return { expenses, loading, load, add, update, remove }
+  const stopRecurring = useCallback(
+    async (copy: ExpenseRow) => {
+      const { original, deletedIds } = await stopRecurringFrom(db, copy)
+      const deleted = new Set(deletedIds)
+      setExpenses((prev) => prev.filter((e) => !deleted.has(e.id)))
+      await logSyncEntry(db, userId, 'expenses', original.id, 'update', {
+        id: original.id,
+        recurrence_end_date: original.recurrence_end_date,
+        updated_at: original.updated_at,
+      })
+      for (const id of deletedIds) {
+        await logSyncEntry(db, userId, 'expenses', id, 'delete', { id })
+      }
+      markPending()
+      triggerSync()
+    },
+    [db, userId, markPending, triggerSync],
+  )
+
+  return { expenses, loading, load, add, update, remove, stopRecurring }
 }

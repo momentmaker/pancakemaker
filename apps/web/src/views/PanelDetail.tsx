@@ -61,7 +61,10 @@ export function PanelDetail() {
   }, [location.key])
   useMonthScrub((delta) => setMonth((m) => addMonths(m, delta)))
   const [trend, setTrend] = useState<MonthlyTotal[]>([])
-  const { expenses, loading, load, add, update, remove } = useExpenses({ panelId: panelId!, month })
+  const { expenses, loading, load, add, update, remove, stopRecurring } = useExpenses({
+    panelId: panelId!,
+    month,
+  })
   const { categories, load: loadCategories } = useCategories(routeId)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
 
@@ -158,6 +161,14 @@ export function PanelDetail() {
       getPanelMonthlyTrend(db, panelId!, month).then(setTrend)
     },
     [remove, db, panelId, month],
+  )
+
+  const handleStopRecurring = useCallback(
+    async (expense: (typeof expenses)[0]) => {
+      await stopRecurring(expense)
+      getPanelMonthlyTrend(db, panelId!, month).then(setTrend)
+    },
+    [stopRecurring, db, panelId, month],
   )
 
   const startEditing = useCallback(() => {
@@ -359,6 +370,7 @@ export function PanelDetail() {
                       onUpdateDescription={handleUpdateDescription}
                       onDuplicate={handleDuplicate}
                       onDelete={handleRemove}
+                      onStopRecurring={handleStopRecurring}
                       cursored={activeId === expense.id}
                     />
                   ))}
