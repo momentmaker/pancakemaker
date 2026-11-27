@@ -38,6 +38,14 @@ export default defineConfig({
             type: 'image/svg+xml',
           },
         ],
+        shortcuts: [
+          {
+            name: 'Log expense',
+            short_name: 'Log',
+            url: '/?capture=1',
+            icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }],
+          },
+        ],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,woff2,wasm}'],

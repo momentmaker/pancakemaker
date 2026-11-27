@@ -1,4 +1,5 @@
 import type { Database } from './interface.js'
+import type { HistoryEntry } from '../lib/usual.js'
 
 function uuid(): string {
   return crypto.randomUUID()
@@ -841,6 +842,24 @@ export async function getRecentExpenses(
      ORDER BY e.date DESC, e.created_at DESC
      LIMIT ?`,
     [userId, limit],
+  )
+}
+
+// Feeds learned capture defaults: which category a description usually lands
+// in, and the expenses someone logs again and again.
+export async function getCaptureHistory(
+  db: Database,
+  routeId: string,
+  limit = 300,
+): Promise<HistoryEntry[]> {
+  return db.query<HistoryEntry>(
+    `SELECT COALESCE(e.description, '') AS description, e.category_id, e.amount, e.currency, e.date
+     FROM expenses e
+     JOIN categories c ON e.category_id = c.id
+     WHERE c.route_id = ? AND e.deleted_at IS NULL
+     ORDER BY e.created_at DESC
+     LIMIT ?`,
+    [routeId, limit],
   )
 }
 

@@ -26,6 +26,7 @@ interface QuickAddProps {
   currency?: string
   panels?: PanelRow[]
   lockedCategoryId?: string
+  defaultCategoryId?: string
   personalRouteId?: string
   autoFocusField?: 'amount' | 'category'
   prefill?: QuickAddPrefill
@@ -52,12 +53,16 @@ export function QuickAdd({
   currency: fixedCurrency,
   panels,
   lockedCategoryId,
+  defaultCategoryId,
   personalRouteId,
   autoFocusField = 'amount',
   prefill,
   routeLabel,
 }: QuickAddProps) {
-  const initialCategoryId = lockedCategoryId ?? categories[0]?.id ?? ''
+  const rememberedCategoryId = categories.some((c) => c.id === defaultCategoryId)
+    ? defaultCategoryId
+    : undefined
+  const initialCategoryId = lockedCategoryId ?? rememberedCategoryId ?? categories[0]?.id ?? ''
   const prefillAmount = prefill?.amount
   const prefillDescription = prefill?.description
   const categoryHint = prefill?.categoryHint
@@ -73,13 +78,13 @@ export function QuickAdd({
   useEffect(() => {
     if (open && !prevOpen.current) {
       setAmount(prefillAmount ?? '')
-      setCategoryId(lockedCategoryId ?? categories[0]?.id ?? '')
+      setCategoryId(initialCategoryId)
       setDate(new Date().toISOString().slice(0, 10))
       setDescription(prefillDescription ?? '')
       setShowMore(!!prefillDescription)
     }
     prevOpen.current = open
-  }, [open, categories, lockedCategoryId, prefillAmount, prefillDescription])
+  }, [open, initialCategoryId, prefillAmount, prefillDescription])
 
   const selectedCategory = useMemo(
     () => categories.find((c) => c.id === categoryId),

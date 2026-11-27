@@ -4,6 +4,7 @@ import { useAppState } from '../hooks/useAppState'
 import { useDatabase } from '../db/DatabaseContext'
 import { useSync } from '../sync/SyncContext'
 import { useRoutePrefix } from '../demo/demo-context'
+import { useCapture } from '../hooks/useCapture'
 import { useDashboardStats, type BurnRate } from '../hooks/useDashboardStats'
 import { useMonthScrub } from '../hooks/useMonthScrub'
 import { addMonths } from '../lib/month'
@@ -398,6 +399,7 @@ export function Dashboard() {
   const db = useDatabase()
   const { triggerSync, markPending } = useSync()
   const prefix = useRoutePrefix()
+  const capture = useCapture()
   const [month, setMonth] = useState(currentMonth)
   useMonthScrub((delta) => setMonth((m) => addMonths(m, delta)))
   const { stats, loading, error, reload } = useDashboardStats(month)
@@ -770,8 +772,8 @@ export function Dashboard() {
 
       {/* Floating add button — mobile only */}
       <button
-        onClick={() => setShowQuickAdd(true)}
-        className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-neon-cyan text-bg-primary shadow-lg shadow-neon-cyan/20 transition-transform hover:scale-105 active:scale-95 sm:hidden"
+        onClick={() => (capture ? capture.openCaptureBar() : setShowQuickAdd(true))}
+        className="fixed bottom-20 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-neon-cyan text-bg-primary shadow-lg shadow-neon-cyan/20 transition-transform hover:scale-105 active:scale-95 sm:hidden"
         aria-label="Add expense"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import type { Database } from '../db/interface.js'
 import { DatabaseProvider } from '../db/DatabaseContext.js'
 import { AppStateContext, type AppState } from '../hooks/useAppState.js'
@@ -12,6 +12,17 @@ import { DemoContext, type DemoPersonaInfo } from './demo-context.js'
 const noopSync = async (): Promise<void> => {}
 
 export function DemoSyncProvider({ children }: { children: ReactNode }) {
+  const [dataVersion, setDataVersion] = useState(0)
+  const [tableVersions, setTableVersions] = useState<Record<string, number>>({})
+  const notifyLocalChange = useCallback((tables: Iterable<string>) => {
+    setDataVersion((v) => v + 1)
+    setTableVersions((prev) => {
+      const next = { ...prev }
+      for (const t of tables) next[t] = (next[t] ?? 0) + 1
+      return next
+    })
+  }, [])
+
   return (
     <SyncContext.Provider
       value={{
@@ -19,8 +30,9 @@ export function DemoSyncProvider({ children }: { children: ReactNode }) {
         triggerSync: noopSync,
         forceSync: noopSync,
         markPending: () => {},
-        dataVersion: 0,
-        tableVersions: {},
+        notifyLocalChange,
+        dataVersion,
+        tableVersions,
       }}
     >
       {children}

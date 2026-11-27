@@ -15,6 +15,7 @@ interface SyncState {
   triggerSync: () => Promise<void>
   forceSync: () => Promise<void>
   markPending: () => void
+  notifyLocalChange: (tables: Iterable<string>) => void
   dataVersion: number
   tableVersions: Readonly<Record<string, number>>
 }
@@ -28,20 +29,24 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const [dataVersion, setDataVersion] = useState(0)
   const [tableVersions, setTableVersions] = useState<Record<string, number>>({})
 
+  // Views reload when these bump: on data from another device, and on local
+  // writes made outside the view that shows them (e.g. the global capture bar).
+  const bumpVersions = useCallback((tables: Iterable<string>) => {
+    setDataVersion((v) => v + 1)
+    setTableVersions((prev) => {
+      const next = { ...prev }
+      for (const t of tables) next[t] = (next[t] ?? 0) + 1
+      return next
+    })
+  }, [])
+
   useEffect(() => {
     const engine = createSyncEngine(db)
     engineRef.current = engine
 
     setStatus(engine.getStatus())
     const unsubStatus = engine.onStatusChange(setStatus)
-    const unsubData = engine.onDataReceived((tables) => {
-      setDataVersion((v) => v + 1)
-      setTableVersions((prev) => {
-        const next = { ...prev }
-        for (const t of tables) next[t] = (next[t] ?? 0) + 1
-        return next
-      })
-    })
+    const unsubData = engine.onDataReceived(bumpVersions)
     engine.start()
 
     return () => {
@@ -50,7 +55,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       engine.stop()
       engineRef.current = null
     }
-  }, [db])
+  }, [db, bumpVersions])
 
   const triggerSync = useCallback(async () => {
     await engineRef.current?.sync()
@@ -66,7 +71,15 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   return (
     <SyncContext.Provider
-      value={{ status, triggerSync, forceSync, markPending, dataVersion, tableVersions }}
+      value={{
+        status,
+        triggerSync,
+        forceSync,
+        markPending,
+        notifyLocalChange: bumpVersions,
+        dataVersion,
+        tableVersions,
+      }}
     >
       {children}
     </SyncContext.Provider>
