@@ -55,6 +55,26 @@ describe('calculateMissingDates', () => {
     expect(dates).toEqual([])
   })
 
+  it('clamps a month-end series to the last day of shorter months', () => {
+    const dates = calculateMissingDates('monthly', 31, '2026-01-31', null, '2026-04-30')
+    expect(dates).toEqual(['2026-01-31', '2026-02-28', '2026-03-31', '2026-04-30'])
+  })
+
+  it('uses February 29 in a leap year for a month-end series', () => {
+    const dates = calculateMissingDates('monthly', 31, '2028-01-31', '2028-01-31', '2028-03-01')
+    expect(dates).toEqual(['2028-02-29'])
+  })
+
+  it('returns to day 31 after a clamped month', () => {
+    const dates = calculateMissingDates('monthly', 31, '2026-01-31', '2026-02-28', '2026-03-31')
+    expect(dates).toEqual(['2026-03-31'])
+  })
+
+  it('falls back to February 28 for an annual February 29 series', () => {
+    const dates = calculateMissingDates('annual', 29, '2028-02-29', '2028-02-29', '2030-03-01')
+    expect(dates).toEqual(['2029-02-28', '2030-02-28'])
+  })
+
   it('includes today if it matches recurrence day', () => {
     const dates = calculateMissingDates('monthly', 15, '2026-01-15', '2026-02-15', '2026-03-15')
     expect(dates).toEqual(['2026-03-15'])
@@ -272,6 +292,28 @@ describe('generateRecurringExpenses', () => {
 
     // #then
     expect((await liveExpenses()).map((e) => e.date)).toEqual(['2026-01-01', '2026-02-01'])
+  })
+
+  it('generates a series that starts on the 31st without failing', async () => {
+    // #given
+    await createExpense(db, {
+      panelId: monthlyPanelId,
+      categoryId,
+      amount: 5000,
+      currency: 'USD',
+      date: '2026-01-31',
+    })
+
+    // #when
+    await generateRecurringExpenses(db, '2026-04-30')
+
+    // #then
+    expect((await liveExpenses()).map((e) => e.date)).toEqual([
+      '2026-01-31',
+      '2026-02-28',
+      '2026-03-31',
+      '2026-04-30',
+    ])
   })
 
   it('removes months past an end date that was set on another device', async () => {
