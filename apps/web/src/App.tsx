@@ -9,6 +9,7 @@ import { Settings } from './views/Settings'
 import { Upcoming } from './views/Upcoming'
 import { Lenses } from './views/Lenses'
 import { Lens } from './views/Lens'
+import { YearView } from './views/YearView'
 import { Login } from './views/Login'
 import { AuthVerify } from './views/AuthVerify'
 import { DemoLayout } from './demo/demo-layout'
@@ -36,6 +37,8 @@ const DEMO_CHILD_ROUTES = (
     <Route path="upcoming" element={<Upcoming />} />
     <Route path="lenses" element={<Lenses />} />
     <Route path="lens/:name" element={<Lens />} />
+    <Route path="year" element={<YearView />} />
+    <Route path="year/:year" element={<YearView />} />
   </>
 )
 
@@ -69,6 +72,8 @@ export function App() {
           <Route path="/upcoming" element={<Upcoming />} />
           <Route path="/lenses" element={<Lenses />} />
           <Route path="/lens/:name" element={<Lens />} />
+          <Route path="/year" element={<YearView />} />
+          <Route path="/year/:year" element={<YearView />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
         <Route path="/auth/login" element={<Login />} />

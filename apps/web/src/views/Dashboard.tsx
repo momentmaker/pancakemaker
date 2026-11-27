@@ -400,8 +400,14 @@ export function Dashboard() {
         </Button>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 flex items-center justify-between">
         <MonthPicker month={month} onChange={setMonth} />
+        <Link
+          to={`${prefix}/year/${month.slice(0, 4)}`}
+          className="font-mono text-xs text-text-muted transition-colors hover:text-neon-cyan"
+        >
+          Year view →
+        </Link>
       </div>
 
       {loading && !stats && (

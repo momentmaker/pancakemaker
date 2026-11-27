@@ -69,6 +69,7 @@ describe('useCommandIndex', () => {
       'Settings',
       'Upcoming',
       'Lenses',
+      'Year',
     ])
     // Personal (10) + Business (8) seeded categories are both indexed.
     expect(items.filter((i) => i.group === 'Categories').length).toBe(18)

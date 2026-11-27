@@ -106,6 +106,13 @@ export function useCommandIndex(actions: CommandActions): CommandItem[] {
       matchText: 'Lenses tags projects trips',
       run: () => actions.navigate('/lenses'),
     })
+    items.push({
+      id: 'route:/year',
+      group: 'Routes',
+      label: 'Year',
+      matchText: 'Year in pancakes annual review heatmap',
+      run: () => actions.navigate('/year'),
+    })
 
     const routeCats = [
       { routeType: 'personal' as const, label: 'Personal', cats: personalCats.categories },
