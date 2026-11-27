@@ -11,6 +11,7 @@ import { Badge } from '../components/Badge'
 import { FormInput, FormSelect } from '../components/FormInput'
 import { Modal } from '../components/Modal'
 import { SyncIndicator } from '../components/SyncIndicator'
+import { BackupCard } from '../components/BackupCard'
 import { useSync } from '../sync/SyncContext'
 import { getStoredUserEmail, clearToken, clearUserEmail } from '../sync/api-client'
 
@@ -247,6 +248,8 @@ export function Settings() {
           </Button>
         </div>
       </Card>
+
+      <BackupCard />
 
       {/* Personal Categories */}
       <Card className="mt-4">
