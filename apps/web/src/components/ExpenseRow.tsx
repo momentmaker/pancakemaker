@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
+import { Link } from 'react-router-dom'
 import { type ExpenseRow as ExpenseRowType, type CategoryRow } from '../db/queries'
 import { AmountDisplay } from './AmountDisplay'
 import { Badge } from './Badge'
@@ -11,6 +12,8 @@ interface ExpenseRowProps {
   onDuplicate?: (expense: ExpenseRowType) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onStopRecurring?: (expense: ExpenseRowType) => Promise<void>
+  tags?: string[]
+  tagLinkPrefix?: string
   cursored?: boolean
 }
 
@@ -45,6 +48,8 @@ export const ExpenseRow = forwardRef<ExpenseRowHandle, ExpenseRowProps>(function
     onDuplicate,
     onDelete,
     onStopRecurring,
+    tags = [],
+    tagLinkPrefix = '',
     cursored = false,
   },
   ref,
@@ -208,6 +213,15 @@ export const ExpenseRow = forwardRef<ExpenseRowHandle, ExpenseRowProps>(function
             ↻
           </span>
         )}
+        {tags.map((tag) => (
+          <Link
+            key={tag}
+            to={`${tagLinkPrefix}/lens/${encodeURIComponent(tag)}`}
+            className="font-mono text-[11px] text-neon-violet/80 transition-colors hover:text-neon-violet"
+          >
+            +{tag}
+          </Link>
+        ))}
       </div>
       <div className="flex items-center gap-3">
         {editingAmount ? (

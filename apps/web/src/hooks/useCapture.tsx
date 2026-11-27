@@ -12,15 +12,10 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useAppState } from './useAppState'
 import { useDatabase } from '../db/DatabaseContext'
 import { useSync } from '../sync/SyncContext'
+import { saveNewExpense } from '../db/save-expense'
 import { useCategories } from './useCategories'
 import { usePanels } from './usePanels'
-import {
-  createExpense,
-  getCaptureHistory,
-  logSyncEntry,
-  type CategoryRow,
-  type CreateExpenseInput,
-} from '../db/queries'
+import { getCaptureHistory, type CategoryRow, type CreateExpenseInput } from '../db/queries'
 import { QuickAdd, type QuickAddPrefill } from '../components/QuickAdd'
 import { CaptureBar, type UsualChip } from '../components/CaptureBar'
 import { CaptureToast, type CaptureToastSummary } from '../components/CaptureToast'
@@ -31,6 +26,10 @@ import { formatCurrency } from '../lib/format'
 export type { QuickAddPrefill }
 
 const USUAL_CHIP_LIMIT = 6
+
+function withTags(note: string, tags: readonly string[]): string {
+  return [note, ...tags.map((t) => `+${t}`)].filter(Boolean).join(' ')
+}
 
 type ExpenseInput = Pick<
   CreateExpenseInput,
@@ -130,15 +129,7 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
 
   const handleAdd = useCallback(
     async (data: ExpenseInput) => {
-      const expense = await createExpense(db, data)
-      await logSyncEntry(
-        db,
-        userId,
-        'expenses',
-        expense.id,
-        'create',
-        expense as unknown as Record<string, unknown>,
-      )
+      await saveNewExpense(db, userId, data)
       markPending()
       triggerSync()
       notifyLocalChange(['expenses'])
@@ -165,7 +156,7 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
             amount: cents,
             currency: decision.panel.currency,
             date: new Date().toISOString().slice(0, 10),
-            description: decision.note || undefined,
+            description: withTags(decision.note, decision.tags) || undefined,
           })
           setToast({
             route: targetRouteLabel,
@@ -188,7 +179,7 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
 
       openQuickAdd({
         amount: decision.amount !== null ? String(decision.amount) : undefined,
-        description: decision.note || undefined,
+        description: withTags(decision.note, decision.tags) || undefined,
         categoryHint: decision.categoryToken ?? undefined,
       })
       setBarOpen(false)
@@ -231,7 +222,7 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
         input.trim()
           ? {
               amount: parsed.amount !== null ? String(parsed.amount) : undefined,
-              description: parsed.note || undefined,
+              description: withTags(parsed.note, parsed.tags) || undefined,
               categoryHint: parsed.categoryToken ?? undefined,
             }
           : undefined,
