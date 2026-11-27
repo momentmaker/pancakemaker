@@ -24,6 +24,7 @@ import type { DashboardExpenseRow } from '../db/queries'
 import { QuickAdd } from '../components/QuickAdd'
 import { UnconvertedNote } from '../components/UnconvertedNote'
 import { Button } from '../components/Button'
+import { ComingUpCard } from '../components/ComingUpCard'
 
 function currentMonth(): string {
   const d = new Date()
@@ -656,6 +657,8 @@ export function Dashboard() {
               </div>
             </Card>
           )}
+
+          <ComingUpCard />
 
           {/* Monthly Burn Rate */}
           {stats.burnRate.total > 0 && (

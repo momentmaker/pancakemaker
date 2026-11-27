@@ -6,6 +6,7 @@ import { RouteView } from './views/RouteView'
 import { PanelDetail } from './views/PanelDetail'
 import { CategoryDetail } from './views/CategoryDetail'
 import { Settings } from './views/Settings'
+import { Upcoming } from './views/Upcoming'
 import { Login } from './views/Login'
 import { AuthVerify } from './views/AuthVerify'
 import { DemoLayout } from './demo/demo-layout'
@@ -30,6 +31,7 @@ const DEMO_CHILD_ROUTES = (
     <Route path="business" element={<RouteView type="business" />} />
     <Route path="business/category/:categoryId" element={<CategoryDetail />} />
     <Route path="business/panel/:panelId" element={<PanelDetail />} />
+    <Route path="upcoming" element={<Upcoming />} />
   </>
 )
 
@@ -60,6 +62,7 @@ export function App() {
           <Route path="/business/category/:categoryId" element={<CategoryDetail />} />
           <Route path="/business/panel/:panelId" element={<PanelDetail />} />
           <Route path="/business/:panelId" element={<BusinessPanelRedirect />} />
+          <Route path="/upcoming" element={<Upcoming />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
         <Route path="/auth/login" element={<Login />} />

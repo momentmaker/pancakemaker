@@ -76,6 +76,13 @@ export function useCommandIndex(actions: CommandActions): CommandItem[] {
         run: () => actions.navigate(item.to),
       })
     }
+    items.push({
+      id: 'route:/upcoming',
+      group: 'Routes',
+      label: 'Upcoming',
+      matchText: 'Upcoming bills subscriptions renewals recurring',
+      run: () => actions.navigate('/upcoming'),
+    })
 
     const routeCats = [
       { routeType: 'personal' as const, label: 'Personal', cats: personalCats.categories },
