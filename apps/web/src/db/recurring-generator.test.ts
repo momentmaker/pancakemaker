@@ -274,6 +274,22 @@ describe('generateRecurringExpenses', () => {
     expect((await liveExpenses()).map((e) => e.date)).toEqual(['2026-01-01', '2026-02-01'])
   })
 
+  it('removes months past an end date that was set on another device', async () => {
+    // #given
+    const original = await createMonthlyRent()
+    await generateRecurringExpenses(db, '2026-04-15')
+    await db.execute('UPDATE expenses SET recurrence_end_date = ? WHERE id = ?', [
+      '2026-02-28',
+      original.id,
+    ])
+
+    // #when
+    await generateRecurringExpenses(db, '2026-04-15')
+
+    // #then
+    expect((await liveExpenses()).map((e) => e.date)).toEqual(['2026-01-01', '2026-02-01'])
+  })
+
   it('carries a new price forward from the most recent month', async () => {
     // #given
     await createMonthlyRent('2026-01-01', 150000)

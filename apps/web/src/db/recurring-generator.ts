@@ -106,6 +106,17 @@ export async function generateRecurringExpenses(
         const recurrenceDay =
           original.recurrence_day ?? new Date(original.date + 'T00:00:00Z').getUTCDate()
 
+        const endDate = original.recurrence_end_date
+        if (endDate !== null) {
+          // A series stopped on another device leaves this device's own copies
+          // behind; their ids may predate deterministic ids, so match by date.
+          const timestamp = new Date().toISOString()
+          await db.execute(
+            'UPDATE expenses SET deleted_at = ?, updated_at = ? WHERE source_expense_id = ? AND date > ? AND deleted_at IS NULL',
+            [timestamp, timestamp, original.id, endDate],
+          )
+        }
+
         // Deleted copies are included so a month the user removed counts as
         // already generated and is not recreated.
         const copies = await db.query<ExpenseRow>(
@@ -114,7 +125,6 @@ export async function generateRecurringExpenses(
         )
         const existingSet = new Set(copies.map((c) => c.date))
         const lastGenerated = copies.length > 0 ? [...existingSet].sort().pop()! : null
-        const endDate = original.recurrence_end_date
 
         const missing = calculateMissingDates(
           recurrenceType,
