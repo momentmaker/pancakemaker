@@ -4,6 +4,7 @@ import { useAppState } from './useAppState.js'
 import { useSync } from '../sync/SyncContext.js'
 import { useExchangeRates } from './useExchangeRates.js'
 import { getDashboardExpenses, type DashboardExpenseRow } from '../db/queries.js'
+import { summarizeUnconverted, type UnconvertedSummary } from '../lib/currency.js'
 
 interface CategorySpend {
   id: string
@@ -34,6 +35,7 @@ export interface DashboardStats {
   daysElapsed: number
   projectedTotal: number | null
   insights: string[]
+  unconverted: UnconvertedSummary
 }
 
 function previousMonth(month: string): string {
@@ -212,7 +214,7 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
   const db = useDatabase()
   const { personalRouteId, businessRouteId, baseCurrency } = useAppState()
   const { dataVersion } = useSync()
-  const { convert } = useExchangeRates(baseCurrency)
+  const { convert, canConvert } = useExchangeRates(baseCurrency)
 
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(false)
@@ -277,6 +279,7 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
         biggestExpense,
         daysElapsed: elapsed,
         projectedTotal,
+        unconverted: summarizeUnconverted(currentExpenses, canConvert),
       })
     } catch (err) {
       if (loadId !== loadIdRef.current) return
@@ -288,7 +291,16 @@ export function useDashboardStats(month: string, daysElapsedOverride?: number) {
         lastMonthRef.current = month
       }
     }
-  }, [db, personalRouteId, businessRouteId, month, convert, dataVersion, daysElapsedOverride])
+  }, [
+    db,
+    personalRouteId,
+    businessRouteId,
+    month,
+    convert,
+    canConvert,
+    dataVersion,
+    daysElapsedOverride,
+  ])
 
   useEffect(() => {
     loadStats()

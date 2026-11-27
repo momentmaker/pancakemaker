@@ -26,6 +26,8 @@ import { PanelCard } from '../components/PanelCard'
 import { CategoryCard } from '../components/CategoryCard'
 import { MonthPicker } from '../components/MonthPicker'
 import { QuickAdd } from '../components/QuickAdd'
+import { UnconvertedNote } from '../components/UnconvertedNote'
+import { summarizeUnconverted } from '../lib/currency'
 import { Button } from '../components/Button'
 import { EmptyState } from '../components/EmptyState'
 import { Toggle } from '../components/Toggle'
@@ -90,7 +92,7 @@ export function RouteView({ type }: RouteViewProps) {
     loadAllPanels()
   }, [db, routeId, dataVersion])
 
-  const { convert } = useExchangeRates(baseCurrency)
+  const { convert, canConvert } = useExchangeRates(baseCurrency)
 
   useEffect(() => {
     async function loadCategoryTotals() {
@@ -210,6 +212,7 @@ export function RouteView({ type }: RouteViewProps) {
               +<span className="hidden sm:inline"> Add Expense</span>
             </Button>
           </div>
+          <UnconvertedNote summary={summarizeUnconverted(categoryTotals, canConvert)} />
 
           {categories.length === 0 ? (
             <div className="mt-8">

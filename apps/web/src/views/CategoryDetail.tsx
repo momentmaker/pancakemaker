@@ -23,6 +23,8 @@ import { ExpenseRow } from '../components/ExpenseRow'
 import { EmptyState } from '../components/EmptyState'
 import { MonthPicker } from '../components/MonthPicker'
 import { QuickAdd } from '../components/QuickAdd'
+import { UnconvertedNote } from '../components/UnconvertedNote'
+import { summarizeUnconverted } from '../lib/currency'
 import { SparkBars } from '../components/SparkBars'
 
 function currentMonth(): string {
@@ -77,7 +79,7 @@ export function CategoryDetail() {
     categoryId: categoryId!,
     month,
   })
-  const { convert } = useExchangeRates(baseCurrency)
+  const { convert, canConvert } = useExchangeRates(baseCurrency)
 
   const category = useMemo(
     () => categories.find((c) => c.id === categoryId),
@@ -142,6 +144,10 @@ export function CategoryDetail() {
   const convertedTotal = useMemo(
     () => expenses.reduce((sum, e) => sum + convert(e.amount, e.currency), 0),
     [expenses, convert],
+  )
+  const unconverted = useMemo(
+    () => summarizeUnconverted(expenses, canConvert),
+    [expenses, canConvert],
   )
 
   const sparkData = useMemo(
@@ -276,6 +282,7 @@ export function CategoryDetail() {
               {expenses.length} {expenses.length === 1 ? 'expense' : 'expenses'}
             </span>
           </div>
+          <UnconvertedNote summary={unconverted} />
           <div className="mt-3">
             <MonthPicker month={month} onChange={setMonth} />
           </div>
