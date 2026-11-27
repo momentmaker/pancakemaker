@@ -1,13 +1,14 @@
 import { createRef } from 'react'
-import { render, screen, act, cleanup } from '@testing-library/react'
+import { render, screen, act, cleanup, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ExpenseRow, type ExpenseRowHandle } from './ExpenseRow.js'
 import type { ExpenseRow as ExpenseRowType } from '../db/queries'
 
 afterEach(cleanup)
 
-function makeExpense(): ExpenseRowType {
+function makeExpense(overrides: Partial<ExpenseRowType> = {}): ExpenseRowType {
   return {
+    ...overrides,
     id: 'e1',
     amount: 1500,
     currency: 'USD',
@@ -87,5 +88,76 @@ describe('ExpenseRow imperative handle', () => {
     )
     expect(container.querySelector('.kbd-cursor')).toBeTruthy()
     expect(container.querySelector('[data-kbd-item-id="e1"]')).toBeTruthy()
+  })
+})
+
+describe('ExpenseRow recurring delete', () => {
+  it('stops the series from this month when "This & future" is chosen', async () => {
+    // #given
+    const onStopRecurring = vi.fn().mockResolvedValue(undefined)
+    const expense = makeExpense({ source_expense_id: 'orig' })
+    const ref = createRef<ExpenseRowHandle>()
+    render(
+      <ExpenseRow
+        ref={ref}
+        expense={expense}
+        onUpdateAmount={vi.fn()}
+        onDelete={vi.fn()}
+        onStopRecurring={onStopRecurring}
+      />,
+    )
+    act(() => ref.current!.startConfirmDelete())
+
+    // #when
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'This & future' }))
+    })
+
+    // #then
+    expect(onStopRecurring).toHaveBeenCalledWith(expense)
+  })
+
+  it('deletes only this month when "This month" is chosen', async () => {
+    // #given
+    const onDelete = vi.fn().mockResolvedValue(undefined)
+    const ref = createRef<ExpenseRowHandle>()
+    render(
+      <ExpenseRow
+        ref={ref}
+        expense={makeExpense({ source_expense_id: 'orig' })}
+        onUpdateAmount={vi.fn()}
+        onDelete={onDelete}
+        onStopRecurring={vi.fn()}
+      />,
+    )
+    act(() => ref.current!.startConfirmDelete())
+
+    // #when
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'This month' }))
+    })
+
+    // #then
+    expect(onDelete).toHaveBeenCalledWith('e1')
+  })
+
+  it('offers only a plain confirm for a one-off expense', () => {
+    // #given
+    const ref = createRef<ExpenseRowHandle>()
+    render(
+      <ExpenseRow
+        ref={ref}
+        expense={makeExpense({ source_expense_id: null })}
+        onUpdateAmount={vi.fn()}
+        onDelete={vi.fn()}
+        onStopRecurring={vi.fn()}
+      />,
+    )
+
+    // #when
+    act(() => ref.current!.startConfirmDelete())
+
+    // #then
+    expect(screen.queryByRole('button', { name: 'This & future' })).toBeNull()
   })
 })

@@ -8,6 +8,7 @@ import { createTestDatabase } from '../db/test-db.js'
 import { runMigrations } from '../db/migrations.js'
 import { seedDefaultData } from '../db/seed.js'
 import { getPanelsByRoute, getCategoriesByRoute, createExpense } from '../db/queries.js'
+import { generateRecurringExpenses } from '../db/recurring-generator.js'
 import { useExpenses } from './useExpenses.js'
 import type { Database } from '../db/interface.js'
 
@@ -114,6 +115,45 @@ describe('useExpenses', () => {
     })
 
     expect(result.current.expenses).toHaveLength(0)
+  })
+
+  it('stopping a recurring expense queues the end date and deletions for sync', async () => {
+    // #given
+    const panels = await getPanelsByRoute(db, appState.personalRouteId)
+    const monthlyPanelId = panels.find((p) => p.recurrence_type === 'monthly')!.id
+    const original = await createExpense(db, {
+      panelId: monthlyPanelId,
+      categoryId,
+      amount: 150000,
+      currency: 'USD',
+      date: '2026-01-01',
+      recurrenceDay: 1,
+    })
+    await generateRecurringExpenses(db, '2026-03-15')
+    const { result } = renderHook(() => useExpenses({ panelId: monthlyPanelId }), { wrapper })
+    await act(async () => {
+      await result.current.load()
+    })
+    const february = result.current.expenses.find((e) => e.date === '2026-02-01')!
+
+    // #when
+    await act(async () => {
+      await result.current.stopRecurring(february)
+    })
+
+    // #then
+    const entries = await db.query<{ record_id: string; action: string }>(
+      "SELECT record_id, action FROM sync_log WHERE table_name = 'expenses' ORDER BY id",
+    )
+    expect({
+      entries: entries.map(
+        (e) => `${e.action}:${e.record_id === original.id ? 'original' : 'copy'}`,
+      ),
+      remaining: result.current.expenses.map((e) => e.date),
+    }).toEqual({
+      entries: ['update:original', 'delete:copy', 'delete:copy'],
+      remaining: ['2026-01-01'],
+    })
   })
 
   it('loads expenses by category', async () => {

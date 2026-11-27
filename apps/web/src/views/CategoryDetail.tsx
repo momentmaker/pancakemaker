@@ -61,7 +61,7 @@ export function CategoryDetail() {
   const [showQuickAdd, setShowQuickAdd] = useState(false)
 
   const { categories, load: loadCategories } = useCategories(routeId)
-  const { expenses, loading, load, add, update, remove } = useExpenses({
+  const { expenses, loading, load, add, update, remove, stopRecurring } = useExpenses({
     categoryId: categoryId!,
     month,
   })
@@ -178,6 +178,15 @@ export function CategoryDetail() {
       setTrend(trendData)
     },
     [remove, db, categoryId, month],
+  )
+
+  const handleStopRecurring = useCallback(
+    async (expense: (typeof expenses)[0]) => {
+      await stopRecurring(expense)
+      const trendData = await getCategoryMonthlyTrend(db, categoryId!, month)
+      setTrend(trendData)
+    },
+    [stopRecurring, db, categoryId, month],
   )
 
   const handleUpdateAmount = useCallback(
@@ -318,6 +327,7 @@ export function CategoryDetail() {
                                 onUpdateDescription={handleUpdateDescription}
                                 onDuplicate={handleDuplicate}
                                 onDelete={handleRemove}
+                                onStopRecurring={handleStopRecurring}
                                 cursored={activeId === expense.id}
                               />
                             ))}
