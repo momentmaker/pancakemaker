@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAppState } from './useAppState'
 import { useDatabase } from '../db/DatabaseContext'
 import { useSync } from '../sync/SyncContext'
@@ -16,17 +16,21 @@ import { useCategories } from './useCategories'
 import { usePanels } from './usePanels'
 import {
   createExpense,
+  getCaptureHistory,
   logSyncEntry,
   type CategoryRow,
   type CreateExpenseInput,
 } from '../db/queries'
 import { QuickAdd, type QuickAddPrefill } from '../components/QuickAdd'
-import { CaptureBar } from '../components/CaptureBar'
+import { CaptureBar, type UsualChip } from '../components/CaptureBar'
 import { CaptureToast, type CaptureToastSummary } from '../components/CaptureToast'
-import { decideCapture } from '../lib/keyboard/capture'
+import { decideCapture, parseCaptureLine } from '../lib/keyboard/capture'
+import { inferCategoryId, topUsuals, type HistoryEntry } from '../lib/usual'
 import { formatCurrency } from '../lib/format'
 
 export type { QuickAddPrefill }
+
+const USUAL_CHIP_LIMIT = 6
 
 type ExpenseInput = Pick<
   CreateExpenseInput,
@@ -46,9 +50,11 @@ export const CaptureContext = createContext<CaptureContextValue | null>(null)
 
 export function CaptureProvider({ children }: { children: ReactNode }) {
   const location = useLocation()
+  const navigate = useNavigate()
   const { userId, personalRouteId, businessRouteId } = useAppState()
   const db = useDatabase()
-  const { markPending, triggerSync } = useSync()
+  const { markPending, triggerSync, notifyLocalChange, tableVersions } = useSync()
+  const expenseVersion = tableVersions['expenses'] ?? 0
 
   // Target route = the route in the current path, else Personal (Dashboard/Settings).
   const targetRouteType: 'personal' | 'business' = location.pathname.includes('/business')
@@ -71,6 +77,39 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
       [...panels].sort((a, b) => a.sort_order - b.sort_order)[0]
     )
   }, [panels])
+
+  const [history, setHistory] = useState<HistoryEntry[]>([])
+  const loadHistory = useCallback(async () => {
+    setHistory(await getCaptureHistory(db, targetRouteId))
+  }, [db, targetRouteId])
+  useEffect(() => {
+    loadHistory().catch((err: unknown) => console.error('Failed to load capture history:', err))
+  }, [loadHistory, expenseVersion])
+
+  const inferCategory = useCallback(
+    (note: string) => {
+      const id = inferCategoryId(note, history)
+      return id ? categories.find((c) => c.id === id) : undefined
+    },
+    [history, categories],
+  )
+
+  const usuals = useMemo(
+    () =>
+      topUsuals(history, USUAL_CHIP_LIMIT).filter((u) =>
+        categories.some((c) => c.id === u.categoryId),
+      ),
+    [history, categories],
+  )
+  const usualChips = useMemo<UsualChip[]>(
+    () =>
+      usuals.map((u, i) => ({
+        key: String(i),
+        label: u.description,
+        detail: `${formatCurrency(u.amount, u.currency)} · ${categories.find((c) => c.id === u.categoryId)?.name ?? ''}`,
+      })),
+    [usuals, categories],
+  )
 
   const [open, setOpen] = useState(false)
   const [prefill, setPrefill] = useState<QuickAddPrefill | undefined>(undefined)
@@ -102,8 +141,10 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
       )
       markPending()
       triggerSync()
+      notifyLocalChange(['expenses'])
+      await loadHistory()
     },
-    [db, userId, markPending, triggerSync],
+    [db, userId, markPending, triggerSync, notifyLocalChange, loadHistory],
   )
 
   const submitCapture = useCallback(
@@ -111,7 +152,7 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
       // Guard against a second Enter landing while the first create is in flight —
       // without it a fast double-press writes the expense twice.
       if (submittingRef.current) return
-      const decision = decideCapture(input, categories, defaultPanel)
+      const decision = decideCapture(input, categories, defaultPanel, inferCategory)
 
       if (decision.kind === 'create') {
         const cents = Math.round(decision.amount * 100)
@@ -152,8 +193,62 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
       })
       setBarOpen(false)
     },
-    [categories, defaultPanel, handleAdd, openQuickAdd, targetRouteLabel],
+    [categories, defaultPanel, inferCategory, handleAdd, openQuickAdd, targetRouteLabel],
   )
+
+  const pickUsual = useCallback(
+    async (key: string) => {
+      const usual = usuals[Number(key)]
+      const category = usual && categories.find((c) => c.id === usual.categoryId)
+      if (!usual || !category) return
+      setBarOpen(false)
+      if (!defaultPanel) {
+        openQuickAdd({ amount: String(usual.amount / 100), description: usual.description })
+        return
+      }
+      await handleAdd({
+        panelId: defaultPanel.id,
+        categoryId: category.id,
+        amount: usual.amount,
+        currency: defaultPanel.currency,
+        date: new Date().toISOString().slice(0, 10),
+        description: usual.description,
+      })
+      setToast({
+        route: targetRouteLabel,
+        category: category.name,
+        amount: formatCurrency(usual.amount, defaultPanel.currency),
+      })
+    },
+    [usuals, categories, defaultPanel, handleAdd, openQuickAdd, targetRouteLabel],
+  )
+
+  const openFullForm = useCallback(
+    (input: string) => {
+      const parsed = parseCaptureLine(input)
+      setBarOpen(false)
+      openQuickAdd(
+        input.trim()
+          ? {
+              amount: parsed.amount !== null ? String(parsed.amount) : undefined,
+              description: parsed.note || undefined,
+              categoryHint: parsed.categoryToken ?? undefined,
+            }
+          : undefined,
+      )
+    },
+    [openQuickAdd],
+  )
+
+  // The PWA's "Log expense" home-screen shortcut opens /?capture=1.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('capture') !== '1') return
+    params.delete('capture')
+    const search = params.toString()
+    navigate({ pathname: location.pathname, search: search ? `?${search}` : '' }, { replace: true })
+    setBarOpen(true)
+  }, [location.pathname, location.search, navigate])
 
   const value = useMemo<CaptureContextValue>(
     () => ({ targetRouteId, targetRouteLabel, categories, openQuickAdd, openCaptureBar }),
@@ -173,12 +268,16 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
         routeLabel={targetRouteLabel}
         autoFocusField={autoFocusField}
         prefill={prefill}
+        defaultCategoryId={history[0]?.category_id}
       />
       <CaptureBar
         open={barOpen}
         routeLabel={targetRouteLabel}
         onSubmit={submitCapture}
         onClose={() => setBarOpen(false)}
+        usuals={usualChips}
+        onPickUsual={pickUsual}
+        onMore={openFullForm}
       />
       <CaptureToast summary={toast} onDismiss={dismissToast} />
     </CaptureContext.Provider>

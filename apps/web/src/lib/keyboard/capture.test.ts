@@ -110,6 +110,27 @@ describe('decideCapture', () => {
     })
   })
 
+  it('creates without a #category when history names one', () => {
+    const fromHistory = (note: string) => (note === 'coffee' ? categories[0] : undefined)
+    expect(decideCapture('4.50 coffee', categories, defaultPanel, fromHistory)).toEqual({
+      kind: 'create',
+      panel: defaultPanel,
+      category: categories[0],
+      amount: 4.5,
+      note: 'coffee',
+    })
+  })
+
+  it('still prefills without a #category when history has no answer', () => {
+    const d = decideCapture('4.50 bagel', categories, defaultPanel, () => undefined)
+    expect(d.kind).toBe('prefill')
+  })
+
+  it('lets an explicit #category win over history', () => {
+    const d = decideCapture('4.50 coffee #health', categories, defaultPanel, () => categories[0])
+    expect(d.kind === 'create' && d.category.name).toBe('Health')
+  })
+
   it('prefills (creates nothing) when there is no #category (AE2)', () => {
     expect(decideCapture('12.50 coffee', categories, defaultPanel)).toEqual({
       kind: 'prefill',

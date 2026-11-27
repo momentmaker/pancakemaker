@@ -31,6 +31,7 @@ import {
   pruneOldSyncEntries,
   getExportRows,
   getRecentExpenses,
+  getCaptureHistory,
   getExpensesByCategory,
   getCategoryTotals,
   getDefaultPanelByRoute,
@@ -742,6 +743,49 @@ describe('export', () => {
 
     // #then
     expect(rows).toHaveLength(0)
+  })
+})
+
+describe('getCaptureHistory', () => {
+  it('returns the route expenses, most recently added first, without deleted ones', async () => {
+    // #given
+    const category = await createCategory(db, routeId, 'Meals', '#ff6b9d', 0)
+    const panel = await createPanel(db, routeId, 'Daily', 'USD', 0)
+    const first = await createExpense(db, {
+      panelId: panel.id,
+      categoryId: category.id,
+      amount: 450,
+      currency: 'USD',
+      date: '2026-06-20',
+      description: 'coffee',
+    })
+    const deleted = await createExpense(db, {
+      panelId: panel.id,
+      categoryId: category.id,
+      amount: 900,
+      currency: 'USD',
+      date: '2026-06-21',
+      description: 'oops',
+    })
+    await softDeleteExpense(db, deleted.id)
+    await db.execute('UPDATE expenses SET created_at = ? WHERE id = ?', [
+      '2026-01-01T00:00:00Z',
+      first.id,
+    ])
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: category.id,
+      amount: 290,
+      currency: 'USD',
+      date: '2026-06-01',
+      description: 'bus',
+    })
+
+    // #when
+    const rows = await getCaptureHistory(db, routeId)
+
+    // #then
+    expect(rows.map((r) => r.description)).toEqual(['bus', 'coffee'])
   })
 })
 
