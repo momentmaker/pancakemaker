@@ -54,6 +54,11 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
       exportJson: () => {
         exportData(db, userId, 'json').catch((err) => console.error('Export failed', err))
       },
+      exportTaxEnvelope: () => {
+        exportData(db, userId, 'tax', { from: `${new Date().getFullYear()}-01-01` }).catch((err) =>
+          console.error('Export failed', err),
+        )
+      },
     }),
     [navigate, openQuickAdd, openCheatsheet, forceSync, requestFocus, db, userId],
   )

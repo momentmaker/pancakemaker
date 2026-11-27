@@ -16,6 +16,7 @@ const actions: CommandActions = {
   focusExpense: vi.fn(),
   exportCsv: vi.fn(),
   exportJson: vi.fn(),
+  exportTaxEnvelope: vi.fn(),
 }
 
 let items: CommandItem[] = []
@@ -75,6 +76,7 @@ describe('useCommandIndex', () => {
       'Add expense',
       'Export CSV',
       'Export JSON',
+      'Export tax envelope (this year)',
       'Open keyboard cheatsheet',
       'Sync now',
     ])
@@ -107,10 +109,12 @@ describe('useCommandIndex', () => {
     find('Add expense').run()
     find('Sync now').run()
     find('Export CSV').run()
+    find('Export tax envelope (this year)').run()
     find('Open keyboard cheatsheet').run()
     expect(actions.openQuickAdd).toHaveBeenCalledOnce()
     expect(actions.syncNow).toHaveBeenCalledOnce()
     expect(actions.exportCsv).toHaveBeenCalledOnce()
+    expect(actions.exportTaxEnvelope).toHaveBeenCalledOnce()
     expect(actions.openCheatsheet).toHaveBeenCalledOnce()
   })
 

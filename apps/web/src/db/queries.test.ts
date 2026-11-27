@@ -38,6 +38,7 @@ import {
   healOrphanedExpenses,
 } from './queries.js'
 import type { Database } from './interface.js'
+import { tagExpense } from './lenses.js'
 
 let db: Database
 let userId: string
@@ -696,6 +697,49 @@ describe('expenses with source_expense_id', () => {
     // #then
     expect(generated.source_expense_id).toBe(original.id)
     expect(generated.recurrence_day).toBe(1)
+  })
+})
+
+describe('export with a range and tags', () => {
+  it('limits rows to the dates asked for', async () => {
+    // #given
+    const category = await createCategory(db, routeId, 'Health', '#00ffcc', 0)
+    const panel = await createPanel(db, routeId, 'Daily', 'USD', 0)
+    for (const date of ['2025-12-31', '2026-01-01', '2026-06-30', '2026-07-01']) {
+      await createExpense(db, {
+        panelId: panel.id,
+        categoryId: category.id,
+        amount: 100,
+        currency: 'USD',
+        date,
+      })
+    }
+
+    // #when
+    const rows = await getExportRows(db, userId, { from: '2026-01-01', to: '2026-06-30' })
+
+    // #then
+    expect(rows.map((r) => r.date)).toEqual(['2026-06-30', '2026-01-01'])
+  })
+
+  it('lists each expense with its tags', async () => {
+    // #given
+    const category = await createCategory(db, routeId, 'Health', '#00ffcc', 0)
+    const panel = await createPanel(db, routeId, 'Daily', 'USD', 0)
+    const expense = await createExpense(db, {
+      panelId: panel.id,
+      categoryId: category.id,
+      amount: 100,
+      currency: 'USD',
+      date: '2026-01-01',
+    })
+    await tagExpense(db, userId, expense.id, ['work', 'deductible'])
+
+    // #when
+    const [row] = await getExportRows(db, userId)
+
+    // #then
+    expect(row.tags).toBe('+deductible +work')
   })
 })
 

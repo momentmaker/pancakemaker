@@ -11,7 +11,7 @@ import {
 import type { Database } from '../db/interface'
 import { createTestDatabase } from '../db/test-db'
 import { runMigrations } from '../db/migrations'
-import { formatCSV, formatJSON, exportData } from './export'
+import { formatCSV, formatJSON, exportData, formatTaxEnvelope } from './export'
 
 const rows: ExportRow[] = [
   {
@@ -22,6 +22,7 @@ const rows: ExportRow[] = [
     panel: 'January 2026',
     route_type: 'personal',
     description: 'Gym membership',
+    tags: '',
   },
   {
     date: '2026-01-14',
@@ -31,6 +32,7 @@ const rows: ExportRow[] = [
     panel: 'January 2026',
     route_type: 'personal',
     description: '',
+    tags: '+japan-trip',
   },
 ]
 
@@ -38,9 +40,9 @@ describe('formatCSV', () => {
   it('produces header row and data rows', () => {
     const csv = formatCSV(rows)
     const lines = csv.split('\n')
-    expect(lines[0]).toBe('Date,Amount,Currency,Category,Panel,Type,Description')
-    expect(lines[1]).toBe('2026-01-15,15.00,USD,Health,January 2026,personal,Gym membership')
-    expect(lines[2]).toBe('2026-01-14,23.00,EUR,Meals,January 2026,personal,')
+    expect(lines[0]).toBe('Date,Amount,Currency,Category,Panel,Type,Description,Tags')
+    expect(lines[1]).toBe('2026-01-15,15.00,USD,Health,January 2026,personal,Gym membership,')
+    expect(lines[2]).toBe('2026-01-14,23.00,EUR,Meals,January 2026,personal,,+japan-trip')
   })
 
   it('converts amounts from cents to decimal', () => {
@@ -60,7 +62,60 @@ describe('formatCSV', () => {
 
   it('returns only header for empty rows', () => {
     const csv = formatCSV([])
-    expect(csv).toBe('Date,Amount,Currency,Category,Panel,Type,Description')
+    expect(csv).toBe('Date,Amount,Currency,Category,Panel,Type,Description,Tags')
+  })
+})
+
+describe('formatTaxEnvelope', () => {
+  const business = (category: string, amount: number, date: string): ExportRow => ({
+    date,
+    amount,
+    currency: 'USD',
+    category,
+    panel: 'Daily',
+    route_type: 'business',
+    description: category.toLowerCase(),
+    tags: '',
+  })
+  const envelopeRows: ExportRow[] = [
+    business('Software', 2000, '2026-02-01'),
+    business('Software', 3000, '2026-03-01'),
+    business('Travel', 50000, '2026-03-05'),
+    { ...rows[0], description: 'phone bill', tags: '+deductible' },
+    { ...rows[0], description: 'gym' },
+  ]
+
+  it('names the period at the top', () => {
+    const csv = formatTaxEnvelope(envelopeRows, { from: '2026-01-01', to: '2026-03-31' })
+    expect(csv.split('\n')[0]).toBe('pancakemaker tax envelope,2026-01-01,2026-03-31')
+  })
+
+  it('totals each category, largest first', () => {
+    const lines = formatTaxEnvelope(envelopeRows, {}).split('\n')
+    const start = lines.indexOf('Category,Expenses,Total,Currency')
+    expect(lines.slice(start + 1, start + 4)).toEqual([
+      'Travel,1,500.00,USD',
+      'Software,2,50.00,USD',
+      'Health,1,15.00,USD',
+    ])
+  })
+
+  it('keeps business expenses and personal ones tagged +deductible, nothing else', () => {
+    const lines = formatTaxEnvelope(envelopeRows, {}).split('\n')
+    const items = lines.slice(
+      lines.indexOf('Date,Amount,Currency,Category,Panel,Source,Description,Tags') + 1,
+    )
+    expect(items.map((l) => l.split(',')[6])).toEqual([
+      'travel',
+      'software',
+      'software',
+      'phone bill',
+    ])
+  })
+
+  it('marks why a personal expense was included', () => {
+    const csv = formatTaxEnvelope(envelopeRows, {})
+    expect(csv).toContain('Personal +deductible,phone bill')
   })
 })
 
