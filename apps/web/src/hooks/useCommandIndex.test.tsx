@@ -60,7 +60,13 @@ describe('useCommandIndex', () => {
     expect(new Set(items.map((i) => i.group))).toEqual(
       new Set(['Routes', 'Categories', 'Panels', 'Recent expenses', 'Actions']),
     )
-    expect(items.filter((i) => i.group === 'Routes')).toHaveLength(4)
+    expect(items.filter((i) => i.group === 'Routes').map((i) => i.label)).toEqual([
+      'Dashboard',
+      'Personal',
+      'Business',
+      'Settings',
+      'Upcoming',
+    ])
     // Personal (10) + Business (8) seeded categories are both indexed.
     expect(items.filter((i) => i.group === 'Categories').length).toBe(18)
     expect(items.filter((i) => i.group === 'Actions').map((i) => i.label)).toEqual([
