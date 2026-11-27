@@ -478,6 +478,123 @@ describe('useDashboardStats', () => {
     expect(result.current.stats!.projectedTotal).toBe(31000)
   })
 
+  it('does not extrapolate a recurring charge across the month', async () => {
+    // #given
+    const monthly = await createPanel(db, personalRouteId, 'Bills', 'USD', 1, 'monthly')
+    const daily = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
+    const cat = await createCategory(db, personalRouteId, 'Home', '#ff0000', 0)
+    await createExpense(db, {
+      panelId: monthly.id,
+      categoryId: cat.id,
+      amount: 150000,
+      currency: 'USD',
+      date: '2026-01-01',
+    })
+    await createExpense(db, {
+      panelId: daily.id,
+      categoryId: cat.id,
+      amount: 3000,
+      currency: 'USD',
+      date: '2026-01-02',
+    })
+
+    // #when — day 3 of 31: everyday spending is $10/day, rent is not repeated
+    const { result } = renderHook(() => useDashboardStats('2026-01', 3), { wrapper })
+    await act(async () => {})
+
+    // #then
+    expect(result.current.stats!.projectedTotal).toBe(153000 + 28 * 1000)
+  })
+
+  it('builds a ghost month from the median of previous months', async () => {
+    // #given
+    const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
+    const cat = await createCategory(db, personalRouteId, 'Food', '#ff0000', 0)
+    for (const [date, amount] of [
+      ['2025-10-01', 1000],
+      ['2025-11-01', 2000],
+      ['2025-12-01', 3000],
+    ] as const) {
+      await createExpense(db, {
+        panelId: panel.id,
+        categoryId: cat.id,
+        amount,
+        currency: 'USD',
+        date,
+      })
+    }
+
+    // #when
+    const { result } = renderHook(() => useDashboardStats('2026-01', 5), { wrapper })
+    await act(async () => {})
+
+    // #then
+    expect({
+      label: result.current.stats!.ghostLabel,
+      firstDay: result.current.stats!.ghostCurve?.[0],
+    }).toEqual({ label: 'your normal', firstDay: 2000 })
+  })
+
+  it('uses last month as the ghost when that is all the history there is', async () => {
+    // #given
+    const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
+    const cat = await createCategory(db, personalRouteId, 'Food', '#ff0000', 0)
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 1000,
+      currency: 'USD',
+      date: '2025-12-05',
+    })
+
+    // #when
+    const { result } = renderHook(() => useDashboardStats('2026-01', 5), { wrapper })
+    await act(async () => {})
+
+    // #then
+    expect(result.current.stats!.ghostLabel).toBe('last month')
+  })
+
+  it('names the month when the only history is older than last month', async () => {
+    // #given
+    const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
+    const cat = await createCategory(db, personalRouteId, 'Food', '#ff0000', 0)
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 1000,
+      currency: 'USD',
+      date: '2025-10-05',
+    })
+
+    // #when
+    const { result } = renderHook(() => useDashboardStats('2026-01', 5), { wrapper })
+    await act(async () => {})
+
+    // #then
+    expect(result.current.stats!.ghostLabel).toBe('October')
+  })
+
+  it('tracks the running total for each elapsed day', async () => {
+    // #given
+    const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
+    const cat = await createCategory(db, personalRouteId, 'Food', '#ff0000', 0)
+    await createExpense(db, {
+      panelId: panel.id,
+      categoryId: cat.id,
+      amount: 500,
+      currency: 'USD',
+      date: '2026-01-02',
+    })
+
+    // #when
+    const { result } = renderHook(() => useDashboardStats('2026-01', 3), { wrapper })
+    await act(async () => {})
+
+    // #then
+    expect(result.current.stats!.paceCurve).toEqual([0, 500, 500])
+  })
+
   it('projectedTotal equals totalAmount for completed months', async () => {
     // #given
     const panel = await createPanel(db, personalRouteId, 'Daily', 'USD', 0)
