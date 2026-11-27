@@ -156,6 +156,81 @@ describe('useExpenses', () => {
     })
   })
 
+  it('restoring a deleted expense brings it back and queues a sync update', async () => {
+    // #given
+    const { result } = renderHook(() => useExpenses(panelId), { wrapper })
+    let expenseId = ''
+    await act(async () => {
+      const expense = await result.current.add({
+        panelId,
+        categoryId,
+        amount: 1500,
+        currency: 'USD',
+        date: '2026-01-15',
+      })
+      expenseId = expense.id
+    })
+    await act(async () => {
+      await result.current.remove(expenseId)
+    })
+
+    // #when
+    await act(async () => {
+      await result.current.restore(expenseId)
+    })
+
+    // #then
+    const entries = await db.query<{ action: string; payload: string }>(
+      'SELECT action, payload FROM sync_log WHERE record_id = ? ORDER BY id',
+      [expenseId],
+    )
+    expect({
+      visible: result.current.expenses.map((e) => e.id),
+      lastEntry: {
+        action: entries.at(-1)!.action,
+        deletedAt: JSON.parse(entries.at(-1)!.payload).deleted_at,
+      },
+    }).toEqual({ visible: [expenseId], lastEntry: { action: 'update', deletedAt: null } })
+  })
+
+  it('undoing a stopped series brings the months back and queues sync updates', async () => {
+    // #given
+    const panels = await getPanelsByRoute(db, appState.personalRouteId)
+    const monthlyPanelId = panels.find((p) => p.recurrence_type === 'monthly')!.id
+    await createExpense(db, {
+      panelId: monthlyPanelId,
+      categoryId,
+      amount: 150000,
+      currency: 'USD',
+      date: '2026-01-01',
+      recurrenceDay: 1,
+    })
+    await generateRecurringExpenses(db, '2026-03-15')
+    const { result } = renderHook(() => useExpenses({ panelId: monthlyPanelId }), { wrapper })
+    await act(async () => {
+      await result.current.load()
+    })
+    const february = result.current.expenses.find((e) => e.date === '2026-02-01')!
+    let stopped: Awaited<ReturnType<typeof result.current.stopRecurring>> | undefined
+    await act(async () => {
+      stopped = await result.current.stopRecurring(february)
+    })
+
+    // #when
+    await act(async () => {
+      await result.current.undoStopRecurring(stopped!)
+    })
+
+    // #then
+    const updates = await db.query<{ action: string }>(
+      "SELECT action FROM sync_log WHERE table_name = 'expenses' AND action = 'update'",
+    )
+    expect({
+      dates: result.current.expenses.map((e) => e.date).sort(),
+      updateCount: updates.length,
+    }).toEqual({ dates: ['2026-01-01', '2026-02-01', '2026-03-01'], updateCount: 4 })
+  })
+
   it('loads expenses by category', async () => {
     // #given
     await createExpense(db, {

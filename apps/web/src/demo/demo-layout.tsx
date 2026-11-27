@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useParams, useNavigate, useMatch } from 'react-router-dom'
 import { DemoAppProvider } from './demo-provider.js'
+import { UndoProvider } from '../hooks/useUndo.js'
 import { useDemoContext, isDemoSubdomain } from './demo-context.js'
 import { DemoSummaryCard } from './demo-summary-card.js'
 import { PERSONA_LIST } from './demo-personas.js'
@@ -176,7 +177,9 @@ export function DemoLayout() {
 
   return (
     <DemoAppProvider personaSlug={persona}>
-      <DemoContent />
+      <UndoProvider>
+        <DemoContent />
+      </UndoProvider>
     </DemoAppProvider>
   )
 }

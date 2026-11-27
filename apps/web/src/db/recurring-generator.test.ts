@@ -16,6 +16,7 @@ import {
   calculateMissingDates,
   generateRecurringExpenses,
   stopRecurringFrom,
+  undoStopRecurring,
 } from './recurring-generator.js'
 import type { Database } from './interface.js'
 
@@ -439,5 +440,37 @@ describe('stopRecurringFrom', () => {
 
     // #then
     expect(await liveDates()).toEqual(['2026-01-01', '2026-02-01'])
+  })
+
+  it('undo brings back the deleted months and lifts the end date', async () => {
+    // #given
+    const result = await stopRecurringFrom(db, await copyOn('2026-03-01'))
+
+    // #when
+    const restored = await undoStopRecurring(db, result)
+
+    // #then
+    expect({
+      endDate: restored.original.recurrence_end_date,
+      dates: await liveDates(),
+    }).toEqual({
+      endDate: null,
+      dates: ['2026-01-01', '2026-02-01', '2026-03-01', '2026-04-01'],
+    })
+  })
+
+  it('undo restores an end date that was already set', async () => {
+    // #given
+    await db.execute('UPDATE expenses SET recurrence_end_date = ? WHERE id = ?', [
+      '2026-12-31',
+      original.id,
+    ])
+    const result = await stopRecurringFrom(db, await copyOn('2026-03-01'))
+
+    // #when
+    const restored = await undoStopRecurring(db, result)
+
+    // #then
+    expect(restored.original.recurrence_end_date).toBe('2026-12-31')
   })
 })

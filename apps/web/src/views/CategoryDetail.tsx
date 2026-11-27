@@ -4,6 +4,8 @@ import { useDatabase } from '../db/DatabaseContext'
 import { useAppState } from '../hooks/useAppState'
 import { useRoutePrefix } from '../demo/demo-context'
 import { useExpenses } from '../hooks/useExpenses'
+import { useUndo } from '../hooks/useUndo'
+import { deletedMessage, stoppedMessage } from '../lib/undo-messages'
 import { useCategories } from '../hooks/useCategories'
 import { useExchangeRates } from '../hooks/useExchangeRates'
 import { useExpenseListCursor } from '../hooks/useExpenseListCursor'
@@ -61,7 +63,17 @@ export function CategoryDetail() {
   const [showQuickAdd, setShowQuickAdd] = useState(false)
 
   const { categories, load: loadCategories } = useCategories(routeId)
-  const { expenses, loading, load, add, update, remove, stopRecurring } = useExpenses({
+  const {
+    expenses,
+    loading,
+    load,
+    add,
+    update,
+    remove,
+    restore,
+    stopRecurring,
+    undoStopRecurring,
+  } = useExpenses({
     categoryId: categoryId!,
     month,
   })
@@ -171,22 +183,42 @@ export function CategoryDetail() {
     [handleAdd],
   )
 
+  const undo = useUndo()
+  const refreshTrend = useCallback(async () => {
+    const trendData = await getCategoryMonthlyTrend(db, categoryId!, month)
+    setTrend(trendData)
+  }, [db, categoryId, month])
+
   const handleRemove = useCallback(
     async (id: string) => {
+      const expense = expenses.find((e) => e.id === id)
       await remove(id)
-      const trendData = await getCategoryMonthlyTrend(db, categoryId!, month)
-      setTrend(trendData)
+      await refreshTrend()
+      if (!expense) return
+      undo?.offerUndo({
+        message: deletedMessage(expense),
+        undo: async () => {
+          await restore(id)
+          await refreshTrend()
+        },
+      })
     },
-    [remove, db, categoryId, month],
+    [expenses, remove, restore, refreshTrend, undo],
   )
 
   const handleStopRecurring = useCallback(
     async (expense: (typeof expenses)[0]) => {
-      await stopRecurring(expense)
-      const trendData = await getCategoryMonthlyTrend(db, categoryId!, month)
-      setTrend(trendData)
+      const stopped = await stopRecurring(expense)
+      await refreshTrend()
+      undo?.offerUndo({
+        message: stoppedMessage(expense),
+        undo: async () => {
+          await undoStopRecurring(stopped)
+          await refreshTrend()
+        },
+      })
     },
-    [stopRecurring, db, categoryId, month],
+    [stopRecurring, undoStopRecurring, refreshTrend, undo],
   )
 
   const handleUpdateAmount = useCallback(

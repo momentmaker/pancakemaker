@@ -18,6 +18,7 @@ import {
   getExpensesByPanel,
   updateExpense,
   softDeleteExpense,
+  restoreExpense,
   createTag,
   getTagsByUser,
   deleteTag,
@@ -243,6 +244,27 @@ describe('expenses', () => {
     await softDeleteExpense(db, expense.id)
     const expenses = await getExpensesByPanel(db, panelId)
     expect(expenses).toHaveLength(0)
+  })
+
+  it('restores a soft-deleted expense', async () => {
+    // #given
+    const expense = await createExpense(db, {
+      panelId,
+      categoryId,
+      amount: 1500,
+      currency: 'USD',
+      date: '2026-01-15',
+    })
+    await softDeleteExpense(db, expense.id)
+
+    // #when
+    const restored = await restoreExpense(db, expense.id)
+
+    // #then
+    expect({
+      deletedAt: restored?.deleted_at,
+      visible: (await getExpensesByPanel(db, panelId)).map((e) => e.id),
+    }).toEqual({ deletedAt: null, visible: [expense.id] })
   })
 })
 
