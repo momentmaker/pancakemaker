@@ -1,6 +1,19 @@
 import type { Database } from './interface.js'
 import type { ExpenseRow, PanelRow } from './queries.js'
 
+const MAX_STORED_RECURRENCE_DAY = 28
+
+// A series on the 29th-31st lands on the last day of any month that is too short.
+function dateInMonth(year: number, monthIndex: number, day: number): Date {
+  const firstOfMonth = new Date(Date.UTC(year, monthIndex, 1))
+  const lastDay = new Date(
+    Date.UTC(firstOfMonth.getUTCFullYear(), firstOfMonth.getUTCMonth() + 1, 0),
+  ).getUTCDate()
+  return new Date(
+    Date.UTC(firstOfMonth.getUTCFullYear(), firstOfMonth.getUTCMonth(), Math.min(day, lastDay)),
+  )
+}
+
 export function calculateMissingDates(
   recurrenceType: 'monthly' | 'annual',
   recurrenceDay: number,
@@ -22,18 +35,13 @@ export function calculateMissingDates(
     }
   }
 
+  const startMonth = new Date(startDate + 'T00:00:00Z').getUTCMonth()
+
   while (true) {
-    let next: Date
-    if (recurrenceType === 'monthly') {
-      next = new Date(cursor)
-      next.setUTCMonth(next.getUTCMonth() + 1)
-      next.setUTCDate(recurrenceDay)
-    } else {
-      next = new Date(cursor)
-      next.setUTCFullYear(next.getUTCFullYear() + 1)
-      next.setUTCMonth(new Date(startDate + 'T00:00:00Z').getUTCMonth())
-      next.setUTCDate(recurrenceDay)
-    }
+    const next =
+      recurrenceType === 'monthly'
+        ? dateInMonth(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, recurrenceDay)
+        : dateInMonth(cursor.getUTCFullYear() + 1, startMonth, recurrenceDay)
 
     if (next > todayDate) break
 
@@ -154,7 +162,7 @@ export async function generateRecurringExpenses(
               template.description,
               date,
               recurrenceType,
-              recurrenceDay,
+              recurrenceDay <= MAX_STORED_RECURRENCE_DAY ? recurrenceDay : null,
               original.id,
               timestamp,
               timestamp,
