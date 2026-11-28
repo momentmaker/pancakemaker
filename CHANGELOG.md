@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.9.0] - 2026-11-27
+
+### Added
+
+- Deleting a generated recurring month asks "This month" or "This & future"; the second ends the series there and syncs the stop to your other devices.
+- Deleting an expense happens in one tap with an Undo toast (or press `u` on desktop), including undoing "This & future".
+- Renewal Radar: a dashboard "Coming Up" card and an Upcoming page list what your recurring expenses will charge next, flag price increases, and warn before annual bills.
+- Spending Pace compares your month with your normal month ("Day 14: $212 under your normal") and no longer projects rent paid on the 1st across the whole month.
+- Quick capture learns your usual categories (`4.50 coffee` logs as Meals without `#meals`), offers one-tap chips for expenses you log often, works on phones from the + button, and has a "Log expense" home-screen shortcut. QuickAdd remembers your last category.
+- Backup & Restore: download a full `.pancake` backup and restore it on any device; it merges with what's there and keeps recurring history.
+- Lenses: add `+tags` (e.g. `45 ramen +japan-trip`) to see what a trip or project really cost across categories and months.
+- Exports take a date range and include tags, plus a tax envelope CSV of Business expenses and Personal ones tagged `+deductible`, totalled per category.
+- Year in Pancakes: a year view with a 12-month strip, daily heatmap, no-spend streaks, top categories and the change on last year.
+- Remove a tag from an expense with the ✕ on its chip, with Undo.
+
+### Fixed
+
+- A deleted recurring month no longer comes back on the next app load, and editing this month's price carries forward to future months.
+- A recurring expense dated the 29th–31st no longer stops the app from starting; month-end series land on the last day of shorter months instead of skipping February.
+- Stopping a series on one device now removes its later months on your other devices too.
+- Totals no longer add amounts that have no exchange rate as if they were your base currency; they're left out and noted.
+
+### Changed
+
+- Added the ideation write-up behind this release (`docs/ideation/`), formatted with Prettier.
+
 ## [1.8.1] - 2026-10-20
 
 ### Fixed
