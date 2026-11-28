@@ -32,6 +32,9 @@ describe('RouteView keyboard cursor', () => {
 
   beforeEach(async () => {
     await setupTestDb()
+    // No exchange rates arrive mid-test: a late rate load re-renders the grid
+    // and raced the keypress on CI.
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline in tests')))
     window.matchMedia = vi.fn().mockImplementation(() => ({
       matches: true,
       media: '',
@@ -42,15 +45,18 @@ describe('RouteView keyboard cursor', () => {
 
   afterEach(() => {
     window.matchMedia = originalMatchMedia
+    vi.unstubAllGlobals()
   })
 
   it('j focuses the first category card and Enter opens it', async () => {
     renderWithProviders(<Harness />, '/personal')
     await screen.findByText('Health')
 
-    fireEvent.keyDown(document, { key: 'j' })
-    const focused = document.activeElement as HTMLElement
-    expect(focused.getAttribute('data-kbd-item-id')).toBeTruthy()
+    // The cards register with the cursor in an effect after they render.
+    await waitFor(() => {
+      fireEvent.keyDown(document, { key: 'j' })
+      expect((document.activeElement as HTMLElement).getAttribute('data-kbd-item-id')).toBeTruthy()
+    })
 
     fireEvent.keyDown(document, { key: 'Enter' })
     await waitFor(() =>
