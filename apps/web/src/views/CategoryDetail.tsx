@@ -76,6 +76,8 @@ export function CategoryDetail() {
     restore,
     stopRecurring,
     undoStopRecurring,
+    addTags,
+    removeTag,
   } = useExpenses({
     categoryId: categoryId!,
     month,
@@ -211,6 +213,17 @@ export function CategoryDetail() {
       })
     },
     [expenses, remove, restore, refreshTrend, undo],
+  )
+
+  const handleRemoveTag = useCallback(
+    async (expenseId: string, tag: string) => {
+      await removeTag(expenseId, tag)
+      undo?.offerUndo({
+        message: `Removed +${tag}`,
+        undo: () => addTags(expenseId, [tag]),
+      })
+    },
+    [removeTag, addTags, undo],
   )
 
   const handleStopRecurring = useCallback(
@@ -370,6 +383,7 @@ export function CategoryDetail() {
                                 onStopRecurring={handleStopRecurring}
                                 tags={tagsByExpense.get(expense.id)}
                                 tagLinkPrefix={prefix}
+                                onRemoveTag={handleRemoveTag}
                                 cursored={activeId === expense.id}
                               />
                             ))}

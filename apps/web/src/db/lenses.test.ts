@@ -11,7 +11,13 @@ import {
   softDeleteExpense,
   type ExpenseRow,
 } from './queries.js'
-import { tagExpense, getTagsForExpenses, getLenses, getLensExpenses } from './lenses.js'
+import {
+  tagExpense,
+  untagExpense,
+  getTagsForExpenses,
+  getLenses,
+  getLensExpenses,
+} from './lenses.js'
 import type { Database } from './interface.js'
 
 let db: Database
@@ -78,6 +84,68 @@ describe('tagExpense', () => {
     // #then
     const links = await db.query("SELECT * FROM sync_log WHERE table_name = 'expense_tags'")
     expect(links).toHaveLength(1)
+  })
+})
+
+describe('untagExpense', () => {
+  it('removes only the named tag from the expense', async () => {
+    // #given
+    const a = await spend(1000, '2026-03-01')
+    await tagExpense(db, userId, a.id, ['japan-trip', 'work'])
+
+    // #when
+    await untagExpense(db, userId, a.id, 'japan-trip')
+
+    // #then
+    expect((await getTagsForExpenses(db, [a.id])).get(a.id)).toEqual(['work'])
+  })
+
+  it('leaves the tag on other expenses', async () => {
+    // #given
+    const a = await spend(1000, '2026-03-01')
+    const b = await spend(2000, '2026-03-02')
+    await tagExpense(db, userId, a.id, ['japan-trip'])
+    await tagExpense(db, userId, b.id, ['japan-trip'])
+
+    // #when
+    await untagExpense(db, userId, a.id, 'japan-trip')
+
+    // #then
+    expect((await getLenses(db, userId)).map((l) => [l.name, l.count])).toEqual([['japan-trip', 1]])
+  })
+
+  it('removes same-named tags created on different devices', async () => {
+    // #given
+    const a = await spend(1000, '2026-03-01')
+    const t1 = await createTag(db, userId, 'japan-trip')
+    const t2 = await createTag(db, userId, 'Japan-Trip')
+    await addTagToExpense(db, a.id, t1.id)
+    await addTagToExpense(db, a.id, t2.id)
+
+    // #when
+    await untagExpense(db, userId, a.id, 'japan-trip')
+
+    // #then
+    expect((await getTagsForExpenses(db, [a.id])).get(a.id)).toBeUndefined()
+  })
+
+  it('queues each removed link for sync with both keys', async () => {
+    // #given
+    const a = await spend(1000, '2026-03-01')
+    await tagExpense(db, userId, a.id, ['japan-trip'])
+    const [tag] = await db.query<{ id: string }>('SELECT id FROM tags')
+
+    // #when
+    await untagExpense(db, userId, a.id, 'japan-trip')
+
+    // #then
+    const [entry] = await db.query<{ record_id: string; payload: string }>(
+      "SELECT record_id, payload FROM sync_log WHERE table_name = 'expense_tags' AND action = 'delete'",
+    )
+    expect({ recordId: entry.record_id, payload: JSON.parse(entry.payload) }).toEqual({
+      recordId: `${a.id}:${tag.id}`,
+      payload: { expense_id: a.id, tag_id: tag.id },
+    })
   })
 })
 

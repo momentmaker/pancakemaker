@@ -282,6 +282,38 @@ describe('useExpenses', () => {
     expect((await getTagsForExpenses(db, [expenseId])).get(expenseId)).toEqual(['japan-trip'])
   })
 
+  it('removes a tag and can put it back', async () => {
+    // #given
+    const { result } = renderHook(() => useExpenses(panelId), { wrapper })
+    let expenseId = ''
+    await act(async () => {
+      const expense = await result.current.add({
+        panelId,
+        categoryId,
+        amount: 1500,
+        currency: 'USD',
+        date: '2026-01-15',
+        description: 'ramen +japan-trip +work',
+      })
+      expenseId = expense.id
+    })
+
+    // #when
+    await act(async () => {
+      await result.current.removeTag(expenseId, 'japan-trip')
+    })
+    const afterRemove = result.current.tagsByExpense.get(expenseId)
+    await act(async () => {
+      await result.current.addTags(expenseId, ['japan-trip'])
+    })
+
+    // #then
+    expect({ afterRemove, afterUndo: result.current.tagsByExpense.get(expenseId) }).toEqual({
+      afterRemove: ['work'],
+      afterUndo: ['japan-trip', 'work'],
+    })
+  })
+
   it('loads expenses by category', async () => {
     // #given
     await createExpense(db, {

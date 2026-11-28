@@ -59,6 +59,31 @@ export async function tagExpense(
   }
 }
 
+// Removes every link between the expense and tags of this name, including
+// same-named tags another device created.
+export async function untagExpense(
+  db: Database,
+  userId: string,
+  expenseId: string,
+  name: string,
+): Promise<void> {
+  const links = await db.query<{ tag_id: string }>(
+    `SELECT et.tag_id FROM expense_tags et JOIN tags t ON t.id = et.tag_id
+     WHERE et.expense_id = ? AND t.user_id = ? AND LOWER(t.name) = LOWER(?)`,
+    [expenseId, userId, name],
+  )
+  for (const { tag_id } of links) {
+    await db.execute('DELETE FROM expense_tags WHERE expense_id = ? AND tag_id = ?', [
+      expenseId,
+      tag_id,
+    ])
+    await logSyncEntry(db, userId, 'expense_tags', `${expenseId}:${tag_id}`, 'delete', {
+      expense_id: expenseId,
+      tag_id,
+    })
+  }
+}
+
 export async function getTagsForExpenses(
   db: Database,
   expenseIds: readonly string[],

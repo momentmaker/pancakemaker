@@ -74,6 +74,8 @@ export function PanelDetail() {
     restore,
     stopRecurring,
     undoStopRecurring,
+    addTags,
+    removeTag,
   } = useExpenses({
     panelId: panelId!,
     month,
@@ -188,6 +190,17 @@ export function PanelDetail() {
       })
     },
     [expenses, remove, restore, refreshTrend, undo],
+  )
+
+  const handleRemoveTag = useCallback(
+    async (expenseId: string, tag: string) => {
+      await removeTag(expenseId, tag)
+      undo?.offerUndo({
+        message: `Removed +${tag}`,
+        undo: () => addTags(expenseId, [tag]),
+      })
+    },
+    [removeTag, addTags, undo],
   )
 
   const handleStopRecurring = useCallback(
@@ -407,6 +420,7 @@ export function PanelDetail() {
                       onStopRecurring={handleStopRecurring}
                       tags={tagsByExpense.get(expense.id)}
                       tagLinkPrefix={prefix}
+                      onRemoveTag={handleRemoveTag}
                       cursored={activeId === expense.id}
                     />
                   ))}

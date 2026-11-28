@@ -1,0 +1,1151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ideation: What would make pancakemaker users love it</title>
+    <style>
+      :root {
+        --bg: #fbf8f3;
+        --card: #ffffff;
+        --text: #22201c;
+        --muted: #6b655c;
+        --border: #e6dfd3;
+        --accent: #b4561c;
+        --accent-soft: #fbeadc;
+        --accent-text: #8a3d0e;
+        --ok-soft: #e4f2e7;
+        --ok-text: #1f6b35;
+        --warn-soft: #fdf1d6;
+        --warn-text: #7a5300;
+        --info-soft: #e5eef9;
+        --info-text: #1e4f8a;
+        --code-bg: #f3eee6;
+        --svg-bg: #fffdf9;
+        --svg-line: #b9b0a2;
+        --svg-text: #3a362f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14120f;
+          --card: #1d1a16;
+          --text: #ece6dc;
+          --muted: #a79f92;
+          --border: #3a342c;
+          --accent: #f0904f;
+          --accent-soft: #3a2416;
+          --accent-text: #f6b386;
+          --ok-soft: #1d3324;
+          --ok-text: #8fd6a2;
+          --warn-soft: #3a2f14;
+          --warn-text: #f0cf7c;
+          --info-soft: #182a40;
+          --info-text: #9cc4f2;
+          --code-bg: #2a251f;
+          --svg-bg: #1d1a16;
+          --svg-line: #6d655a;
+          --svg-text: #e2dbcf;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          16px/1.6 -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Inter,
+          Roboto,
+          'Helvetica Neue',
+          Arial,
+          sans-serif;
+      }
+      main {
+        max-width: 900px;
+        margin-inline: auto;
+        padding: 2.5rem 1.25rem 4rem;
+      }
+      p,
+      li,
+      dd {
+        max-width: 72ch;
+      }
+      h1 {
+        font-size: 1.9rem;
+        line-height: 1.25;
+        margin: 0.2rem 0 0.8rem;
+      }
+      h2 {
+        font-size: 1.4rem;
+        margin: 2.8rem 0 0.9rem;
+        padding-bottom: 0.35rem;
+        border-bottom: 2px solid var(--border);
+      }
+      h3 {
+        font-size: 1.15rem;
+        margin: 0 0 0.5rem;
+      }
+      strong {
+        color: inherit;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.86em;
+        background: var(--code-bg);
+        padding: 0.08em 0.35em;
+        border-radius: 4px;
+      }
+      a {
+        color: var(--accent-text);
+      }
+      .eyebrow {
+        font-size: 0.75rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent-text);
+        font-weight: 600;
+      }
+      .meta {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 0.2rem 1rem;
+        margin: 0 0 1.5rem;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+      .meta dt {
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.74rem;
+        letter-spacing: 0.08em;
+        padding-top: 0.2rem;
+      }
+      .meta dd {
+        margin: 0;
+        color: var(--text);
+      }
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin: 1.2rem 0 0.5rem;
+      }
+      .stat {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.6rem 0.9rem;
+        min-width: 7.5rem;
+      }
+      .stat b {
+        display: block;
+        font-size: 1.35rem;
+      }
+      .stat span {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .callout {
+        border-radius: 10px;
+        padding: 0.9rem 1.1rem;
+        margin: 1rem 0;
+      }
+      .callout.warn {
+        background: var(--warn-soft);
+        color: var(--warn-text);
+      }
+      .callout.warn strong {
+        color: var(--warn-text);
+      }
+      .callout p {
+        margin: 0.25rem 0;
+      }
+      ul.axes {
+        padding-left: 1.2rem;
+      }
+      ol.jump {
+        columns: 2;
+        column-gap: 2rem;
+        padding-left: 1.3rem;
+        margin: 0 0 1.5rem;
+      }
+      @media (max-width: 640px) {
+        ol.jump {
+          columns: 1;
+        }
+      }
+      article.idea {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 1.3rem 1.4rem 1.1rem;
+        margin: 1.2rem 0;
+      }
+      .idea-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0.6rem;
+        margin-bottom: 0.6rem;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin: 0 0 0.9rem;
+      }
+      .chip {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 0.12rem 0.65rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        border: 1px solid transparent;
+      }
+      .chip.id {
+        background: var(--accent-soft);
+        color: var(--accent-text);
+      }
+      .chip.axis {
+        background: var(--info-soft);
+        color: var(--info-text);
+      }
+      .chip.conf {
+        background: var(--ok-soft);
+        color: var(--ok-text);
+      }
+      .chip.cx {
+        background: var(--warn-soft);
+        color: var(--warn-text);
+      }
+      dl.fields {
+        margin: 0;
+      }
+      dl.fields dt {
+        font-size: 0.74rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 700;
+        margin-top: 0.85rem;
+      }
+      dl.fields dd {
+        margin: 0.2rem 0 0;
+      }
+      dl.fields dd ul {
+        margin: 0.2rem 0;
+        padding-left: 1.2rem;
+      }
+      figure {
+        margin: 1rem 0 0.4rem;
+      }
+      figure svg {
+        width: 100%;
+        height: auto;
+        display: block;
+        background: var(--svg-bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+      }
+      figcaption {
+        font-size: 0.84rem;
+        color: var(--muted);
+        margin-top: 0.35rem;
+      }
+      .svg-text {
+        fill: var(--svg-text);
+        font:
+          12px -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+      }
+      .svg-muted {
+        fill: var(--muted);
+        font:
+          11px -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+      }
+      .svg-accent {
+        fill: var(--accent-text);
+        font:
+          600 12px -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+      }
+      .halo {
+        paint-order: stroke fill;
+        stroke: var(--svg-bg);
+        stroke-width: 3px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 0.93rem;
+      }
+      .table-wrap {
+        overflow-x: auto;
+      }
+      th,
+      td {
+        text-align: left;
+        vertical-align: top;
+        padding: 0.55rem 0.7rem;
+        border-bottom: 1px solid var(--border);
+      }
+      th {
+        font-size: 0.76rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      footer.composition-signal {
+        margin-top: 3rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="eyebrow">Ideation</div>
+        <h1>Ideation: What would make pancakemaker users love it</h1>
+        <dl class="meta">
+          <dt>Date</dt>
+          <dd><time datetime="2026-11-27">2026-11-27</time></dd>
+          <dt>Topic</dt>
+          <dd>pancakemaker-delight</dd>
+          <dt>Focus</dt>
+          <dd>
+            Features that would make pancakemaker's users really appreciate the app and find it
+            "super awesome"
+          </dd>
+          <dt>Mode</dt>
+          <dd>repo-grounded</dd>
+        </dl>
+        <div class="stats">
+          <div class="stat"><b>47</b><span>raw ideas</span></div>
+          <div class="stat"><b>14 + 3</b><span>after merge + combos</span></div>
+          <div class="stat"><b>7</b><span>survivors</span></div>
+          <div class="stat"><b>5 / 5</b><span>axes covered</span></div>
+        </div>
+      </header>
+
+      <section id="grounding-context">
+        <h2>Grounding Context</h2>
+        <h3>Codebase Context</h3>
+        <p>
+          pancakemaker is an open-source, offline-first expense tracker (PWA). Data lives in
+          wa-sqlite in the browser, persisted to IndexedDB. Sync is optional and runs through a
+          Cloudflare Worker that relays a <code>sync_log</code>. You can start without an account.
+          Expenses are organised into Personal and Business routes, then panels: a default Daily
+          panel plus seeded Monthly and Annual recurring panels. Categories sit alongside panels,
+          and tags exist in the schema but nothing in the UI uses them.
+        </p>
+        <p>
+          Already shipped delight: PancakeStack and the Biggest Pancake callout, SparkBars daily
+          spending, a month-over-month badge, Monthly Burn Rate, Spending Pace, 7 demo personas with
+          their own voice, and a desktop keyboard layer (v1.8.0) with a <code>:</code> capture bar,
+          Cmd-K palette, f-hints and month scrub. Recurring panels just gained per-month delete,
+          "This &amp; future", price carry-forward and deterministic copy IDs (PR #13).
+        </p>
+        <p>Gaps the evidence surfaced:</p>
+        <ul>
+          <li>
+            Phones get none of the fast-capture work. The keyboard layer exits on mobile
+            (<code>useKeyboardShortcuts.ts:70</code>).
+          </li>
+          <li>There is no undo anywhere. Deletes use a 2-tap confirm with a 3–5 second timeout.</li>
+          <li>
+            There is no import or restore. JSON export drops IDs, tags and recurring fields
+            (<code>export.ts:31-40</code>).
+          </li>
+          <li>Tags are fully built but nothing calls <code>useTags</code>.</li>
+          <li>Nothing looks forward at upcoming bills or subscriptions.</li>
+          <li>Pace compares only against last month's total, using a straight-line projection.</li>
+          <li>
+            There is no year-level view. Year-to-date was designed in
+            <code>dashboard-b-c-d-design.md</code> but never built.
+          </li>
+          <li>
+            When an exchange rate is missing, <code>convert()</code> silently returns the raw
+            amount.
+          </li>
+        </ul>
+        <div class="callout warn">
+          <p>
+            <strong>Not an idea — a bug found while gathering evidence.</strong> A recurring expense
+            dated the 29th–31st makes app startup fail. <code>recurrence_day</code> has a CHECK of
+            1–28, and the generator doesn't clamp it. This was reproduced and is being handled
+            separately.
+          </p>
+        </div>
+        <h3>External context</h3>
+        <p>All from secondary or vendor sources, so moderate confidence:</p>
+        <ul>
+          <li>
+            Cashew is loved for being free, needing no bank link, and logging in under a minute.
+          </li>
+          <li>
+            Actual Budget users like local-first, but non-technical users stall at self-hosting.
+          </li>
+          <li>
+            YNAB changes behaviour but carries a steep learning curve and price. Monarch and Copilot
+            are easier but weaker at changing behaviour.
+          </li>
+          <li>
+            Freelancers who mix personal and business on one card call tax time "detective work".
+            They need business-use percentages and accountant-ready exports.
+          </li>
+        </ul>
+      </section>
+
+      <section id="topic-axes">
+        <h2>Topic Axes</h2>
+        <ul class="axes">
+          <li>
+            <strong>Capturing expenses</strong> — speed, phone/touch entry, smart defaults, capture
+            syntax
+          </li>
+          <li>
+            <strong>Understanding spending</strong> — dashboard, pace, insights, currency, search
+          </li>
+          <li>
+            <strong>Recurring &amp; planned money</strong> — subscriptions, bills, budgets,
+            forecasts
+          </li>
+          <li>
+            <strong>Trust &amp; ownership of data</strong> — offline, sync, backup/restore,
+            import/export, undo
+          </li>
+          <li>
+            <strong>Rhythms over time</strong> — month and year moments, Personal vs Business, tax
+            time
+          </li>
+        </ul>
+      </section>
+
+      <section id="ranked-ideas">
+        <h2>Ranked Ideas</h2>
+        <ol class="jump">
+          <li><a href="#i1">I1. Renewal Radar</a></li>
+          <li><a href="#i2">I2. "Your Usual": one-thumb capture that learns</a></li>
+          <li><a href="#i3">I3. Undo, not "are you sure?"</a></li>
+          <li><a href="#i4">I4. The .pancake file: backup you can restore</a></li>
+          <li><a href="#i5">I5. Ghost Pace</a></li>
+          <li><a href="#i6">I6. Year in Pancakes</a></li>
+          <li><a href="#i7">I7. Lenses &amp; the Tax Envelope</a></li>
+        </ol>
+
+        <article class="idea" id="i1">
+          <div class="idea-head"><h3>I1. Renewal Radar</h3></div>
+          <div class="chips">
+            <span class="chip id">I1</span>
+            <span class="chip axis">Recurring &amp; planned money</span>
+            <span class="chip conf">Confidence 85%</span>
+            <span class="chip cx">Complexity Medium</span>
+          </div>
+          <dl class="fields">
+            <dt>Description</dt>
+            <dd>
+              A forward-looking view of every live recurring series, also shown as a strip on the
+              dashboard. For the next 30, 90 or 365 days it lists name, amount, date and a
+              countdown. When carry-forward picks up a new price, the row is flagged ("Netflix
+              $15.49 → $17.99, +$30/yr"). Annual items get an early warning ("Domain renewal in 23
+              days · $89") instead of disappearing into the ÷12 burn rate. Each row offers the
+              existing "This &amp; future" stop, and ended series stay visible, struck through, so
+              you can see what you've cut.
+            </dd>
+            <dt>Basis</dt>
+            <dd>
+              <ul>
+                <li>
+                  <code>direct:</code> the generator already computes each series' next date but
+                  only creates copies up to today (<code>recurring-generator.ts:27-36</code>). No
+                  upcoming-bills, subscription or budget view exists in source.
+                </li>
+                <li>
+                  <code>direct:</code> price history already exists as rows. Carry-forward uses
+                  <code>latestLiveOccurrence(original, copies)</code>, so a price change is
+                  detectable without any new data.
+                </li>
+                <li>
+                  <code>direct:</code> annual costs are flattened:
+                  <code>const annualMonthly = Math.round(annualYearly / 12)</code>
+                  (<code>useDashboardStats.ts:143-152</code>).
+                </li>
+                <li>
+                  <code>direct:</code> README.md:14 promises recurring expenses "keep your
+                  subscriptions and bills tracked". Today that only looks backward.
+                </li>
+                <li>All five ideation lenses arrived at this independently.</li>
+              </ul>
+            </dd>
+            <dt>Rationale</dt>
+            <dd>
+              Subscription creep is the classic leak nobody notices, and pancakemaker already stores
+              every series' price history without showing it. This turns the recurring engine
+              hardened in PR #13 into something users see and act on. Knowing exactly what's coming
+              is calming, and that feeling is what makes people recommend an app.
+            </dd>
+            <dt>Downsides</dt>
+            <dd>
+              Only covers expenses the user put in recurring panels. Detecting subscriptions
+              automatically from one-off history is a possible later step, but it's noisier. Needs
+              care so the view doesn't feel like nagging.
+            </dd>
+          </dl>
+          <figure>
+            <svg
+              viewBox="0 0 760 170"
+              role="img"
+              aria-label="Timeline of the next 90 days with three upcoming charges; one flagged with a price change and one annual early warning"
+            >
+              <line x1="40" y1="90" x2="720" y2="90" stroke="var(--svg-line)" stroke-width="2" />
+              <text x="40" y="118" class="svg-muted">Today · Nov 27</text>
+              <text x="650" y="118" class="svg-muted">+90 days</text>
+              <circle cx="130" cy="90" r="7" fill="var(--accent)" />
+              <text x="96" y="62" class="svg-text halo">Dec 1 · Rent</text>
+              <text x="96" y="78" class="svg-muted halo">$1,600</text>
+              <circle cx="300" cy="90" r="7" fill="var(--accent)" />
+              <text x="258" y="62" class="svg-accent halo">Dec 14 · Netflix</text>
+              <text x="258" y="78" class="svg-accent halo">$15.49 → $17.99</text>
+              <circle
+                cx="560"
+                cy="90"
+                r="7"
+                fill="none"
+                stroke="var(--accent)"
+                stroke-width="2.5"
+              />
+              <text x="510" y="62" class="svg-text halo">Feb 3 · Domain (annual)</text>
+              <text x="510" y="78" class="svg-muted halo">$89 · early warning</text>
+              <text x="40" y="150" class="svg-muted">
+                Filled = monthly charge · outlined = annual · coloured label = price change detected
+              </text>
+            </svg>
+            <figcaption>
+              Illustrative: recurring money as a schedule you can see coming, not a ÷12 average.
+            </figcaption>
+          </figure>
+        </article>
+
+        <article class="idea" id="i2">
+          <div class="idea-head"><h3>I2. "Your Usual": one-thumb capture that learns</h3></div>
+          <div class="chips">
+            <span class="chip id">I2</span>
+            <span class="chip axis">Capturing expenses</span>
+            <span class="chip conf">Confidence 80%</span>
+            <span class="chip cx">Complexity Medium</span>
+          </div>
+          <dl class="fields">
+            <dt>Description</dt>
+            <dd>
+              On a phone, the floating + opens a one-line capture sheet instead of the multi-field
+              form. It accepts the same <code>12.50 coffee #meals</code> grammar as the desktop
+              <code>:</code> bar. Above it sit chips for your most-repeated expenses ("Oat latte
+              5.25 · Meals"), ranked by how often and how recently you log them. One tap logs the
+              entry. Descriptions you've used before fill in their category from history, so
+              <code>4.50 coffee</code> logs straight away without a <code>#category</code>. A wrong
+              guess is a one-tap fix on the confirmation toast. QuickAdd remembers your last
+              category. A PWA home-screen shortcut ("Log expense") opens the sheet directly.
+            </dd>
+            <dt>Basis</dt>
+            <dd>
+              <ul>
+                <li>
+                  <code>direct:</code> the keyboard layer exits on phones:
+                  <code>if (!isDesktop) return</code> (<code>useKeyboardShortcuts.ts:70</code>).
+                  Mobile only gets a "+" button that opens a form.
+                </li>
+                <li>
+                  <code>direct:</code> QuickAdd always starts at the first category:
+                  <code>const initialCategoryId = lockedCategoryId ?? categories[0]?.id ?? ''</code>
+                  (<code>QuickAdd.tsx:60</code>).
+                </li>
+                <li>
+                  <code>direct:</code> "A <code>:</code> line with no trailing
+                  <code>#token</code> never one-shots" (<code>capture.ts:78-80</code>). Last-used
+                  memory was explicitly deferred in <code>vim-fast-capture-requirements.md</code>.
+                </li>
+                <li>
+                  <code>direct:</code> the PWA manifest has no
+                  <code>shortcuts</code> (<code>vite.config.ts</code>, verified).
+                </li>
+                <li><code>external:</code> Cashew is praised for logging in under a minute.</li>
+                <li>
+                  <code>reasoned:</code> personal spending repeats heavily (coffee, lunch, transit),
+                  much like a café menu, so a tap grid pays off fastest exactly where entries are
+                  most frequent.
+                </li>
+              </ul>
+            </dd>
+            <dt>Rationale</dt>
+            <dd>
+              Forgetting to log is how trackers die, and spending happens on the phone, which is
+              currently the slowest way to log. Every logged expense makes the next one faster, all
+              on-device, with no new dependency. This brings v1.8's capture work to the device where
+              most spending happens.
+            </dd>
+            <dt>Downsides</dt>
+            <dd>
+              Learned guesses can be wrong, so the fix-it chip has to be quick. Web Share Target was
+              left out because it only works on Android/Chromium, and iOS PWAs don't support it.
+              Bundles two moves (a phone capture sheet and learned defaults); they can ship in
+              either order.
+            </dd>
+          </dl>
+        </article>
+
+        <article class="idea" id="i3">
+          <div class="idea-head"><h3>I3. Undo, not "are you sure?"</h3></div>
+          <div class="chips">
+            <span class="chip id">I3</span>
+            <span class="chip axis">Trust &amp; ownership of data</span>
+            <span class="chip conf">Confidence 85%</span>
+            <span class="chip cx">Complexity Small</span>
+          </div>
+          <dl class="fields">
+            <dt>Description</dt>
+            <dd>
+              Deleting an expense, stopping a recurring series, or editing an amount happens
+              immediately and shows an "Undo" toast for a few seconds, plus Cmd-Z on desktop. This
+              replaces the 2-tap confirm that times out after 3–5 seconds. Undo writes a new forward
+              change (clear <code>deleted_at</code>, or restore the previous value), so it syncs
+              like any other edit instead of rewinding anything.
+            </dd>
+            <dt>Basis</dt>
+            <dd>
+              <ul>
+                <li>
+                  <code>direct:</code> expense deletes are soft:
+                  <code>UPDATE expenses SET deleted_at = ?</code> (<code>queries.ts:410-416</code>),
+                  so restoring is a one-column update.
+                </li>
+                <li>
+                  <code>direct:</code> there are 0 matches for "undo" in <code>apps/web/src</code>.
+                  It was explicitly deferred ("Undo on the confirmation — deferred",
+                  <code>vim-fast-capture-requirements.md:87-92</code>).
+                </li>
+                <li>
+                  <code>direct:</code> today's safety net is a timer:
+                  <code
+                    >setTimeout(() =&gt; setConfirming(false), offersStopRecurring ? 5000 :
+                    3000)</code
+                  >
+                  (<code>ExpenseRow.tsx</code>).
+                </li>
+                <li><code>direct:</code> the toast pattern already exists (CaptureToast).</li>
+              </ul>
+            </dd>
+            <dt>Rationale</dt>
+            <dd>
+              Undo lets people move fast without fear. It removes a step from every delete and makes
+              mistakes cheap. It's the most "feels like a polished app" change for the least code.
+            </dd>
+            <dt>Downsides</dt>
+            <dd>
+              The evidence check corrected the original pitch. The sync log stores only
+              <code>{ id }</code> for deletes, so a full "history with revert" view would need a new
+              log of complete rows; that's a separate, bigger project. Deleting a category or panel
+              removes it for real and cascades, so those deletes keep their confirm, or need extra
+              work to become undoable.
+            </dd>
+          </dl>
+          <figure>
+            <svg
+              viewBox="0 0 760 150"
+              role="img"
+              aria-label="Before: tap delete, tap confirm within 3 seconds, deleted. After: tap delete, deleted with an undo toast."
+            >
+              <text x="20" y="30" class="svg-accent">Today</text>
+              <rect
+                x="90"
+                y="12"
+                width="140"
+                height="30"
+                rx="8"
+                fill="none"
+                stroke="var(--svg-line)"
+              />
+              <text x="112" y="32" class="svg-text">Tap ✕</text>
+              <line x1="230" y1="27" x2="270" y2="27" stroke="var(--svg-line)" stroke-width="1.5" />
+              <rect
+                x="270"
+                y="12"
+                width="210"
+                height="30"
+                rx="8"
+                fill="none"
+                stroke="var(--svg-line)"
+              />
+              <text x="284" y="32" class="svg-text">Tap "Yes" within 3s</text>
+              <line x1="480" y1="27" x2="520" y2="27" stroke="var(--svg-line)" stroke-width="1.5" />
+              <rect
+                x="520"
+                y="12"
+                width="140"
+                height="30"
+                rx="8"
+                fill="none"
+                stroke="var(--svg-line)"
+              />
+              <text x="542" y="32" class="svg-text">Gone</text>
+              <text x="20" y="100" class="svg-accent">Proposed</text>
+              <rect
+                x="90"
+                y="82"
+                width="140"
+                height="30"
+                rx="8"
+                fill="none"
+                stroke="var(--svg-line)"
+              />
+              <text x="112" y="102" class="svg-text">Tap ✕</text>
+              <line x1="230" y1="97" x2="270" y2="97" stroke="var(--svg-line)" stroke-width="1.5" />
+              <rect
+                x="270"
+                y="82"
+                width="390"
+                height="30"
+                rx="8"
+                fill="var(--accent-soft)"
+                stroke="var(--accent)"
+              />
+              <text x="284" y="102" class="svg-text">Gone · "Deleted Groceries $84 — Undo"</text>
+              <text x="90" y="138" class="svg-muted">
+                One fewer tap every time; mistakes become a tap to reverse instead of a race against
+                a timer.
+              </text>
+            </svg>
+            <figcaption>
+              Illustrative: safety comes from being able to reverse, not from a confirm step.
+            </figcaption>
+          </figure>
+        </article>
+
+        <article class="idea" id="i4">
+          <div class="idea-head"><h3>I4. The .pancake file: backup you can restore</h3></div>
+          <div class="chips">
+            <span class="chip id">I4</span>
+            <span class="chip axis">Trust &amp; ownership of data</span>
+            <span class="chip conf">Confidence 80%</span>
+            <span class="chip cx">Complexity Medium</span>
+          </div>
+          <dl class="fields">
+            <dt>Description</dt>
+            <dd>
+              A full-fidelity <code>.pancake</code> file: routes, panels, recurring series and end
+              dates, tags, and stable IDs. It's either the SQLite database itself or an equivalent
+              complete JSON. "Open .pancake" restores it on any device, with no account or server. A
+              gentle reminder ("you haven't saved a backup in 30 days") helps people who never turn
+              on sync. In browsers with the File System Access API, people can pick a backup folder
+              once and the app keeps a few dated snapshots up to date. CSV and the current JSON stay
+              as the spreadsheet-friendly export.
+            </dd>
+            <dt>Basis</dt>
+            <dd>
+              <ul>
+                <li>
+                  <code>direct:</code> export is lossy. <code>formatJSON</code> emits only date,
+                  amount, currency, category, panel, type and description
+                  (<code>export.ts:31-40</code>, verified).
+                </li>
+                <li>
+                  <code>direct:</code> there is no way back in: 0 matches for
+                  <code>parseCSV|importData|FileReader|type="file"|restore</code>.
+                </li>
+                <li>
+                  <code>direct:</code> the promise it would back up: the manifest tagline "Keep your
+                  data" (<code>vite.config.ts:19</code>), and README "all data stays in the
+                  browser's IndexedDB". The browser can evict IndexedDB or the user can clear it,
+                  and for a user who never syncs it's the only copy.
+                </li>
+                <li>
+                  <code>external:</code> Actual Budget is valued for local-first ownership, but
+                  self-hosting is the barrier. A portable file gives that ownership with no server.
+                </li>
+              </ul>
+            </dd>
+            <dt>Rationale</dt>
+            <dd>
+              "Local by default" is only reassuring if local data can't vanish. This is the missing
+              half of the app's core promise. It also gives switchers a way in and everyone a
+              guaranteed way out, which matters a lot to people who chose a privacy-first,
+              open-source tool.
+            </dd>
+            <dt>Downsides</dt>
+            <dd>
+              Restoring into a database that already has data needs merge rules. The second-device
+              merge logic can likely be reused, but it's the fragile area. The File System Access
+              API only exists in Chromium browsers, so other browsers fall back to downloads. A file
+              format becomes something you have to keep stable across versions.
+            </dd>
+          </dl>
+        </article>
+
+        <article class="idea" id="i5">
+          <div class="idea-head"><h3>I5. Ghost Pace</h3></div>
+          <div class="chips">
+            <span class="chip id">I5</span>
+            <span class="chip axis">Understanding spending</span>
+            <span class="chip conf">Confidence 70%</span>
+            <span class="chip cx">Complexity Small–Medium</span>
+          </div>
+          <dl class="fields">
+            <dt>Description</dt>
+            <dd>
+              Replace the straight-line Spending Pace with this month's cumulative curve, drawn over
+              a "ghost" curve. The ghost is a real past month, or "your normal" (a median of recent
+              months). The headline becomes "Day 14: $212 under your October ghost". Known upcoming
+              bills from the Renewal Radar count in the month-end estimate, so rent on the 1st stops
+              making week one look like a disaster. As an option, the user can drag the "Last month"
+              marker on the pace bar to set their own ceiling. That's budgeting in one gesture, with
+              no envelope setup.
+            </dd>
+            <dt>Basis</dt>
+            <dd>
+              <ul>
+                <li>
+                  <code>direct:</code> the projection is linear:
+                  <code>Math.round((current.totalAmount / elapsed) * days)</code>
+                  (<code>useDashboardStats.ts:255-256</code>).
+                </li>
+                <li>
+                  <code>direct:</code> the only target is last month:
+                  <code
+                    >const isOver = prevMonthTotal !== null &amp;&amp; projectedTotal &gt;
+                    prevMonthTotal</code
+                  >
+                  (<code>Dashboard.tsx:322</code>). The marker is a plain div titled "Last month"
+                  (<code>Dashboard.tsx:349-355</code>).
+                </li>
+                <li>
+                  <code>reasoned:</code> recurring bills land on fixed days, so a linear projection
+                  is reliably wrong early in the month. On day 3 after $1,500 rent it projects
+                  (1500/3)×30 = $15,000. A cumulative ghost has the same lumps on the same days, so
+                  comparing the two cancels the bias.
+                </li>
+                <li>
+                  <code>external:</code> YNAB changes behaviour but is hard to learn; this aims for
+                  the behaviour change without the setup.
+                </li>
+              </ul>
+            </dd>
+            <dt>Rationale</dt>
+            <dd>
+              This fixes the dashboard's main number, which is probably misleading every month for
+              anyone with rent. It also makes pace a game against yourself, like a running watch's
+              virtual pacer, instead of a scolding.
+            </dd>
+            <dt>Downsides</dt>
+            <dd>
+              Needs a few months of history to be meaningful, so the first month falls back to
+              today's behaviour. The draggable budget line is a product decision: it nudges
+              pancakemaker toward budgeting.
+            </dd>
+          </dl>
+          <figure>
+            <svg
+              viewBox="0 0 760 230"
+              role="img"
+              aria-label="Chart: a straight-line projection overshoots after rent on day 1, while the ghost curve from a past month has the same rent jump and tracks the current month closely"
+            >
+              <line x1="60" y1="190" x2="720" y2="190" stroke="var(--svg-line)" />
+              <line x1="60" y1="20" x2="60" y2="190" stroke="var(--svg-line)" />
+              <text x="60" y="210" class="svg-muted">Day 1</text>
+              <text x="690" y="210" class="svg-muted">Day 30</text>
+              <polyline
+                points="60,190 80,120 160,112 240,104 320,96 400,88 480,80 560,72 640,64 720,56"
+                fill="none"
+                stroke="var(--svg-line)"
+                stroke-width="2"
+                stroke-dasharray="6 5"
+              />
+              <polyline
+                points="60,190 80,122 160,116 240,107 300,100"
+                fill="none"
+                stroke="var(--accent)"
+                stroke-width="3"
+              />
+              <line
+                x1="80"
+                y1="120"
+                x2="200"
+                y2="20"
+                stroke="var(--warn-text)"
+                stroke-width="1.5"
+                stroke-dasharray="2 4"
+              />
+              <text x="210" y="34" class="svg-text halo">
+                Straight line on day 3: "$15,000 this month?!"
+              </text>
+              <text x="420" y="78" class="svg-muted halo">
+                October ghost (also paid rent on day 1)
+              </text>
+              <text x="312" y="118" class="svg-accent halo">This month: $212 under</text>
+            </svg>
+            <figcaption>
+              Illustrative: comparing against a curve with the same day-1 rent jump cancels the
+              early-month spike.
+            </figcaption>
+          </figure>
+        </article>
+
+        <article class="idea" id="i6">
+          <div class="idea-head"><h3>I6. Year in Pancakes</h3></div>
+          <div class="chips">
+            <span class="chip id">I6</span>
+            <span class="chip axis">Rhythms over time</span>
+            <span class="chip conf">Confidence 65%</span>
+            <span class="chip cx">Complexity Medium</span>
+          </div>
+          <dl class="fields">
+            <dt>Description</dt>
+            <dd>
+              The year view the design doc planned but nobody built: a 12-month strip, a calendar
+              heatmap of daily spending with no-spend streaks, "same month last year" next to "vs
+              last month", and per-category year totals. <code>{</code>/<code>}</code> scrub years
+              the way <code>[</code>/<code>]</code> scrub months. On the first open of a new month,
+              an optional "flip" card recaps last month: total, biggest pancake, the category that
+              moved, and any price changes. At year end there's a shareable "Year in Pancakes" card
+              in the demo personas' voice. It renders locally with amounts hidden by default, and
+              nothing is uploaded.
+            </dd>
+            <dt>Basis</dt>
+            <dd>
+              <ul>
+                <li>
+                  <code>direct:</code> "Year-to-Date Summary … New query groups expenses by month
+                  for the full year" (<code>dashboard-b-c-d-design.md</code>, section D). Grepping
+                  for it returned no matches, and there's no Year view in <code>views/</code>.
+                </li>
+                <li>
+                  <code>direct:</code> the only time navigation is
+                  <code>addMonths</code> (<code>lib/month.ts</code>). No-spend days are already
+                  computed for insights.
+                </li>
+                <li>
+                  <code>direct:</code> share machinery exists but only for the demo:
+                  <code>navigator.share(...)</code> (<code>demo-share.tsx:29-32</code>) and
+                  <code>demo-summary-card.tsx</code>.
+                </li>
+                <li>
+                  <code>external:</code> Spotify Wrapped is the reference for a personal-data recap
+                  people want to share.
+                </li>
+              </ul>
+            </dd>
+            <dt>Rationale</dt>
+            <dd>
+              Month-over-month is noisy (December always beats November). Long-term users currently
+              get no reward for staying. A year view and a recap moment give them one, and the
+              brand's playful voice finally reaches real users instead of only demo personas.
+            </dd>
+            <dt>Downsides</dt>
+            <dd>
+              The evidence check had less confidence in the monthly "flip" ritual than in the year
+              view itself; there's no evidence users want a ritual. Ship the year view first and
+              treat the recap card as an experiment.
+            </dd>
+          </dl>
+        </article>
+
+        <article class="idea" id="i7">
+          <div class="idea-head"><h3>I7. Lenses &amp; the Tax Envelope</h3></div>
+          <div class="chips">
+            <span class="chip id">I7</span>
+            <span class="chip axis">Rhythms over time</span>
+            <span class="chip conf">Confidence 65%</span>
+            <span class="chip cx">Complexity Medium</span>
+          </div>
+          <dl class="fields">
+            <dt>Description</dt>
+            <dd>
+              Use the dormant tag system as lenses: <code>+japan-trip</code>,
+              <code>+kitchen-reno</code>, <code>+deductible</code>. A lens cuts across categories,
+              months and both routes. Each one gets a total, a timeline and its own biggest pancake,
+              and capture accepts <code>+lens</code> tokens. On top of that, a "Tax envelope"
+              export: pick a date range (a quarter or a year) and get a per-category summary plus
+              line items an accountant can use directly, with the <code>+deductible</code> lens
+              marked.
+            </dd>
+            <dt>Basis</dt>
+            <dd>
+              <ul>
+                <li>
+                  <code>direct:</code> <code>useTags</code> is defined (<code>useTags.ts:5</code>)
+                  and nothing outside tests calls it (verified). Tags already sync (<code
+                    >reconcile.ts</code
+                  >
+                  lists <code>tags</code> and <code>expense_tags</code>).
+                </li>
+                <li>
+                  <code>direct:</code> export can't be limited to a period:
+                  <code>getExportRows(db, userId)</code> takes no date range. There are no tax,
+                  deduction or receipt features.
+                </li>
+                <li>
+                  <code>external:</code> freelancers on one card face "detective work over 200-400
+                  txns/month", and accountant-ready exports and quarterly reviews are standard
+                  advice.
+                </li>
+              </ul>
+            </dd>
+            <dt>Rationale</dt>
+            <dd>
+              "What did the trip or the remodel actually cost?" is one of the most common money
+              questions, and today it takes a calculator. The infrastructure is already built and
+              synced, so this is mostly UI. The tax envelope pays off the Personal/Business split
+              for freelancers, who are pancakemaker's most natural power users.
+            </dd>
+            <dt>Downsides</dt>
+            <dd>
+              The business-use percentage for split costs (phone 40% business) was left out of this
+              cut. It needs a migration and sync changes for a narrower audience, so it's a natural
+              follow-up if freelancers adopt the envelope. Lenses add a new concept beside
+              categories and panels, so the UI has to make the difference obvious.
+            </dd>
+          </dl>
+        </article>
+      </section>
+
+      <section id="rejection-summary">
+        <h2>Rejection Summary</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Idea</th>
+                <th>Reason Rejected</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>R1</td>
+                <td>
+                  Honest currency / Passport Mode (each expense at its own date's rate, trip mode)
+                </td>
+                <td>
+                  Split. The silent raw-amount fallback in <code>convert()</code> is a correctness
+                  bug to fix directly ("~ 3 amounts not converted"), not a feature. Historical
+                  per-date rates need an online, rate-limited service and new caching, which is too
+                  costly for the value for now.
+                </td>
+              </tr>
+              <tr>
+                <td>R2</td>
+                <td>Business-use % split ("Split Pancake")</td>
+                <td>
+                  Weak as bundled. It needs a migration and sync changes for a narrow audience. Its
+                  cheap, strong part (date-ranged export) survives inside I7; the split is a
+                  follow-up.
+                </td>
+              </tr>
+              <tr>
+                <td>R3</td>
+                <td>Change history / "Time Machine" with revert</td>
+                <td>
+                  Basis corrected by the evidence check. <code>sync_log</code> stores only
+                  <code>{ id }</code> for deletes and is pruned after 7 days, so it can't power
+                  history or revert. It would need a new log of complete rows. Its strong part (the
+                  undo toast) survives as I3.
+                </td>
+              </tr>
+              <tr>
+                <td>R4</td>
+                <td>One journal powering undo, history and point-in-time backups</td>
+                <td>
+                  Same correction as R3. Today's log holds partial entries and is pruned, so this
+                  would need a new table and storage growth.
+                </td>
+              </tr>
+              <tr>
+                <td>R5</td>
+                <td><code>=</code> query bar ("= coffee since june")</td>
+                <td>
+                  Weak. The palette index is capped at the 50 most recent expenses, a query language
+                  is scope creep, and the value overlaps I5 and I6.
+                </td>
+              </tr>
+              <tr>
+                <td>R6</td>
+                <td>Statement Reconcile (bank CSV used to find unlogged expenses)</td>
+                <td>
+                  Feasibility trap: parsing many bank CSV formats plus fuzzy matching is a lot of
+                  effort. Could come back once I4 creates a file-import surface.
+                </td>
+              </tr>
+              <tr>
+                <td>R7</td>
+                <td>Zero-knowledge (end-to-end encrypted) sync</td>
+                <td>
+                  Weak for now. Magic-link auth gives no password to derive a key from, and key
+                  management with no recovery path touches the most fragile area (sync). The
+                  opaque-payload design keeps it possible later.
+                </td>
+              </tr>
+              <tr>
+                <td>R8</td>
+                <td>Shared stack (household/trip panel with settle-up)</td>
+                <td>
+                  Refuted. It needs multi-user ledgers, invites and conflict handling, which
+                  contradicts the single-user sync model.
+                </td>
+              </tr>
+              <tr>
+                <td>R9</td>
+                <td>Month-close ritual combined with historical currency</td>
+                <td>
+                  Weak combination that stacks R1's cost onto an unproven ritual. The month recap
+                  survives as an optional part of I6.
+                </td>
+              </tr>
+              <tr>
+                <td>R10</td>
+                <td>Web Share Target / capture URL as the main phone entry</td>
+                <td>
+                  Narrowed. Share Target is Android/Chromium-only and missing on iOS PWAs. The PWA
+                  shortcut survives inside I2.
+                </td>
+              </tr>
+              <tr>
+                <td>R11</td>
+                <td>Automatic subscription detection from one-off history</td>
+                <td>
+                  Merged into I1 as a later step. Inferring recurrence from descriptions is noisier
+                  than using recurring panels.
+                </td>
+              </tr>
+              <tr>
+                <td>—</td>
+                <td>Duplicates</td>
+                <td>
+                  About 30 raw ideas from the five lenses were merged into the survivors above (undo
+                  ×5, backup ×5, phone capture ×5, radar ×5, year view ×6, tax ×5).
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer class="composition-signal">
+        Composed <time datetime="2026-11-27T21:50Z">2026-11-27T21:50Z</time> by ce-ideate from the
+        prompt "what else can you dream up for this project that you think will really make the user
+        appreciate this and would be super awesome?"
+      </footer>
+    </main>
+  </body>
+</html>
