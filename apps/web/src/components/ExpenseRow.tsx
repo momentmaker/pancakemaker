@@ -14,6 +14,7 @@ interface ExpenseRowProps {
   onStopRecurring?: (expense: ExpenseRowType) => Promise<void>
   tags?: string[]
   tagLinkPrefix?: string
+  onRemoveTag?: (expenseId: string, tag: string) => Promise<void>
   cursored?: boolean
 }
 
@@ -50,6 +51,7 @@ export const ExpenseRow = forwardRef<ExpenseRowHandle, ExpenseRowProps>(function
     onStopRecurring,
     tags = [],
     tagLinkPrefix = '',
+    onRemoveTag,
     cursored = false,
   },
   ref,
@@ -214,13 +216,24 @@ export const ExpenseRow = forwardRef<ExpenseRowHandle, ExpenseRowProps>(function
           </span>
         )}
         {tags.map((tag) => (
-          <Link
-            key={tag}
-            to={`${tagLinkPrefix}/lens/${encodeURIComponent(tag)}`}
-            className="font-mono text-[11px] text-neon-violet/80 transition-colors hover:text-neon-violet"
-          >
-            +{tag}
-          </Link>
+          <span key={tag} className="inline-flex items-center gap-0.5">
+            <Link
+              to={`${tagLinkPrefix}/lens/${encodeURIComponent(tag)}`}
+              className="font-mono text-[11px] text-neon-violet/80 transition-colors hover:text-neon-violet"
+            >
+              +{tag}
+            </Link>
+            {onRemoveTag && (
+              <button
+                type="button"
+                onClick={() => void onRemoveTag(expense.id, tag)}
+                aria-label={`Remove tag ${tag}`}
+                className="px-0.5 text-[10px] text-text-muted/50 transition-colors hover:text-red-400"
+              >
+                ✕
+              </button>
+            )}
+          </span>
         ))}
       </div>
       <div className="flex items-center gap-3">

@@ -15,7 +15,7 @@ import {
   undoStopRecurring as undoStopRecurringInDb,
   type StopRecurringResult,
 } from '../db/recurring-generator.js'
-import { tagExpense, getTagsForExpenses } from '../db/lenses.js'
+import { tagExpense, untagExpense, getTagsForExpenses } from '../db/lenses.js'
 import { saveNewExpense } from '../db/save-expense.js'
 import { splitTags } from '../lib/keyboard/capture.js'
 import { useAppState } from './useAppState.js'
@@ -77,14 +77,40 @@ export function useExpenses(params: UseExpensesParams | string) {
   }, [db, normalized.panelId, normalized.categoryId, normalized.month, queryKey, expenseVersion])
 
   // `+tags` typed into a note become tags; the stored note keeps the rest.
+  const refreshTags = useCallback(
+    async (expenseId: string) => {
+      const fresh = await getTagsForExpenses(db, [expenseId])
+      setTagsByExpense((prev) => new Map(prev).set(expenseId, fresh.get(expenseId) ?? []))
+    },
+    [db],
+  )
+
   const applyTags = useCallback(
     async (expenseId: string, tags: string[]) => {
       if (tags.length === 0) return
       await tagExpense(db, userId, expenseId, tags)
-      const fresh = await getTagsForExpenses(db, [expenseId])
-      setTagsByExpense((prev) => new Map(prev).set(expenseId, fresh.get(expenseId) ?? []))
+      await refreshTags(expenseId)
     },
-    [db, userId],
+    [db, userId, refreshTags],
+  )
+
+  const addTags = useCallback(
+    async (expenseId: string, tags: string[]) => {
+      await applyTags(expenseId, tags)
+      markPending()
+      triggerSync()
+    },
+    [applyTags, markPending, triggerSync],
+  )
+
+  const removeTag = useCallback(
+    async (expenseId: string, tag: string) => {
+      await untagExpense(db, userId, expenseId, tag)
+      await refreshTags(expenseId)
+      markPending()
+      triggerSync()
+    },
+    [db, userId, refreshTags, markPending, triggerSync],
   )
 
   const add = useCallback(
@@ -212,5 +238,7 @@ export function useExpenses(params: UseExpensesParams | string) {
     restore,
     stopRecurring,
     undoStopRecurring,
+    addTags,
+    removeTag,
   }
 }

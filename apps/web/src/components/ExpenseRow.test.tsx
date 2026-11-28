@@ -218,4 +218,42 @@ describe('ExpenseRow tags', () => {
       '/demo/chaos-goblin/lens/japan-trip',
     )
   })
+
+  it('removes a tag from its ✕', async () => {
+    // #given
+    const onRemoveTag = vi.fn().mockResolvedValue(undefined)
+    render(
+      <MemoryRouter>
+        <ExpenseRow
+          expense={makeExpense()}
+          onUpdateAmount={vi.fn()}
+          onDelete={vi.fn()}
+          tags={['japan-trip']}
+          onRemoveTag={onRemoveTag}
+        />
+      </MemoryRouter>,
+    )
+
+    // #when
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Remove tag japan-trip' }))
+    })
+
+    // #then
+    expect(onRemoveTag).toHaveBeenCalledWith('e1', 'japan-trip')
+  })
+
+  it('shows no ✕ when tags cannot be removed here', () => {
+    render(
+      <MemoryRouter>
+        <ExpenseRow
+          expense={makeExpense()}
+          onUpdateAmount={vi.fn()}
+          onDelete={vi.fn()}
+          tags={['japan-trip']}
+        />
+      </MemoryRouter>,
+    )
+    expect(screen.queryByRole('button', { name: /Remove tag/ })).toBeNull()
+  })
 })
